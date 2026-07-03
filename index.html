@@ -53,6 +53,7 @@
     background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; padding:5px 9px; letter-spacing:.4px; }
   #moveConfirm button:hover { background:#4a4029; }
   #moveConfirm #btnCancelMove { background:transparent; border-color:#48412c; color:#9a9070; font-weight:400; padding:3px 6px; }
+  #hexTip { z-index:25; display:none; pointer-events:none; max-width:240px; }
   #err { position:absolute; inset:0; z-index:50; display:none; padding:24px; color:#e88; background:#160f0f; white-space:pre-wrap; }
 </style>
 </head>
@@ -105,6 +106,8 @@
   <button id="btnSelectMove">Sélectionner cette unité</button>
   <button id="btnCancelMove">Annuler</button>
 </div>
+
+<div id="hexTip" class="panel"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.13.2/pixi.min.js"></script>
 <script type="module" src="./render/app.js"></script>

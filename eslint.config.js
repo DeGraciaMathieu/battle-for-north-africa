@@ -21,6 +21,8 @@ export default [
         window: 'readonly',
         document: 'readonly',
         location: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
       },
     },
     rules: {

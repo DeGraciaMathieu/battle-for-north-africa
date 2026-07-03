@@ -328,14 +328,78 @@ const PIXI = window.PIXI;
       }
     }
 
+    // -- Survol : récap de l'hexe après une courte pause ----------------------
+    const HOVER_DELAY = 1500;
+    let hoverKey = null, hoverTimer = null, hoverPos = null;
+    function hideHexTooltip() {
+      if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
+      $('hexTip').style.display = 'none';
+    }
+    function hexRecapHtml(k) {
+      const [q, r] = k.split(',').map(Number);
+      const t = TERRAIN[state.terrain.get(k)];
+      let html = `<div class="kv"><span>Terrain</span><span><b>${t.name}</b></span></div>`;
+      if (isFinite(t.cost)) html += `<div class="kv"><span>Coût / Déf</span><span>${t.cost} PM · +${t.def} déf</span></div>`;
+      else html += '<div class="sub">Infranchissable</div>';
+      if (state.objectives.includes(k)) {
+        const ctrl = state.objControl.get(k);
+        html += `<div class="kv"><span>Objectif</span><span>${ctrl ? (ctrl === 'axis' ? 'Axe' : 'Allié') : 'neutre'}</span></div>`;
+      }
+      if (isFinite(t.cost)) {
+        const side = state.G.player;
+        const { supplied, depth } = supplyRoutes(state, side);
+        const camp = side === 'axis' ? 'Axe' : 'Allié';
+        html += supplied.has(k)
+          ? `<div class="kv"><span>Ravito ${camp}</span><span>portée ${SUPPLY_RANGE - depth.get(k)}</span></div>`
+          : `<div class="kv"><span>Ravito ${camp}</span><span style="color:#e08a2a">hors portée</span></div>`;
+      }
+      const here = unitsAt(state.units, q, r);
+      if (here.length) {
+        html += '<div class="sub" style="margin-top:4px;border-top:1px solid #48412c;padding-top:4px">Unités :</div>';
+        for (const u of here) {
+          const camp = u.side === 'axis' ? 'Axe' : 'Allié';
+          html += `<div class="kv"><span>${u.fullName} <span class="sub">(${camp})</span></span>`
+            + `<span>${eAtk(u)}-${eDef(u)}-${eMov(u)}${u.reduced ? ' <span style="color:#d16a55">réd.</span>' : ''}`
+            + `${u.supplied ? '' : ' <span style="color:#e08a2a">✗rav</span>'}</span></div>`;
+        }
+      }
+      return html;
+    }
+    function showHexTooltip(k) {
+      const el = $('hexTip');
+      el.innerHTML = hexRecapHtml(k);
+      el.style.display = 'block';
+      const rc = app.canvas.getBoundingClientRect();
+      let left = rc.left + hoverPos.x + 16, top = rc.top + hoverPos.y + 16;
+      if (left + el.offsetWidth > window.innerWidth) left = rc.left + hoverPos.x - el.offsetWidth - 16;
+      if (top + el.offsetHeight > window.innerHeight) top = window.innerHeight - el.offsetHeight - 8;
+      el.style.left = left + 'px';
+      el.style.top = top + 'px';
+    }
+    function handleHover(e) {
+      if (state.G.over || (ptr && ptr.moved)) { hoverKey = null; hideHexTooltip(); return; }
+      const p = world.toLocal(e.global);
+      const { q, r } = pixelToAxial(p.x, p.y);
+      const k = key(q, r);
+      hoverPos = { x: e.global.x, y: e.global.y };
+      if (!state.terrain.has(k)) { hoverKey = null; hideHexTooltip(); return; }
+      if (k === hoverKey) return;              // même hexe : laisser le minuteur courir
+      hoverKey = k;
+      hideHexTooltip();
+      hoverTimer = setTimeout(() => showHexTooltip(k), HOVER_DELAY);
+    }
+
     // -- Pointeur : glisser = pan, clic bref = action, molette/boutons = zoom --
     app.stage.eventMode = 'static';
     app.stage.hitArea = app.screen;
     let ptr = null;
     app.stage.on('pointerdown', (e) => {
+      hoverKey = null;
+      hideHexTooltip();
       ptr = { sx: e.global.x, sy: e.global.y, wx: world.x, wy: world.y, moved: false };
     });
     app.stage.on('pointermove', (e) => {
+      handleHover(e);
       if (!ptr) return;
       const dx = e.global.x - ptr.sx, dy = e.global.y - ptr.sy;
       if (!ptr.moved && Math.hypot(dx, dy) > 6) ptr.moved = true;
@@ -348,8 +412,10 @@ const PIXI = window.PIXI;
     app.stage.on('pointerup', (e) => {
       if (ptr && !ptr.moved) handleClick(world.toLocal(e.global));
       ptr = null;
+      hideHexTooltip();
     });
     app.stage.on('pointerupoutside', () => { ptr = null; });
+    app.canvas.addEventListener('pointerleave', () => { hoverKey = null; hideHexTooltip(); });
 
     const zoomAt = (m, cx, cy) => {
       const s0 = world.scale.x, s1 = clamp(s0 * m, 0.32, 2.6);
@@ -361,6 +427,7 @@ const PIXI = window.PIXI;
     };
     app.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
+      hideHexTooltip();
       const rc = app.canvas.getBoundingClientRect();
       zoomAt(e.deltaY < 0 ? 1.12 : 0.89, e.clientX - rc.left, e.clientY - rc.top);
     }, { passive: false });
