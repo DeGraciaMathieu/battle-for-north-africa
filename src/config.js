@@ -23,18 +23,19 @@ export const DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
 // Terrain : couleur (fill/stroke), coût de mouvement (PM) et décalage défensif
 // (nombre de colonnes retirées à l'attaquant sur la CRT).
 export const TERRAIN = {
-  sea:   { name: 'Méditerranée', fill: 0x35597f, stroke: 0x243f5c, cost: Infinity, def: 0 },
-  coast: { name: 'Littoral',     fill: 0x6a97ab, stroke: 0x3f6f86, cost: 1, def: 0 },
-  sand:  { name: 'Désert',       fill: 0x8faa5c, stroke: 0x67813f, cost: 1, def: 0 },
-  sand2: { name: 'Désert',       fill: 0x9cb768, stroke: 0x67813f, cost: 1, def: 0 },
-  rock:  { name: 'Rocaille',     fill: 0x8f8b7a, stroke: 0x605d4d, cost: 2, def: 2 },
-  town:  { name: 'Ville/port',   fill: 0xa89a72, stroke: 0x726643, cost: 1, def: 2 },
-  oasis: { name: 'Oasis',        fill: 0x4d7a3c, stroke: 0x335627, cost: 1, def: 1 },
+  sea:   { name: 'Rivière',      fill: 0x35597f, stroke: 0x243f5c, cost: Infinity, def: 0 },
+  coast: { name: 'Berge',        fill: 0x6a97ab, stroke: 0x3f6f86, cost: 1, def: 0 },
+  sand:  { name: 'Plaine',       fill: 0x8faa5c, stroke: 0x67813f, cost: 1, def: 0 },
+  sand2: { name: 'Plaine',       fill: 0x9cb768, stroke: 0x67813f, cost: 1, def: 0 },
+  rock:  { name: 'Coteau',       fill: 0x8f8b7a, stroke: 0x605d4d, cost: 2, def: 2 },
+  town:  { name: 'Ville/pont',   fill: 0xa89a72, stroke: 0x726643, cost: 1, def: 2 },
+  oasis: { name: 'Bois',         fill: 0x4d7a3c, stroke: 0x335627, cost: 1, def: 1 },
   base:  { name: 'Camp de base', fill: 0x556a44, stroke: 0x2f3d24, cost: 1, def: 0 },
 };
 
-// Positions (colonne, ligne offset) des villes/ports — objectifs de la partie.
-export const TOWNS = [[3, 2], [10, 2], [17, 3], [24, 2], [30, 3], [14, 9], [22, 13]];
+// Positions (colonne, ligne offset) des villes de terre ferme — objectifs de
+// la partie (les ponts sur la rivière sont aussi des objectifs, voir map.js).
+export const TOWNS = [[5, 5], [7, 15], [28, 6], [26, 16]];
 
 // Table de résolution des combats (CRT) indexée par rapport de force (ODDS).
 export const ODDS = ['1:3', '1:2', '1:1', '2:1', '3:1', '4:1', '5:1', '6:1'];
