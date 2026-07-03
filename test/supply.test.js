@@ -2,7 +2,22 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { updateSupply, supplyRoutes, supplySources } from '../src/supply.js';
 import { createGame } from '../src/game.js';
+import { SUPPLY_RANGE } from '../src/config.js';
 import { makeState, fillTerrain, makeUnit } from './helpers.js';
+
+test('au-delà de la portée, une unité est coupée du ravitaillement', () => {
+  const coords = [];
+  for (let q = 0; q <= SUPPLY_RANGE + 1; q++) coords.push([q, 0]); // corridor rectiligne
+  const terrain = fillTerrain(coords);
+  terrain.set('0,0', 'town');
+  const near = makeUnit({ id: 0, side: 'axis', q: SUPPLY_RANGE, r: 0 });     // route = portée max
+  const far = makeUnit({ id: 1, side: 'axis', q: SUPPLY_RANGE + 1, r: 0 });  // un hex au-delà
+  const state = makeState({ terrain, units: [near, far], objectives: ['0,0'] });
+  state.objControl.set('0,0', 'axis');
+  updateSupply(state);
+  assert.ok(near.supplied, 'à portée = ravitaillée');
+  assert.ok(!far.supplied, 'au-delà de la portée = coupée');
+});
 
 test('au départ, toutes les unités sont ravitaillées depuis leur bord de carte', () => {
   const state = createGame(() => 0);

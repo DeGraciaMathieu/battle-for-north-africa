@@ -1,13 +1,15 @@
 // ===========================================================================
 //  Ravitaillement (flood-fill depuis les sources).
 //
-//  Sources d'un camp : ses villes/ports tenus + son bord de carte
-//  (Axe = ouest, Allié = est). Le ravitaillement se propage d'hex en hex tant
-//  qu'il ne traverse ni la mer, ni un hex ennemi, ni une ZOC ennemie. Une unité
-//  posée sur un hex atteint est ravitaillée.
+//  Sources d'un camp : ses villes/ports tenus + une tête de pont côtière sur son
+//  bord de carte (Axe = ouest, Allié = est), limitée aux premières lignes près
+//  du littoral (SUPPLY_HEAD_ROWS) — l'artère est étroite, pas tout le bord.
+//  Le ravitaillement se propage d'hex en hex tant qu'il ne traverse ni la mer,
+//  ni un hex ennemi, ni une ZOC ennemie, ET dans la limite de SUPPLY_RANGE hexes
+//  de route depuis la source. Une unité sur un hex atteint est ravitaillée.
 // ===========================================================================
 
-import { COLS, ROWS, DIRS, TERRAIN } from './config.js';
+import { COLS, DIRS, TERRAIN, SUPPLY_RANGE, SUPPLY_HEAD_ROWS } from './config.js';
 import { key, offsetToAxial } from './geometry.js';
 import { other, enemyAt } from './units.js';
 import { zocOf } from './movement.js';
@@ -17,7 +19,7 @@ export function supplySources(state, side) {
   const src = new Set();
   for (const k of objectives) if (objControl.get(k) === side) src.add(k); // ports tenus
   const edgeCol = side === 'axis' ? 0 : COLS - 1;                          // bord ami
-  for (let rw = 0; rw < ROWS; rw++) {
+  for (let rw = 2; rw < 2 + SUPPLY_HEAD_ROWS; rw++) {                      // tête de pont côtière
     const { q, r } = offsetToAxial(edgeCol, rw);
     const k = key(q, r);
     if (terrain.has(k) && isFinite(TERRAIN[terrain.get(k)].cost)) src.add(k);
@@ -37,11 +39,12 @@ export function supplyRoutes(state, side) {
     const [q, r] = k.split(',').map(Number);
     if (enemyAt(units, q, r, side) || eZOC.has(k)) continue;               // source coupée
     parent.set(k, null);
-    queue.push([q, r]);
+    queue.push([q, r, 0]);
   }
   let head = 0;
   while (head < queue.length) {
-    const [q, r] = queue[head++];
+    const [q, r, d] = queue[head++];
+    if (d >= SUPPLY_RANGE) continue;                                       // limite de portée
     const ck = key(q, r);
     for (const [dq, dr] of DIRS) {
       const nq = q + dq, nr = r + dr, nk = key(nq, nr);
@@ -50,7 +53,7 @@ export function supplyRoutes(state, side) {
       if (enemyAt(units, nq, nr, side)) continue;                          // pas par l'ennemi
       if (eZOC.has(nk)) continue;                                          // la ZOC coupe la route
       parent.set(nk, ck);
-      queue.push([nq, nr]);
+      queue.push([nq, nr, d + 1]);
     }
   }
   return { supplied: new Set(parent.keys()), parent };

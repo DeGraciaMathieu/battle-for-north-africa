@@ -11,6 +11,8 @@ export const SQRT3 = Math.sqrt(3);
 export const STACK_MAX = 3;      // limite d'empilement par hex et par camp
 export const MAX_TURNS = 6;      // durée de la partie (objectifs comptés à la fin)
 export const ARTY_RANGE = 3;     // portée d'appui de l'artillerie (en hex)
+export const SUPPLY_RANGE = 14;  // longueur max d'une route de ravitaillement (hexes)
+export const SUPPLY_HEAD_ROWS = 8; // profondeur de la tête de pont côtière (bord ami)
 
 // Voisinage axial (6 directions).
 export const DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];

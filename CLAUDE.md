@@ -41,7 +41,7 @@ Voir le skill `architecture` pour la carte module → rôle et « où placer du 
 - **PM** = points de mouvement ; le terrain a un coût (`TERRAIN[t].cost`) et un décalage défensif (`.def`).
 - **ZOC** = zone de contrôle : les 6 hexes autour de chaque unité ; entrer dans une ZOC ennemie stoppe le mouvement.
 - **Recto/verso** : un pion encaisse un palier (`reduced = true`) avant d'être éliminé.
-- **Ravitaillement** : flood-fill depuis les sources (ports tenus + bord ami) ; hors ravito, défense et mouvement ÷2.
+- **Ravitaillement** : flood-fill depuis les sources (ports tenus + tête de pont côtière), limité en portée (`SUPPLY_RANGE`) ; hors ravito, défense et mouvement ÷2.
 - **CRT** : la colonne finale = odds ± décalages (terrain, armes combinées, artillerie), le dé (1-6) donne le résultat (AE/AR/EX/DR/DE).
 
 ## Comportement (process)

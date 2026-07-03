@@ -12,7 +12,8 @@ Propagation du ravitaillement par flood-fill dans `src/supply.js`.
 
 | Concept | Implémentation |
 |---|---|
-| Sources d'un camp | `supplySources(state, side)` — ports tenus (`objControl`) + bord ami (Axe = colonne 0, Allié = `COLS-1`) |
+| Sources d'un camp | `supplySources(state, side)` — ports tenus (`objControl`) + tête de pont côtière du bord ami (colonne 0/`COLS-1`, lignes 2..`SUPPLY_HEAD_ROWS`), pas tout le bord |
+| Portée de route | `SUPPLY_RANGE` (`config.js`) — au-delà de N hexes de route depuis une source, l'hex n'est plus ravitaillé |
 | Hexes ravitaillés | `suppliedHexes(state, side)` → `Set` (flood-fill depuis les sources) |
 | Routes de ravitaillement | `supplyRoutes(state, side)` → `{ supplied, parent }` (BFS ; remonter `parent` trace la route jusqu'à la source) |
 | Mise à jour des unités | `updateSupply(state)` → positionne `u.supplied` pour tous |
@@ -21,12 +22,14 @@ Propagation du ravitaillement par flood-fill dans `src/supply.js`.
 
 ## Règles encodées
 
-Le flood-fill part des sources et se propage d'hex en hex tant qu'il **ne traverse pas** :
+Le flood-fill (BFS) part des sources et se propage d'hex en hex tant qu'il **ne traverse pas** :
 - la **mer** (`cost === Infinity`) ;
 - un **hex ennemi** (`enemyAt`) ;
 - une **ZOC ennemie** (`zocOf(other(side))`) — c'est elle qui « coupe » l'artère.
 
-Une source elle-même est ignorée si elle est occupée par l'ennemi ou en ZOC ennemie.
+De plus, la propagation s'arrête au-delà de **`SUPPLY_RANGE`** hexes de route : un détour forcé (par une ZOC) allonge la route et peut faire dépasser la portée → coupure. Une source elle-même est ignorée si elle est occupée par l'ennemi ou en ZOC ennemie.
+
+Sources volontairement étroites (tête de pont côtière + ports tenus) : le centre de la carte n'est ravitaillé que si l'on tient un port relais.
 
 ## Dépendances & ordre d'appel
 
