@@ -14,7 +14,7 @@ Machine à états de la partie dans `src/game.js`.
 |---|---|
 | État de séquence | `state.G = { turn, player, phase, over }` |
 | Création de partie | `createGame(rng)` |
-| Séquence IGO-UGO | Axe mvt → Axe combat → Allié mvt → Allié combat → tour++ |
+| Séquence IGO-UGO | Bleu mvt → Bleu combat → Rouge mvt → Rouge combat → tour++ (camps codés `axis` / `ally`) |
 | Avancement | `endPhase(state)` (émet `phaseChanged`) |
 | Début de phase de mouvement | `startMove(state, side)` — ravitaillement puis PM |
 | Contrôle des objectifs | `updateObjectives(state)`, `objCount(state, side)` |
@@ -24,7 +24,7 @@ Machine à états de la partie dans `src/game.js`.
 
 ## Règles encodées
 
-- **IGO-UGO** : chaque camp joue mouvement puis combat avant de passer la main. `endPhase` gère la transition et incrémente `turn` quand l'Allié finit son combat.
+- **IGO-UGO** : chaque camp joue mouvement puis combat avant de passer la main. `endPhase` gère la transition et incrémente `turn` quand le camp Rouge (`ally`) finit son combat.
 - **Victoire** : anéantissement d'un camp (immédiat, via `checkElimination` après chaque combat) OU, au tour `MAX_TURNS`, le camp contrôlant le plus d'objectifs (`checkTurnEnd`).
 - **Objectifs** : `objControl` retient le *dernier occupant* d'une ville/port (`updateObjectives`).
 

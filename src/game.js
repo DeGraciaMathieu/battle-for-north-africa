@@ -1,5 +1,5 @@
 // ===========================================================================
-//  Séquence de jeu (IGO-UGO) : Axe mvt → Axe combat → Allié mvt → Allié combat.
+//  Séquence de jeu (IGO-UGO) : Bleu mvt → Bleu combat → Rouge mvt → Rouge combat.
 //  Fabrique l'état complet de la partie, gère l'avancement des phases,
 //  les objectifs et les conditions de victoire.
 // ===========================================================================
@@ -77,8 +77,8 @@ export function endPhase(state) {
 export function checkElimination(state) {
   const a = state.units.some((u) => u.side === 'axis');
   const b = state.units.some((u) => u.side === 'ally');
-  if (!a) endGame(state, 'ally', 'Afrikakorps anéanti');
-  else if (!b) endGame(state, 'axis', '8th Army anéantie');
+  if (!a) endGame(state, 'ally', 'Force Bleue anéantie');
+  else if (!b) endGame(state, 'axis', 'Force Rouge anéantie');
 }
 
 export function checkTurnEnd(state) {

@@ -1,6 +1,6 @@
 # Battle for North Africa
 
-Wargame hexagonal opérationnel (« Desert War ») : combat au tour par tour sur une carte hexagonale du désert nord-africain, opposant l'Axe (Afrikakorps) aux Alliés (8th Army).
+Wargame hexagonal opérationnel : combat au tour par tour sur une carte hexagonale, opposant deux camps neutres, **Bleu** et **Rouge** (codés en interne `axis` / `ally`).
 
 ## Stack
 

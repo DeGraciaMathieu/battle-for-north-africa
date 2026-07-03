@@ -13,18 +13,18 @@ import { offsetToAxial } from './geometry.js';
 // position initiale en coordonnées offset (col, row). `name` = libellé court
 // imprimé sur le pion ; `fullName` = nom complet affiché dans l'inspecteur.
 export const raw = [
-  { side: 'axis', type: 'armor', ech: 'XX', name: '15Pz', fullName: '15ᵉ Panzer-Division',       atk: 8, def: 7, mov: 12, ratk: 5, rdef: 4, rmov: 10, col: 9,  row: 6 },
-  { side: 'axis', type: 'armor', ech: 'XX', name: '21Pz', fullName: '21ᵉ Panzer-Division',       atk: 8, def: 7, mov: 12, ratk: 5, rdef: 4, rmov: 10, col: 9,  row: 8 },
-  { side: 'axis', type: 'mech',  ech: 'XX', name: '90le', fullName: '90ᵉ Division légère',        atk: 6, def: 6, mov: 10, ratk: 4, rdef: 4, rmov: 8,  col: 11, row: 7 },
-  { side: 'axis', type: 'armor', ech: 'XX', name: 'Ari',  fullName: 'Division « Ariete »',        atk: 6, def: 5, mov: 10, ratk: 3, rdef: 3, rmov: 8,  col: 8,  row: 10 },
-  { side: 'axis', type: 'moto',  ech: 'XX', name: 'Tri',  fullName: 'Division « Trieste »',       atk: 4, def: 5, mov: 9,  ratk: 2, rdef: 3, rmov: 7,  col: 11, row: 10 },
-  { side: 'axis', type: 'arty',  ech: 'X',  name: 'AR33', fullName: 'Artillerie-Regiment 33',     atk: 2, def: 3, mov: 6,  ratk: 1, rdef: 2, rmov: 5,  col: 7,  row: 8 },
-  { side: 'ally', type: 'armor', ech: 'XX', name: '7Arm', fullName: '7ᵉ Armoured Division',       atk: 7, def: 7, mov: 12, ratk: 4, rdef: 4, rmov: 10, col: 22, row: 6 },
-  { side: 'ally', type: 'armor', ech: 'XX', name: '1Arm', fullName: '1ʳᵉ Armoured Division',      atk: 6, def: 6, mov: 11, ratk: 4, rdef: 4, rmov: 9,  col: 22, row: 8 },
-  { side: 'ally', type: 'inf',   ech: 'XX', name: '2NZ',  fullName: '2ᵉ Division néo-zélandaise', atk: 6, def: 6, mov: 7,  ratk: 4, rdef: 4, rmov: 5,  col: 20, row: 7 },
-  { side: 'ally', type: 'inf',   ech: 'XX', name: '4Ind', fullName: '4ᵉ Division indienne',       atk: 5, def: 6, mov: 6,  ratk: 3, rdef: 4, rmov: 5,  col: 20, row: 10 },
-  { side: 'ally', type: 'inf',   ech: 'XX', name: '1SA',  fullName: '1ʳᵉ Division sud-africaine', atk: 5, def: 6, mov: 6,  ratk: 3, rdef: 4, rmov: 5,  col: 24, row: 9 },
-  { side: 'ally', type: 'arty',  ech: 'X',  name: 'RA7',  fullName: '7ᵉ Royal Artillery',         atk: 2, def: 3, mov: 6,  ratk: 1, rdef: 2, rmov: 5,  col: 25, row: 7 },
+  { side: 'axis', type: 'armor', ech: 'XX', name: 'BLD-1', fullName: 'Blindés 1',    atk: 8, def: 7, mov: 12, ratk: 5, rdef: 4, rmov: 10, col: 9,  row: 6 },
+  { side: 'axis', type: 'armor', ech: 'XX', name: 'BLD-2', fullName: 'Blindés 2',    atk: 8, def: 7, mov: 12, ratk: 5, rdef: 4, rmov: 10, col: 9,  row: 8 },
+  { side: 'axis', type: 'mech',  ech: 'XX', name: 'MEC-1', fullName: 'Mécanisée 1',  atk: 6, def: 6, mov: 10, ratk: 4, rdef: 4, rmov: 8,  col: 11, row: 7 },
+  { side: 'axis', type: 'armor', ech: 'XX', name: 'BLD-3', fullName: 'Blindés 3',    atk: 6, def: 5, mov: 10, ratk: 3, rdef: 3, rmov: 8,  col: 8,  row: 10 },
+  { side: 'axis', type: 'moto',  ech: 'XX', name: 'MOT-1', fullName: 'Motorisée 1',  atk: 4, def: 5, mov: 9,  ratk: 2, rdef: 3, rmov: 7,  col: 11, row: 10 },
+  { side: 'axis', type: 'arty',  ech: 'X',  name: 'ART-1', fullName: 'Artillerie 1', atk: 2, def: 3, mov: 6,  ratk: 1, rdef: 2, rmov: 5,  col: 7,  row: 8 },
+  { side: 'ally', type: 'armor', ech: 'XX', name: 'BLD-1', fullName: 'Blindés 1',    atk: 7, def: 7, mov: 12, ratk: 4, rdef: 4, rmov: 10, col: 22, row: 6 },
+  { side: 'ally', type: 'armor', ech: 'XX', name: 'BLD-2', fullName: 'Blindés 2',    atk: 6, def: 6, mov: 11, ratk: 4, rdef: 4, rmov: 9,  col: 22, row: 8 },
+  { side: 'ally', type: 'inf',   ech: 'XX', name: 'INF-1', fullName: 'Infanterie 1', atk: 6, def: 6, mov: 7,  ratk: 4, rdef: 4, rmov: 5,  col: 20, row: 7 },
+  { side: 'ally', type: 'inf',   ech: 'XX', name: 'INF-2', fullName: 'Infanterie 2', atk: 5, def: 6, mov: 6,  ratk: 3, rdef: 4, rmov: 5,  col: 20, row: 10 },
+  { side: 'ally', type: 'inf',   ech: 'XX', name: 'INF-3', fullName: 'Infanterie 3', atk: 5, def: 6, mov: 6,  ratk: 3, rdef: 4, rmov: 5,  col: 24, row: 9 },
+  { side: 'ally', type: 'arty',  ech: 'X',  name: 'ART-1', fullName: 'Artillerie 1', atk: 2, def: 3, mov: 6,  ratk: 1, rdef: 2, rmov: 5,  col: 25, row: 7 },
 ];
 
 // Instancie les unités de jeu depuis le roster (état mutable par pion).

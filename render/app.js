@@ -17,6 +17,9 @@ const PIXI = window.PIXI;
 (async () => {
   try {
     const state = createGame();
+    const sideLabel = (s) => (s === 'axis' ? 'BLEU' : 'ROUGE');
+    const FILL = { axis: 0x4a6b9a, ally: 0xa8544a };   // couleurs des camps (pions, camp de base)
+    const SUP = { axis: 0x8fb0d8, ally: 0xe0968f };    // teinte de ravitaillement par camp
 
     // =========================================================================
     //  Rendu Pixi
@@ -64,7 +67,7 @@ const PIXI = window.PIXI;
       const [c, rw] = BASES[s];
       const { q, r } = offsetToAxial(c, rw);
       const { x, y } = axialToPixel(q, r);
-      const col = s === 'axis' ? 0x6d7061 : 0xcdb488;
+      const col = FILL[s];
       decoLayer.rect(x - 9, y - 9, 18, 18).fill(0x241d10).stroke({ width: 2, color: col });
       decoLayer.rect(x - 1, y - 10, 2, 9).fill(col);
       decoLayer.poly([x + 1, y - 10, x + 8, y - 8, x + 1, y - 6]).fill(col);
@@ -88,9 +91,9 @@ const PIXI = window.PIXI;
     };
     function makeCounter(u) {
       const c = new PIXI.Container();
-      const baseFill = u.side === 'axis' ? 0x6d7061 : 0xcdb488;
+      const baseFill = FILL[u.side];
       const fill = u.reduced ? mixDark(baseFill) : baseFill;
-      const txt = u.side === 'axis' ? 0xf3efe2 : 0x2a2115;
+      const txt = 0xf3efe2;
       const shadow = new PIXI.Graphics().roundRect(-CS / 2 + 3, -CS / 2 + 4, CS, CS, 5).fill({ color: 0, alpha: 0.35 });
       const base = new PIXI.Graphics();
       base.roundRect(-CS / 2, -CS / 2, CS, CS, 5).fill(fill).stroke({ width: 2, color: 0x1c1810 });
@@ -185,7 +188,7 @@ const PIXI = window.PIXI;
     function drawSupplyLines() {
       const side = state.G.player;
       const { supplied, parent, depth } = supplyRoutes(state, side);
-      const color = side === 'axis' ? 0x7fd0b0 : 0xf0c86a;
+      const color = SUP[side];
       for (const k of supplied) {
         fillHex(k, color, 0.1);                             // hexes ravitaillés (teinte)
         // Numéro de ravitaillement = portée restante (élevé près de la source, faible au loin).
@@ -343,12 +346,12 @@ const PIXI = window.PIXI;
       else html += '<div class="sub">Infranchissable</div>';
       if (state.objectives.includes(k)) {
         const ctrl = state.objControl.get(k);
-        html += `<div class="kv"><span>Objectif</span><span>${ctrl ? (ctrl === 'axis' ? 'Axe' : 'Allié') : 'neutre'}</span></div>`;
+        html += `<div class="kv"><span>Objectif</span><span>${ctrl ? sideLabel(ctrl) : 'neutre'}</span></div>`;
       }
       if (isFinite(t.cost)) {
         const side = state.G.player;
         const { supplied, depth } = supplyRoutes(state, side);
-        const camp = side === 'axis' ? 'Axe' : 'Allié';
+        const camp = sideLabel(side);
         html += supplied.has(k)
           ? `<div class="kv"><span>Ravito ${camp}</span><span>portée ${SUPPLY_RANGE - depth.get(k)}</span></div>`
           : `<div class="kv"><span>Ravito ${camp}</span><span style="color:#e08a2a">hors portée</span></div>`;
@@ -357,7 +360,7 @@ const PIXI = window.PIXI;
       if (here.length) {
         html += '<div class="sub" style="margin-top:4px;border-top:1px solid #48412c;padding-top:4px">Unités :</div>';
         for (const u of here) {
-          const camp = u.side === 'axis' ? 'Axe' : 'Allié';
+          const camp = sideLabel(u.side);
           html += `<div class="kv"><span>${u.fullName} <span class="sub">(${camp})</span></span>`
             + `<span>${eAtk(u)}-${eDef(u)}-${eMov(u)}${u.reduced ? ' <span style="color:#d16a55">réd.</span>' : ''}`
             + `${u.supplied ? '' : ' <span style="color:#e08a2a">✗rav</span>'}</span></div>`;
@@ -472,15 +475,15 @@ const PIXI = window.PIXI;
       else $('moveConfirm').style.display = 'none';
       $('turnNum').textContent = state.G.turn;
       const sb = $('badgeSide');
-      sb.textContent = state.G.player === 'axis' ? 'AXE' : 'ALLIÉ';
+      sb.textContent = sideLabel(state.G.player);
       sb.className = 'badge ' + state.G.player;
       $('badgePhase').textContent = state.G.phase === 'move' ? 'MOUVEMENT' : 'COMBAT';
-      const camp = state.G.player === 'axis' ? "de l'Axe" : 'alliées';
+      const camp = 'du camp ' + sideLabel(state.G.player);
       $('hint').innerHTML = state.G.phase === 'move'
         ? `Clique une unité ${camp} pour voir ses déplacements, puis un hexagone surligné. Entrer dans une ZOC ennemie (rouge) stoppe l'unité.`
         : "Clique tes unités adjacentes à l'ennemi pour désigner les attaquants (vert), puis l'unité ennemie à assaillir (rouge). Blindé + infanterie et artillerie à portée (≤3 hex) décalent la table en ta faveur.";
       $('btnPhase').textContent = state.G.phase === 'move' ? 'Passer au combat ▸'
-        : state.G.player === 'axis' ? 'Fin de tour Axe → Allié ▸' : `Fin du tour ${state.G.turn} ▸`;
+        : state.G.player === 'axis' ? 'Fin de tour Bleu → Rouge ▸' : `Fin du tour ${state.G.turn} ▸`;
 
       let html = '';
       if (state.G.phase === 'move' && sel) {
@@ -506,7 +509,7 @@ const PIXI = window.PIXI;
       $('inspBody').innerHTML = html;
 
       $('objbar').innerHTML = `<div class="kv"><span>Objectifs</span>`
-        + `<span><b>${objCount(state, 'axis')}</b> Axe · <b>${objCount(state, 'ally')}</b> Allié · ${state.objectives.length} au total</span></div>`
+        + `<span><b>${objCount(state, 'axis')}</b> ${sideLabel('axis')} · <b>${objCount(state, 'ally')}</b> ${sideLabel('ally')} · ${state.objectives.length} au total</span></div>`
         + `<div class="sub">Le camp contrôlant le plus d'objectifs au tour ${MAX_TURNS} l'emporte.</div>`;
       draw();
     }
@@ -654,7 +657,7 @@ const PIXI = window.PIXI;
       clearSel();
       drawOverlay();
       draw();
-      $('bannerTitle').textContent = side === 'axis' ? "Victoire de l'Axe" : 'Victoire alliée';
+      $('bannerTitle').textContent = `Victoire du camp ${sideLabel(side)}`;
       $('bannerSub').textContent = reason;
       $('banner').style.display = 'flex';
     });
@@ -665,7 +668,7 @@ const PIXI = window.PIXI;
 
     fitView();
     refresh();
-    log("Partie prête — tour 1, phase de mouvement de l'Axe.");
+    log('Partie prête — tour 1, phase de mouvement du camp Bleu.');
   } catch (err) {
     const el = document.getElementById('err');
     el.style.display = 'block';

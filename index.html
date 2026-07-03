@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Desert War — socle</title>
+<title>Wargame hexagonal — socle</title>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden;
@@ -20,8 +20,8 @@
   #hud { top: 12px; left: 12px; width: 320px; }
   #turnbar { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
   .badge { padding:2px 8px; border-radius:3px; font-weight:700; letter-spacing:.5px; font-size:11px; }
-  .badge.axis { background:#4a4c3f; color:#e9e6d6; border:1px solid #6d7061; }
-  .badge.ally { background:#7c6a3f; color:#241d10; border:1px solid #cdb488; }
+  .badge.axis { background:#33415c; color:#dfe7f2; border:1px solid #4a6b9a; }
+  .badge.ally { background:#5a2f2b; color:#f2dedb; border:1px solid #a8544a; }
   .badge.phase { background:#2c281c; color:#e8b95a; border:1px solid #5a5238; }
   #hint { margin-top:4px; min-height:30px; }
   #btnPhase { margin-top:8px; width:100%; padding:8px; cursor:pointer; font-family:inherit; font-weight:700;
@@ -106,7 +106,7 @@
 <div id="hud" class="panel">
   <div id="turnbar">
     <span class="sub">Tour</span><b id="turnNum">1</b>
-    <span id="badgeSide" class="badge axis">AXE</span>
+    <span id="badgeSide" class="badge axis">BLEU</span>
     <span id="badgePhase" class="badge phase">MOUVEMENT</span>
   </div>
   <div id="hint" class="sub"></div>
@@ -130,7 +130,7 @@
   <div style="margin-top:5px;padding-top:5px;border-top:1px solid #48412c">
     <span class="swatch" style="background:#b33a2a"></span>Pion réduit (verso, facteurs moindres)</div>
   <div><span class="swatch" style="background:#e08a2a"></span>Hors ravitaillement · déf & mvt ÷2</div>
-  <div><span class="swatch" style="background:#7fd0b0"></span>Ravitaillement du camp actif : hexes + n° portée restante + lignes · bouton RAV</div>
+  <div><span class="swatch" style="background:#8fb0d8"></span>Ravitaillement du camp actif (couleur du camp) : hexes + n° portée + lignes · bouton RAV</div>
 </div>
 
 <div id="controls">
