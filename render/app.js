@@ -44,8 +44,8 @@ const PIXI = window.PIXI;
 
     const world = new PIXI.Container();
     const mapLayer = new PIXI.Graphics(), decoLayer = new PIXI.Graphics(),
-      overlay = new PIXI.Graphics(), supplyLayer = new PIXI.Container(), unitLayer = new PIXI.Container();
-    world.addChild(mapLayer, decoLayer, overlay, supplyLayer, unitLayer);
+      overlay = new PIXI.Graphics(), unitLayer = new PIXI.Container();
+    world.addChild(mapLayer, decoLayer, overlay, unitLayer);
     app.stage.addChild(world);
 
     for (const { q, r } of state.hexes) {
@@ -205,21 +205,9 @@ const PIXI = window.PIXI;
     // Une unité coupée n'a pas de ligne (repérable aussi au liseré orange).
     function drawSupplyLines() {
       const side = state.G.player;
-      const { supplied, parent, depth } = supplyRoutes(state, side);
+      const { supplied, parent } = supplyRoutes(state, side);
       const color = SUP[side];
-      for (const k of supplied) {
-        fillHex(k, color, 0.1);                             // hexes ravitaillés (teinte)
-        // Numéro de ravitaillement = portée restante (élevé près de la source, faible au loin).
-        const [q, r] = k.split(',').map(Number);
-        const { x, y } = axialToPixel(q, r);
-        const t = new PIXI.Text({
-          text: String(SUPPLY_RANGE - depth.get(k)),
-          style: { fontFamily: 'Arial', fontSize: 11, fontWeight: '700', fill: 0x2a2115 },
-        });
-        t.anchor.set(0.5);
-        t.position.set(x, y - 15);
-        supplyLayer.addChild(t);
-      }
+      drawZoneOutline(supplied, color, 2.5, 0.9);          // pourtour de la zone ravitaillée
       for (const k of supplySources(state, side)) {
         if (supplied.has(k)) drawHexOutline(k, 0xe8c85a, 2, 0.7);
       }
@@ -241,7 +229,6 @@ const PIXI = window.PIXI;
 
     function drawOverlay() {
       overlay.clear();
-      for (const c of supplyLayer.removeChildren()) c.destroy();
       if (showSupply) drawSupplyLines();
       if (state.G.phase === 'move') {
         const eZOC = zocOf(state.units, other(state.G.player), state.terrain);
