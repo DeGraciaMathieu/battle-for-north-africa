@@ -4,7 +4,7 @@
 //  s'abonne au bus d'événements ; elle ne contient aucune règle de jeu.
 // ===========================================================================
 
-import { TERRAIN, MAX_TURNS, BASES, SUPPLY_RANGE } from '../src/config.js';
+import { TERRAIN, MAX_TURNS, BASES, SUPPLY_RANGE, CRT } from '../src/config.js';
 import { key, axialToPixel, offsetToAxial, pixelToAxial, hexCorners, hexDistance, clamp } from '../src/geometry.js';
 import { eAtk, eDef, eMov, other, unitsAt, enemyAt, stackCount, isArmor, isFoot } from '../src/units.js';
 import { zocOf, computeReachable, moveUnit } from '../src/movement.js';
@@ -511,8 +511,81 @@ const PIXI = window.PIXI;
       draw();
     }
 
+    // Modale animée explicitant le déroulé d'un combat : en-tête → dé qui défile
+    // → résultat coloré → conséquences narrées une à une.
+    let combatTimers = [];
+    const clearCombatTimers = () => { combatTimers.forEach(clearTimeout); combatTimers = []; };
+    const at = (fn, ms) => combatTimers.push(setTimeout(fn, ms));
+    function showCombatModal(p) {
+      if (state.G.over) return;                             // la victoire est déjà annoncée
+      clearCombatTimers();
+      const mods = [];
+      if (p.combined) mods.push('combiné +1');
+      if (p.arty) mods.push(`artillerie +${p.arty}`);
+      if (p.terr) mods.push(`terrain −${p.terr}`);
+      $('combatBody').innerHTML =
+        `<div class="kv"><span>Attaquants</span><span>${p.attackers.join(', ')}</span></div>`
+        + `<div class="kv"><span>Rapport de force</span><span><b>${p.atk}</b> contre <b>${p.def}</b> → <b>${p.baseCol}</b></span></div>`
+        + `<div class="kv"><span>Défenseur</span><span>${p.defender}</span></div>`
+        + `<div class="kv"><span>Décalages de colonne</span><span>${mods.length ? mods.join(', ') : 'aucun'}</span></div>`
+        + `<div class="kv"><span>Colonne finale</span><span><b>${p.col}</b></span></div>`
+        + `<div class="kv"><span>Jet de dé</span><span><b id="dieVal" class="spin">–</b></span></div>`;
+      const resEl = $('combatRes');
+      resEl.textContent = '';
+      resEl.style.background = 'transparent';
+      $('combatTable').innerHTML = '';
+      $('combatEffects').innerHTML = '';
+      $('combatBtn').style.visibility = 'hidden';
+      $('combatModal').style.display = 'flex';
+
+      // Dé qui défile puis se fige sur la valeur réelle.
+      let ticks = 0;
+      const spin = () => {
+        const el = $('dieVal');
+        if (!el) return;
+        if (ticks < 11) {
+          el.textContent = 1 + Math.floor(Math.random() * 6);
+          ticks++;
+          at(spin, 60 + ticks * 10);
+        } else {
+          el.textContent = p.die;
+          el.classList.remove('spin');
+          at(() => revealResult(p), 350);
+        }
+      };
+      at(spin, 200);
+    }
+    function revealResult(p) {
+      // Ligne de CRT de la colonne finale, case du dé surlignée (impact du dé).
+      const row = CRT[p.col];
+      let cells = '';
+      for (let i = 0; i < 6; i++) {
+        cells += `<span class="crtcell${i === p.die - 1 ? ' hit' : ''}"><span class="d">${i + 1}</span>${row[i]}</span>`;
+      }
+      $('combatTable').innerHTML =
+        `<div class="sub" style="margin-top:6px">Colonne ${p.col} — résultat selon le dé (droite = plus favorable à l'attaquant) :</div>`
+        + `<div class="crtrow">${cells}</div>`
+        + '<div class="sub" style="margin-top:3px;font-size:10px">DE déf. éliminé · DR déf. repoussé · EX échange · AR att. repoussé · AE att. éliminé</div>';
+
+      const good = p.res === 'DE' || p.res === 'DR';        // favorable à l'attaquant
+      const resEl = $('combatRes');
+      resEl.textContent = p.result;
+      resEl.style.background = good ? 'rgba(111,154,92,.22)' : p.res === 'EX' ? 'rgba(232,185,90,.18)' : 'rgba(179,58,42,.22)';
+      resEl.style.color = good ? '#a8d488' : p.res === 'EX' ? '#e8b95a' : '#e0937f';
+      const box = $('combatEffects');
+      p.effects.forEach((e, i) => at(() => {
+        const d = document.createElement('div');
+        d.className = 'fx';
+        d.textContent = '• ' + e;
+        box.appendChild(d);
+      }, 300 * (i + 1)));
+      at(() => { $('combatBtn').style.visibility = 'visible'; }, 300 * (p.effects.length + 1));
+    }
+    $('combatBtn').onclick = () => { clearCombatTimers(); $('combatModal').style.display = 'none'; };
+
     // -- Abonnements au bus : le rendu réagit aux événements des règles -------
     state.bus.on('log', log);
+    state.bus.on('combatResolved', showCombatModal);
     state.bus.on('phaseChanged', () => {
       clearSel();
       refresh();

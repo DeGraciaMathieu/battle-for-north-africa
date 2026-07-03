@@ -90,23 +90,43 @@ export function resolveCombat(state, attackers, defender) {
   const defHex = { q: defender.q, r: defender.r };
   const atkRef = attackers[0];                              // point de fuite pour reculs
 
+  // Récapitulatif du combat, figé AVANT d'appliquer les pertes (facteurs pleins).
+  // `effects` narre les conséquences, rempli au fil de la résolution.
+  const nm = (u) => u.fullName ?? u.name;
+  const dName = nm(defender);
+  const effects = [];
+  const summary = {
+    attackers: attackers.map(nm),
+    atk,
+    defender: dName,
+    def: eDef(defender),
+    baseCol: ODDS[oddsIndex(atk, eDef(defender))],         // colonne avant décalages
+    combined, arty, terr, col, die, res, result: RESULT_FR[res], effects,
+  };
+
   if (res === 'DE') {
-    hitUnit(state, defender);
+    effects.push(hitUnit(state, defender) ? `${dName} est réduit.` : `${dName} est éliminé.`);
   } else if (res === 'DR') {
-    retreatOrDie(state, defender, atkRef.q, atkRef.r);
+    effects.push(retreatOrDie(state, defender, atkRef.q, atkRef.r)
+      ? `${dName} recule d'un hexe.` : `${dName}, sans repli possible, est éliminé.`);
   } else if (res === 'EX') {
-    hitUnit(state, defender);                               // défenseur encaisse un palier
+    effects.push(hitUnit(state, defender) ? `${dName} est réduit.` : `${dName} est éliminé.`); // palier
     let lost = 0;
     const sorted = [...attackers].sort((a, b) => eAtk(a) - eAtk(b));
     for (const a of sorted) {
       if (lost >= eDef(defender)) break;
       lost += eAtk(a);
-      hitUnit(state, a);
+      effects.push(hitUnit(state, a) ? `${nm(a)} est réduit (échange).` : `${nm(a)} est éliminé (échange).`);
     }
   } else if (res === 'AR') {
-    for (const a of [...attackers]) retreatOrDie(state, a, defender.q, defender.r);
+    for (const a of [...attackers]) {
+      effects.push(retreatOrDie(state, a, defender.q, defender.r)
+        ? `${nm(a)} est repoussé d'un hexe.` : `${nm(a)}, sans repli possible, est éliminé.`);
+    }
   } else if (res === 'AE') {
-    for (const a of [...attackers]) hitUnit(state, a);
+    for (const a of [...attackers]) {
+      effects.push(hitUnit(state, a) ? `${nm(a)} est réduit.` : `${nm(a)} est éliminé.`);
+    }
   }
 
   // Avance après combat : si l'hex du défenseur est libéré, un attaquant y entre.
@@ -117,8 +137,10 @@ export function resolveCombat(state, attackers, defender) {
     if (adv && stackCount(state.units, defHex.q, defHex.r, adv.side) < STACK_MAX) {
       adv.q = defHex.q;
       adv.r = defHex.r;
+      effects.push(`${nm(adv)} avance sur la position conquise.`);
     }
   }
+  if (!effects.length) effects.push('Aucune perte.');
   attackers.forEach((a) => {
     if (state.units.includes(a)) a.hasFought = true;
   });
@@ -129,6 +151,6 @@ export function resolveCombat(state, attackers, defender) {
   if (terr) mods.push(`terrain −${terr}`);
   const modStr = mods.length ? ` (${mods.join(', ')})` : '';
   bus.emit('log', `<b>${col}</b>${modStr}, dé ${die} → ${RESULT_FR[res]}`);
-  bus.emit('combatResolved', { col, die, res });
+  bus.emit('combatResolved', summary);
   return { col, die, res };
 }

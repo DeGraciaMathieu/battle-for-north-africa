@@ -15,6 +15,7 @@ Résolution des combats dans `src/combat.js` ; table (`CRT`, `ODDS`) dans `src/c
 | Colonne d'odds (rapport de force) | `oddsIndex(atk, def)` → index dans `ODDS` |
 | Table de résultats | `CRT[col][die-1]` (`src/config.js`) |
 | Résolution complète | `resolveCombat(state, attackers, defender)` → `{ col, die, res }` |
+| Résumé pour l'UI | événement `combatResolved` (payload : forces, `baseCol` avant décalages, `col` finale, modificateurs, `die`, `res`, `effects` narrés) → modale animée (`render/app.js` → `showCombatModal`) : dérivation base → finale, ligne de CRT avec la case du dé surlignée, conséquences |
 | Jet de dé | `1 + Math.floor(state.rng() * 6)` — **toujours via `state.rng`** |
 | Réduction / élimination | `hitUnit(state, u)` (émet `unitReduced`/`unitRemoved`) |
 | Recul | `retreatOrDie(state, unit, awayQ, awayR)` via `retreatOptions` |

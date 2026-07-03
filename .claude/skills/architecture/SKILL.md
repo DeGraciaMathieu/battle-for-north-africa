@@ -41,7 +41,7 @@ Les règles ne rendent rien : elles émettent, le rendu réagit.
 | Événement | Émis par | Consommé par |
 |---|---|---|
 | `unitReduced` / `unitRemoved` | `combat.js` (`hitUnit`/`removeUnit`) | rendu (reconstruction des pions) |
-| `combatResolved` | `combat.js` (`resolveCombat`) | `game.js` → `checkElimination` |
+| `combatResolved` | `combat.js` (`resolveCombat`), payload = résumé du combat | `game.js` → `checkElimination` ; rendu → modale explicative |
 | `phaseChanged` | `game.js` (`endPhase`) | rendu (`clearSel` + `refresh`) |
 | `gameOver` | `game.js` (`endGame`) | rendu (bannière) |
 | `log` | `combat.js`, rendu | rendu (journal) |

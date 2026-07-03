@@ -48,6 +48,19 @@ test('« Défenseur éliminé » retire le pion et fait avancer l\'attaquant', (
   assert.deepEqual([attacker.q, attacker.r], [1, 0], 'attaquant avance sur l\'hex libéré');
 });
 
+test('le résumé de combat narre les conséquences', () => {
+  const terrain = fillTerrain([[0, 0], [1, 0]]);
+  const attacker = makeUnit({ id: 0, side: 'axis', type: 'armor', q: 0, r: 0, atk: 8 });
+  const defender = makeUnit({ id: 1, side: 'ally', type: 'inf', q: 1, r: 0, reduced: true, rdef: 1 });
+  const state = makeState({ terrain, units: [attacker, defender], rng: () => 0 });
+  let summary = null;
+  state.bus.on('combatResolved', (p) => { summary = p; });
+  resolveCombat(state, [attacker], defender);
+  assert.ok(Array.isArray(summary.effects) && summary.effects.length, 'effets présents');
+  assert.match(summary.effects.join(' '), /éliminé/, 'défenseur réduit → éliminé narré');
+  assert.match(summary.effects.join(' '), /avance/, 'avance après combat narrée');
+});
+
 test('un « Défenseur repoussé » (DR) éloigne le défenseur de l\'attaquant', () => {
   const terrain = fillTerrain([[0, 0], [1, 0], [2, 0], [2, -1], [1, 1], [0, 1], [1, -1]]);
   const attacker = makeUnit({ id: 0, side: 'axis', q: 0, r: 0, atk: 6 });

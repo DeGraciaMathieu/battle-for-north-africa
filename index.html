@@ -53,6 +53,22 @@
     background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; padding:5px 9px; letter-spacing:.4px; }
   #moveConfirm button:hover { background:#4a4029; }
   #moveConfirm #btnCancelMove { background:transparent; border-color:#48412c; color:#9a9070; font-weight:400; padding:3px 6px; }
+  #combatModal { position:absolute; z-index:28; inset:0; display:none; align-items:center; justify-content:center; }
+  #combatModal .box { background:rgba(20,17,12,.96); border:2px solid #6d5f38; border-radius:6px; padding:20px 26px; width:340px; max-width:90%; }
+  #combatModal h2 { margin:0 0 10px; color:#e8b95a; letter-spacing:1.5px; text-align:center; font-size:15px; }
+  #combatModal .res { text-align:center; font-size:15px; font-weight:700; margin:12px 0 4px; padding:8px; border-radius:4px; }
+  #combatModal button { margin-top:12px; width:100%; padding:9px; cursor:pointer; font-family:inherit; font-weight:700;
+    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; letter-spacing:.6px; }
+  #combatModal button:hover { background:#4a4029; }
+  #combatModal .crtrow { display:flex; gap:3px; margin-top:4px; }
+  #combatModal .crtcell { flex:1; text-align:center; font-size:10px; font-weight:700; padding:4px 2px; border-radius:3px;
+    background:#221f16; border:1px solid #3a3323; color:#c8bd97; }
+  #combatModal .crtcell .d { display:block; font-size:8px; color:#8a8064; font-weight:400; }
+  #combatModal .crtcell.hit { border-color:#e8b95a; background:#3a3323; color:#efe4bc; }
+  #combatModal #combatEffects { margin-top:2px; }
+  #combatModal .fx { font-size:12px; color:#d9cca0; padding:2px 0; animation:fxIn .2s ease-out; }
+  @keyframes fxIn { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:none; } }
+  #combatModal #dieVal.spin { color:#efe4bc; }
   #hexTip { z-index:25; display:none; pointer-events:none; max-width:240px; }
   #err { position:absolute; inset:0; z-index:50; display:none; padding:24px; color:#e88; background:#160f0f; white-space:pre-wrap; }
 </style>
@@ -106,6 +122,15 @@
   <button id="btnSelectMove">Sélectionner cette unité</button>
   <button id="btnCancelMove">Annuler</button>
 </div>
+
+<div id="combatModal"><div class="box">
+  <h2>Résolution du combat</h2>
+  <div id="combatBody"></div>
+  <div id="combatTable"></div>
+  <div id="combatRes" class="res"></div>
+  <div id="combatEffects"></div>
+  <button id="combatBtn">Continuer ▸</button>
+</div></div>
 
 <div id="hexTip" class="panel"></div>
 
