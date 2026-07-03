@@ -47,6 +47,11 @@
   #banner h2 { margin:0 0 6px; color:#e8b95a; letter-spacing:2px; }
   #banner button { margin-top:14px; padding:8px 16px; cursor:pointer; font-family:inherit; font-weight:700;
     background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; }
+  #moveConfirm { z-index:20; display:none; flex-direction:column; gap:5px; padding:7px 8px; transform:translate(-50%,-125%); }
+  #moveConfirm button { cursor:pointer; font-family:inherit; font-weight:700; font-size:11px; white-space:nowrap;
+    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; padding:5px 9px; letter-spacing:.4px; }
+  #moveConfirm button:hover { background:#4a4029; }
+  #moveConfirm #btnCancelMove { background:transparent; border-color:#48412c; color:#9a9070; font-weight:400; padding:3px 6px; }
   #err { position:absolute; inset:0; z-index:50; display:none; padding:24px; color:#e88; background:#160f0f; white-space:pre-wrap; }
 </style>
 </head>
@@ -90,6 +95,12 @@
 
 <div id="banner"><div class="box"><h2 id="bannerTitle"></h2><div id="bannerSub" class="sub"></div>
   <button id="bannerBtn">Rejouer</button></div></div>
+
+<div id="moveConfirm" class="panel">
+  <button id="btnConfirmMove">Déplacer ici ▸</button>
+  <button id="btnSelectMove">Sélectionner cette unité</button>
+  <button id="btnCancelMove">Annuler</button>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.13.2/pixi.min.js"></script>
 <script type="module" src="./render/app.js"></script>

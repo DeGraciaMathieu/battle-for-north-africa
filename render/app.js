@@ -36,6 +36,7 @@ const PIXI = window.PIXI;
       app.renderer.resize(window.innerWidth, window.innerHeight);
       app.stage.hitArea = app.screen;
       draw();
+      if (pending) positionMoveTooltip();
     });
 
     const world = new PIXI.Container();
@@ -143,10 +144,16 @@ const PIXI = window.PIXI;
     //  Sélection & interaction
     // =========================================================================
     let sel = null;               // { unit, reachable, dist, eZOC }  (phase mouvement)
+    let pending = null;           // { key, q, r, hasOwn } — déplacement en attente de confirmation
     const attackers = new Set();  // ids des unités attaquantes       (phase combat)
+    function clearPending() {
+      pending = null;
+      $('moveConfirm').style.display = 'none';
+    }
     function clearSel() {
       sel = null;
       attackers.clear();
+      clearPending();
     }
 
     const drawHexOutline = (k, color, width, alpha = 1) => {
@@ -171,6 +178,7 @@ const PIXI = window.PIXI;
           for (const k of sel.reachable) fillHex(k, 0xe8c85a, 0.22);
           drawHexOutline(key(sel.unit.q, sel.unit.r), 0xffffff, 3, 0.75);
         }
+        if (pending) drawHexOutline(pending.key, 0x8fbf6a, 4, 1); // destination en attente
       } else {
         // cibles valides = ennemis adjacents à une unité amie non engagée
         const targets = new Set();
@@ -202,13 +210,44 @@ const PIXI = window.PIXI;
       refresh();
     }
     function handleMove(q, r, k) {
+      const own = unitsAt(state.units, q, r).filter((u) => u.side === state.G.player);
+      // Hex atteignable → déplacement en attente de confirmation (bulle sur l'hex).
       if (sel && sel.reachable.has(k)) {
-        moveUnit(sel.unit, k, sel.dist, sel.eZOC);
-        sel = sel.unit.mpLeft > 0 ? { unit: sel.unit, ...computeReachable(state, sel.unit) } : null;
+        pending = { key: k, q, r, hasOwn: own.length > 0 };
         return;
       }
-      const own = unitsAt(state.units, q, r).filter((u) => u.side === state.G.player);
+      // Sinon : (dé)sélection d'une unité amie.
+      clearPending();
       sel = own.length ? { unit: own[own.length - 1], ...computeReachable(state, own[own.length - 1]) } : null;
+    }
+    function confirmMove() {
+      if (!sel || !pending) return;
+      moveUnit(sel.unit, pending.key, sel.dist, sel.eZOC);
+      sel = sel.unit.mpLeft > 0 ? { unit: sel.unit, ...computeReachable(state, sel.unit) } : null;
+      clearPending();
+      refresh();
+    }
+    function selectPendingUnit() {
+      if (!pending) return;
+      const [q, r] = pending.key.split(',').map(Number);
+      const own = unitsAt(state.units, q, r).filter((u) => u.side === state.G.player);
+      clearPending();
+      sel = own.length ? { unit: own[own.length - 1], ...computeReachable(state, own[own.length - 1]) } : null;
+      refresh();
+    }
+    function positionMoveTooltip() {
+      if (!pending) return;
+      const { x, y } = axialToPixel(pending.q, pending.r);
+      const g = world.toGlobal(new PIXI.Point(x, y));
+      const rc = app.canvas.getBoundingClientRect();
+      const el = $('moveConfirm');
+      el.style.left = rc.left + g.x + 'px';
+      el.style.top = rc.top + g.y + 'px';
+    }
+    function showMoveTooltip() {
+      $('btnSelectMove').style.display = pending.hasOwn ? '' : 'none';
+      $('moveConfirm').style.display = 'flex';
+      positionMoveTooltip();
     }
     function handleCombat(q, r) {
       const stack = unitsAt(state.units, q, r);
@@ -251,6 +290,7 @@ const PIXI = window.PIXI;
       if (ptr.moved) {
         world.position.set(ptr.wx + dx, ptr.wy + dy);
         draw();
+        if (pending) positionMoveTooltip();
       }
     });
     app.stage.on('pointerup', (e) => {
@@ -265,6 +305,7 @@ const PIXI = window.PIXI;
       world.scale.set(s1);
       world.position.set(cx - wx * s1, cy - wy * s1);
       draw();
+      if (pending) positionMoveTooltip();
     };
     app.canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
@@ -300,6 +341,8 @@ const PIXI = window.PIXI;
       rebuildCounters();
       layoutStacks();
       drawOverlay();
+      if (state.G.phase === 'move' && pending) showMoveTooltip();
+      else $('moveConfirm').style.display = 'none';
       $('turnNum').textContent = state.G.turn;
       const sb = $('badgeSide');
       sb.textContent = state.G.player === 'axis' ? 'AXE' : 'ALLIÉ';
@@ -356,6 +399,9 @@ const PIXI = window.PIXI;
       $('banner').style.display = 'flex';
     });
     $('bannerBtn').onclick = () => location.reload();
+    $('btnConfirmMove').onclick = confirmMove;
+    $('btnSelectMove').onclick = selectPendingUnit;
+    $('btnCancelMove').onclick = () => { clearPending(); refresh(); };
 
     fitView();
     refresh();
