@@ -1,7 +1,24 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { updateSupply } from '../src/supply.js';
+import { createGame } from '../src/game.js';
 import { makeState, fillTerrain, makeUnit } from './helpers.js';
+
+test('au départ, toutes les unités sont ravitaillées depuis leur bord de carte', () => {
+  const state = createGame(() => 0);
+  assert.ok(state.units.every((u) => u.supplied));
+});
+
+test('la mer bloque la propagation du ravitaillement', () => {
+  const terrain = fillTerrain([[0, 0], [2, 0]]);
+  terrain.set('0,0', 'town');
+  terrain.set('1,0', 'sea'); // coupe la seule route entre la source et l'unité
+  const unit = makeUnit({ id: 0, side: 'axis', q: 2, r: 0 });
+  const state = makeState({ terrain, units: [unit], objectives: ['0,0'] });
+  state.objControl.set('0,0', 'axis');
+  updateSupply(state);
+  assert.ok(!unit.supplied);
+});
 
 test('une ZOC ennemie coupe la ligne de ravitaillement', () => {
   // Corridor de désert ; source = objectif (0,0) tenu par l'Axe.
