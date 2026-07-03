@@ -523,12 +523,6 @@ const PIXI = window.PIXI;
       if (p.terr) m.push(`terrain −${p.terr}`);
       return m.length ? m.join(', ') : 'aucun';
     };
-    const combatHeader = (p) =>
-      `<div class="kv"><span>Attaquants</span><span>${p.attackers.join(', ')}</span></div>`
-      + `<div class="kv"><span>Rapport de force</span><span><b>${p.atk}</b> contre <b>${p.def}</b> → <b>${p.baseCol}</b></span></div>`
-      + `<div class="kv"><span>Défenseur</span><span>${p.defender}</span></div>`
-      + `<div class="kv"><span>Décalages de colonne</span><span>${modsList(p)}</span></div>`
-      + `<div class="kv"><span>Colonne finale</span><span><b>${p.col}</b></span></div>`;
     // Version visuelle du calcul (aperçu, avant décision) : duel Attaque/Défense.
     const combatCalcHtml = (p) => {
       const chips = p.breakdown
@@ -589,56 +583,48 @@ const PIXI = window.PIXI;
       $('combatModal').style.display = 'flex';
     }
 
-    function showCombatModal(p) {
+    // Anime le dé DANS la colonne active de la table de l'aperçu (sans reconstruire
+    // la modale) : un surlignage parcourt la colonne, se fige sur la case du dé,
+    // puis on révèle résultat et conséquences.
+    function runRoll(p) {
       if (state.G.over) return;                             // la victoire est déjà annoncée
       clearCombatTimers();
-      $('combatBody').innerHTML = combatHeader(p)
-        + `<div class="kv"><span>Jet de dé</span><span><b id="dieVal" class="spin">–</b></span></div>`;
-      $('combatRes').textContent = '';
-      $('combatRes').style.background = 'transparent';
-      $('combatTable').innerHTML = '';
-      $('combatEffects').innerHTML = '';
-      $('combatBtns').style.display = 'none';
-      $('combatBtn').style.display = 'block';
-      $('combatBtn').style.visibility = 'hidden';
-      $('combatModal').style.display = 'flex';
-
-      // Dé qui défile puis se fige sur la valeur réelle.
-      let ticks = 0;
+      const cells = [...document.querySelectorAll('#combatTable td.colon')];
+      cells.forEach((c) => c.classList.remove('hit', 'roll'));
+      if (!cells.length) { revealAfterRoll(p); return; }
+      let ticks = 0, prev = -1;
       const spin = () => {
-        const el = $('dieVal');
-        if (!el) return;
-        if (ticks < 11) {
-          el.textContent = 1 + Math.floor(Math.random() * 6);
+        if (prev >= 0) cells[prev].classList.remove('roll');
+        if (ticks < 12) {
+          let i;
+          do { i = Math.floor(Math.random() * cells.length); } while (i === prev && cells.length > 1);
+          cells[i].classList.add('roll');
+          prev = i;
           ticks++;
-          at(spin, 60 + ticks * 10);
+          at(spin, 55 + ticks * 12);
         } else {
-          el.textContent = p.die;
-          el.classList.remove('spin');
-          at(() => revealResult(p), 350);
+          cells[p.die - 1].classList.add('hit');
+          at(() => revealAfterRoll(p), 350);
         }
       };
-      at(spin, 200);
+      at(spin, 150);
     }
-    function revealResult(p) {
-      // Ligne de CRT de la colonne finale, case du dé surlignée (impact du dé).
-      $('combatTable').innerHTML =
-        `<div class="sub" style="margin-top:6px">Table de combat — colonne <b>${p.col}</b>, dé <b>${p.die}</b> :</div>`
-        + crtTableHtml(p.col, p.die - 1);
-
+    function revealAfterRoll(p) {
       const good = p.res === 'DE' || p.res === 'DR';        // favorable à l'attaquant
       const resEl = $('combatRes');
-      resEl.textContent = p.result;
+      resEl.textContent = `Dé ${p.die} → ${p.result}`;
       resEl.style.background = good ? 'rgba(111,154,92,.22)' : p.res === 'EX' ? 'rgba(232,185,90,.18)' : 'rgba(179,58,42,.22)';
       resEl.style.color = good ? '#a8d488' : p.res === 'EX' ? '#e8b95a' : '#e0937f';
       const box = $('combatEffects');
+      box.innerHTML = '';
       p.effects.forEach((e, i) => at(() => {
         const d = document.createElement('div');
         d.className = 'fx';
         d.textContent = '• ' + e;
         box.appendChild(d);
       }, 300 * (i + 1)));
-      at(() => { $('combatBtn').style.visibility = 'visible'; }, 300 * (p.effects.length + 1));
+      at(() => { $('combatBtn').style.display = 'block'; $('combatBtn').style.visibility = 'visible'; },
+        300 * (p.effects.length + 1));
     }
     $('combatBtn').onclick = () => { clearCombatTimers(); $('combatModal').style.display = 'none'; };
     $('btnRollCombat').onclick = () => {
@@ -646,7 +632,7 @@ const PIXI = window.PIXI;
       const { atkUnits, defender } = pendingCombat;
       pendingCombat = null;
       $('combatBtns').style.display = 'none';
-      resolveCombat(state, atkUnits, defender);             // → combatResolved → showCombatModal (animation)
+      resolveCombat(state, atkUnits, defender);             // → combatResolved → runRoll (anime la colonne)
       attackers.clear();
       refresh();
       if (state.G.over) $('combatModal').style.display = 'none'; // le bandeau de victoire prend le relais
@@ -659,7 +645,7 @@ const PIXI = window.PIXI;
 
     // -- Abonnements au bus : le rendu réagit aux événements des règles -------
     state.bus.on('log', log);
-    state.bus.on('combatResolved', showCombatModal);
+    state.bus.on('combatResolved', runRoll);
     state.bus.on('phaseChanged', () => {
       clearSel();
       refresh();
