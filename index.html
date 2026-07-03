@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Desert War — socle</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden;
+    background: #14110c; font-family: "Courier New", ui-monospace, monospace; color: #d9cca0; }
+  #stage-canvas { position: absolute; inset: 0; z-index: 0; touch-action: none; }
+  #vignette { position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    box-shadow: inset 0 0 220px 40px rgba(0,0,0,.55); }
+  .panel { position: absolute; z-index: 10; background: rgba(26,24,18,.9);
+    border: 1px solid #5a5238; border-radius: 4px; padding: 10px 12px;
+    font-size: 12px; line-height: 1.45; box-shadow: 0 6px 20px rgba(0,0,0,.45); letter-spacing: .3px; }
+  .panel h1 { margin: 0 0 5px; font-size: 12px; color: #e8b95a; letter-spacing: 1.4px; text-transform: uppercase; }
+  .sub { color: #9a9070; font-size: 11px; }
+  b { color: #efe4bc; }
+  #hud { top: 12px; left: 12px; width: 320px; }
+  #turnbar { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .badge { padding:2px 8px; border-radius:3px; font-weight:700; letter-spacing:.5px; font-size:11px; }
+  .badge.axis { background:#4a4c3f; color:#e9e6d6; border:1px solid #6d7061; }
+  .badge.ally { background:#7c6a3f; color:#241d10; border:1px solid #cdb488; }
+  .badge.phase { background:#2c281c; color:#e8b95a; border:1px solid #5a5238; }
+  #hint { margin-top:4px; min-height:30px; }
+  #btnPhase { margin-top:8px; width:100%; padding:8px; cursor:pointer; font-family:inherit; font-weight:700;
+    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; letter-spacing:.6px; }
+  #btnPhase:hover { background:#4a4029; }
+  #inspector { top: 12px; right: 12px; width: 210px; }
+  #inspector .empty { color:#8a8064; font-style: italic; }
+  .kv { display:flex; justify-content:space-between; gap:8px; }
+  .kv span:last-child { color:#efe4bc; }
+  #objbar { margin-top:6px; padding-top:6px; border-top:1px solid #48412c; }
+  #log { bottom: 12px; left: 12px; width: 320px; max-height: 168px; overflow:hidden; }
+  #log .line { font-size:11px; padding:1px 0; color:#c8bd97; }
+  #log .line b { color:#e8b95a; }
+  #legend { bottom: 12px; right: 60px; font-size:11px; }
+  .swatch { display:inline-block; width:10px; height:10px; border:1px solid #2a2418; vertical-align:-1px; margin-right:5px; border-radius:2px; }
+  #controls { position:absolute; z-index:10; bottom:12px; right:12px; display:flex; flex-direction:column; gap:6px; }
+  #controls button { width:38px; height:38px; font-size:18px; cursor:pointer; background:rgba(26,24,18,.9);
+    color:#d9cca0; border:1px solid #5a5238; border-radius:4px; font-family:inherit; }
+  #controls button:hover { background:#2c281c; color:#e8b95a; }
+  #controls button.small { font-size:10px; letter-spacing:.5px; }
+  #banner { position:absolute; z-index:30; inset:0; display:none; align-items:center; justify-content:center; }
+  #banner .box { background:rgba(20,17,12,.94); border:2px solid #e8b95a; border-radius:6px; padding:26px 34px; text-align:center; }
+  #banner h2 { margin:0 0 6px; color:#e8b95a; letter-spacing:2px; }
+  #banner button { margin-top:14px; padding:8px 16px; cursor:pointer; font-family:inherit; font-weight:700;
+    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; }
+  #err { position:absolute; inset:0; z-index:50; display:none; padding:24px; color:#e88; background:#160f0f; white-space:pre-wrap; }
+</style>
+</head>
+<body>
+<div id="err"></div>
+<div id="vignette"></div>
+
+<div id="hud" class="panel">
+  <div id="turnbar">
+    <span class="sub">Tour</span><b id="turnNum">1</b>
+    <span id="badgeSide" class="badge axis">AXE</span>
+    <span id="badgePhase" class="badge phase">MOUVEMENT</span>
+  </div>
+  <div id="hint" class="sub"></div>
+  <button id="btnPhase">Terminer la phase ▸</button>
+</div>
+
+<div id="inspector" class="panel">
+  <h1>Poste de commandement</h1>
+  <div id="inspBody"><span class="empty">Aucune sélection.</span></div>
+  <div id="objbar"></div>
+</div>
+
+<div id="log" class="panel"><h1>Journal</h1><div id="logBody"></div></div>
+
+<div id="legend" class="panel">
+  <div><span class="swatch" style="background:#c9b078"></span>Désert · PM 1</div>
+  <div><span class="swatch" style="background:#9c855c"></span>Rocaille · PM 2 · +déf</div>
+  <div><span class="swatch" style="background:#b7975a"></span>Ville/port · objectif · +déf</div>
+  <div><span class="swatch" style="background:#6f9a5c"></span>Oasis · +déf</div>
+  <div style="margin-top:5px;padding-top:5px;border-top:1px solid #48412c">
+    <span class="swatch" style="background:#b33a2a"></span>Pion réduit (verso, facteurs moindres)</div>
+  <div><span class="swatch" style="background:#e08a2a"></span>Hors ravitaillement · déf & mvt ÷2</div>
+</div>
+
+<div id="controls">
+  <button id="btnIn">+</button>
+  <button id="btnOut">−</button>
+  <button class="small" id="btnReset">FIT</button>
+</div>
+
+<div id="banner"><div class="box"><h2 id="bannerTitle"></h2><div id="bannerSub" class="sub"></div>
+  <button id="bannerBtn">Rejouer</button></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.13.2/pixi.min.js"></script>
+<script type="module" src="./render/app.js"></script>
+</body>
+</html>
