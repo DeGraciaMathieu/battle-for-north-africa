@@ -4,7 +4,7 @@
 //  s'abonne au bus d'événements ; elle ne contient aucune règle de jeu.
 // ===========================================================================
 
-import { TERRAIN, MAX_TURNS, BASES, SUPPLY_RANGE, CRT } from '../src/config.js';
+import { TERRAIN, MAX_TURNS, BASES, SUPPLY_RANGE, CRT, ODDS } from '../src/config.js';
 import { key, axialToPixel, offsetToAxial, pixelToAxial, hexCorners, hexDistance, clamp } from '../src/geometry.js';
 import { eAtk, eDef, eMov, other, unitsAt, enemyAt, stackCount, isArmor, isFoot } from '../src/units.js';
 import { zocOf, computeReachable, moveUnit } from '../src/movement.js';
@@ -529,14 +529,21 @@ const PIXI = window.PIXI;
       + `<div class="kv"><span>Défenseur</span><span>${p.defender}</span></div>`
       + `<div class="kv"><span>Décalages de colonne</span><span>${modsList(p)}</span></div>`
       + `<div class="kv"><span>Colonne finale</span><span><b>${p.col}</b></span></div>`;
-    // Ligne de CRT ; si `dieIdx` est fourni, la case correspondante est surlignée.
-    const crtRowHtml = (col, dieIdx) => {
-      const row = CRT[col];
-      let cells = '';
-      for (let i = 0; i < 6; i++) {
-        cells += `<span class="crtcell${i === dieIdx ? ' hit' : ''}"><span class="d">${i + 1}</span>${row[i]}</span>`;
+    // Table de combat complète : colonne active surlignée ; si `dieIdx >= 0`, la
+    // case (colonne active × dé) est mise en évidence.
+    const crtTableHtml = (activeCol, dieIdx) => {
+      let html = '<table class="crt"><tr><th>dé</th>';
+      for (const c of ODDS) html += `<th class="${c === activeCol ? 'colon' : ''}">${c}</th>`;
+      html += '</tr>';
+      for (let d = 0; d < 6; d++) {
+        html += `<tr><th>${d + 1}</th>`;
+        for (const c of ODDS) {
+          const active = c === activeCol;
+          html += `<td class="${active ? 'colon' : ''}${active && d === dieIdx ? ' hit' : ''}">${CRT[c][d]}</td>`;
+        }
+        html += '</tr>';
       }
-      return `<div class="crtrow">${cells}</div>`
+      return html + '</table>'
         + '<div class="sub" style="margin-top:3px;font-size:10px">DE déf. éliminé · DR déf. repoussé · EX échange · AR att. repoussé · AE att. éliminé</div>';
     };
 
@@ -548,8 +555,8 @@ const PIXI = window.PIXI;
       pendingCombat = { atkUnits, defender };
       $('combatBody').innerHTML = combatHeader(p);
       $('combatTable').innerHTML =
-        `<div class="sub" style="margin-top:6px">Issues possibles — colonne ${p.col} (droite = plus favorable à l'attaquant) :</div>`
-        + crtRowHtml(p.col, -1);
+        `<div class="sub" style="margin-top:6px">Table de combat — ta colonne <b>${p.col}</b> surlignée (droite = plus favorable à l'attaquant) :</div>`
+        + crtTableHtml(p.col, -1);
       $('combatRes').textContent = '';
       $('combatRes').style.background = 'transparent';
       $('combatEffects').innerHTML = '';
@@ -592,8 +599,8 @@ const PIXI = window.PIXI;
     function revealResult(p) {
       // Ligne de CRT de la colonne finale, case du dé surlignée (impact du dé).
       $('combatTable').innerHTML =
-        `<div class="sub" style="margin-top:6px">Colonne ${p.col} — résultat selon le dé :</div>`
-        + crtRowHtml(p.col, p.die - 1);
+        `<div class="sub" style="margin-top:6px">Table de combat — colonne <b>${p.col}</b>, dé <b>${p.die}</b> :</div>`
+        + crtTableHtml(p.col, p.die - 1);
 
       const good = p.res === 'DE' || p.res === 'DR';        // favorable à l'attaquant
       const resEl = $('combatRes');

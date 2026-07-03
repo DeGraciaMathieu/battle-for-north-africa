@@ -63,11 +63,11 @@
   #combatModal #combatBtns { display:none; gap:8px; margin-top:12px; }
   #combatModal #combatBtns button { margin-top:0; width:auto; flex:1; }
   #combatModal #btnRefuseCombat { background:transparent; border-color:#5a5238; color:#c8bd97; }
-  #combatModal .crtrow { display:flex; gap:3px; margin-top:4px; }
-  #combatModal .crtcell { flex:1; text-align:center; font-size:10px; font-weight:700; padding:4px 2px; border-radius:3px;
-    background:#221f16; border:1px solid #3a3323; color:#c8bd97; }
-  #combatModal .crtcell .d { display:block; font-size:8px; color:#8a8064; font-weight:400; }
-  #combatModal .crtcell.hit { border-color:#e8b95a; background:#3a3323; color:#efe4bc; }
+  #combatModal table.crt { width:100%; border-collapse:collapse; margin-top:4px; font-size:10px; }
+  #combatModal table.crt th, #combatModal table.crt td { border:1px solid #3a3323; padding:3px 0; text-align:center; color:#c8bd97; }
+  #combatModal table.crt th { color:#8a8064; font-weight:700; background:#221f16; }
+  #combatModal table.crt td.colon, #combatModal table.crt th.colon { background:#33301f; color:#efe4bc; font-weight:700; }
+  #combatModal table.crt td.hit { background:#e8b95a; color:#241d10; font-weight:700; }
   #combatModal #combatEffects { margin-top:2px; }
   #combatModal .fx { font-size:12px; color:#d9cca0; padding:2px 0; animation:fxIn .2s ease-out; }
   @keyframes fxIn { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:none; } }
