@@ -64,10 +64,18 @@
   #combatModal #combatBtns button { margin-top:0; width:auto; flex:1; }
   #combatModal #btnRefuseCombat { background:transparent; border-color:#5a5238; color:#c8bd97; }
   #combatModal table.crt { width:100%; border-collapse:collapse; margin-top:4px; font-size:10px; }
-  #combatModal table.crt th, #combatModal table.crt td { border:1px solid #3a3323; padding:3px 0; text-align:center; color:#c8bd97; }
+  #combatModal table.crt th, #combatModal table.crt td { border:1px solid #3a3323; padding:3px 0; text-align:center; }
   #combatModal table.crt th { color:#8a8064; font-weight:700; background:#221f16; }
-  #combatModal table.crt td.colon, #combatModal table.crt th.colon { background:#33301f; color:#efe4bc; font-weight:700; }
-  #combatModal table.crt td.hit { background:#e8b95a; color:#241d10; font-weight:700; }
+  #combatModal table.crt th.colon { background:#33301f; color:#efe4bc; }
+  /* Carte de chaleur du point de vue de l'attaquant */
+  #combatModal table.crt td { opacity:.45; }               /* colonnes non actives atténuées */
+  #combatModal table.crt td.colon { opacity:1; font-weight:700; }
+  #combatModal table.crt td.r-DE { background:rgba(111,154,92,.5); color:#eaf5e0; }
+  #combatModal table.crt td.r-DR { background:rgba(111,154,92,.24); color:#cfe6bf; }
+  #combatModal table.crt td.r-EX { background:rgba(232,185,90,.24); color:#f0d9a0; }
+  #combatModal table.crt td.r-AR { background:rgba(179,58,42,.24); color:#e6b3a6; }
+  #combatModal table.crt td.r-AE { background:rgba(179,58,42,.5); color:#f3c9bd; }
+  #combatModal table.crt td.hit { outline:2px solid #e8b95a; outline-offset:-2px; }
   #combatModal #combatEffects { margin-top:2px; }
   #combatModal .fx { font-size:12px; color:#d9cca0; padding:2px 0; animation:fxIn .2s ease-out; }
   @keyframes fxIn { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:none; } }

@@ -539,12 +539,14 @@ const PIXI = window.PIXI;
         html += `<tr><th>${d + 1}</th>`;
         for (const c of ODDS) {
           const active = c === activeCol;
-          html += `<td class="${active ? 'colon' : ''}${active && d === dieIdx ? ' hit' : ''}">${CRT[c][d]}</td>`;
+          const code = CRT[c][d];
+          html += `<td class="r-${code}${active ? ' colon' : ''}${active && d === dieIdx ? ' hit' : ''}">${code}</td>`;
         }
         html += '</tr>';
       }
       return html + '</table>'
-        + '<div class="sub" style="margin-top:3px;font-size:10px">DE déf. éliminé · DR déf. repoussé · EX échange · AR att. repoussé · AE att. éliminé</div>';
+        + '<div class="sub" style="margin-top:3px;font-size:10px">DE déf. éliminé · DR déf. repoussé · EX échange · AR att. repoussé · AE att. éliminé</div>'
+        + '<div class="sub" style="font-size:10px;opacity:.85">Couleur = enjeu pour l\'attaquant : vert favorable, rouge défavorable.</div>';
     };
 
     // Aperçu AVANT le dé : stats, colonne, issues possibles, et décision.
