@@ -5,17 +5,17 @@
 // ===========================================================================
 
 export const SIZE = 46;          // rayon d'un hex en pixels (rendu + géométrie)
-export const COLS = 34;          // largeur de la carte en colonnes offset
-export const ROWS = 22;          // hauteur de la carte en lignes offset
+export const COLS = 30;          // largeur de la carte en colonnes offset
+export const ROWS = 20;          // hauteur de la carte en lignes offset
 export const SQRT3 = Math.sqrt(3);
 export const STACK_MAX = 3;      // limite d'empilement par hex et par camp
 export const MAX_TURNS = 6;      // durée de la partie (objectifs comptés à la fin)
 export const ARTY_RANGE = 3;     // portée d'appui de l'artillerie (en hex)
 export const SUPPLY_RANGE = 8;   // longueur max d'une route de ravitaillement (hexes)
 
-// Camp de base : hexe source du ravitaillement de chaque camp (col, row offset),
-// posé en retrait de son bord de carte.
-export const BASES = { axis: [1, 8], ally: [COLS - 2, 8] };
+// Camp de base : hexe source du ravitaillement de chaque camp (col, row offset).
+// Bleu (axis, joueur 1) démarre en bas-gauche, Rouge (ally) en haut-droite.
+export const BASES = { axis: [1, ROWS - 3], ally: [COLS - 2, 2] };
 
 // Voisinage axial (6 directions).
 export const DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
@@ -32,10 +32,6 @@ export const TERRAIN = {
   oasis: { name: 'Bois',         fill: 0x4d7a3c, stroke: 0x335627, cost: 2, def: 1 },
   base:  { name: 'Camp de base', fill: 0x556a44, stroke: 0x2f3d24, cost: 1, def: 0 },
 };
-
-// Positions (colonne, ligne offset) des villes de terre ferme — objectifs de
-// la partie (les ponts sur la rivière sont aussi des objectifs, voir map.js).
-export const TOWNS = [[5, 5], [7, 15], [28, 6], [26, 16]];
 
 // Table de résolution des combats (CRT) indexée par rapport de force (ODDS).
 export const ODDS = ['1:3', '1:2', '1:1', '2:1', '3:1', '4:1', '5:1', '6:1'];
