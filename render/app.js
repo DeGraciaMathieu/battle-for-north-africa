@@ -4,7 +4,7 @@
 //  s'abonne au bus d'événements ; elle ne contient aucune règle de jeu.
 // ===========================================================================
 
-import { TERRAIN, MAX_TURNS, BASES, SUPPLY_RANGE, CRT, ODDS } from '../src/config.js';
+import { TERRAIN, MAX_TURNS, BASES, SUPPLY_RANGE, CRT, ODDS, DIRS } from '../src/config.js';
 import { key, axialToPixel, offsetToAxial, pixelToAxial, hexCorners, hexDistance, clamp } from '../src/geometry.js';
 import { eAtk, eDef, eMov, other, unitsAt, enemyAt, stackCount, isArmor, isFoot } from '../src/units.js';
 import { zocOf, computeReachable, moveUnit } from '../src/movement.js';
@@ -182,6 +182,23 @@ const PIXI = window.PIXI;
       const { x, y } = axialToPixel(q, r);
       overlay.poly(hexCorners(x, y)).fill({ color, alpha });
     };
+    // Trace uniquement le pourtour extérieur d'un ensemble d'hexes : pour chaque
+    // hexe de la zone, on dessine les arêtes qui bordent un hexe hors zone.
+    // DIRS[d] (voisin axial) → arête correspondante de l'hexe flat-top.
+    const DIR_TO_EDGE = [0, 5, 4, 3, 2, 1];
+    const drawZoneOutline = (keys, color, width, alpha) => {
+      for (const k of keys) {
+        const [q, r] = k.split(',').map(Number);
+        const { x, y } = axialToPixel(q, r);
+        const c = hexCorners(x, y);
+        for (let d = 0; d < 6; d++) {
+          if (keys.has(key(q + DIRS[d][0], r + DIRS[d][1]))) continue; // arête interne
+          const e = DIR_TO_EDGE[d], a = e * 2, b = ((e + 1) % 6) * 2;
+          overlay.moveTo(c[a], c[a + 1]).lineTo(c[b], c[b + 1]);
+        }
+      }
+      overlay.stroke({ width, color, alpha });
+    };
 
     // Trace la ligne de ravitaillement de chaque unité du camp actif jusqu'à sa
     // source, en suivant la route du flood-fill. Halo doré sur les sources.
@@ -228,9 +245,11 @@ const PIXI = window.PIXI;
       if (showSupply) drawSupplyLines();
       if (state.G.phase === 'move') {
         const eZOC = zocOf(state.units, other(state.G.player), state.terrain);
-        for (const k of eZOC) {
-          if (!enemyAt(state.units, ...k.split(',').map(Number), state.G.player)) fillHex(k, 0xcc4433, 0.1);
+        const zone = new Set(eZOC);
+        for (const u of state.units) {
+          if (u.side !== state.G.player) zone.add(key(u.q, u.r)); // hexe de l'unité → pourtour plein
         }
+        drawZoneOutline(zone, 0xcc4433, 2.5, 0.9);
         if (sel) {
           for (const k of sel.reachable) fillHex(k, 0xe8c85a, 0.22);
           drawHexOutline(key(sel.unit.q, sel.unit.r), 0xffffff, 3, 0.75);
