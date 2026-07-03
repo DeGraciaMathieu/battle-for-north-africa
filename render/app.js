@@ -9,7 +9,7 @@ import { key, axialToPixel, pixelToAxial, hexCorners, hexDistance, clamp } from 
 import { eAtk, eDef, eMov, other, unitsAt, enemyAt, stackCount, isArmor, isFoot } from '../src/units.js';
 import { zocOf, computeReachable, moveUnit } from '../src/movement.js';
 import { resolveCombat } from '../src/combat.js';
-import { updateSupply } from '../src/supply.js';
+import { updateSupply, supplyRoutes, supplySources } from '../src/supply.js';
 import { createGame, updateObjectives, objCount, endPhase } from '../src/game.js';
 
 const PIXI = window.PIXI;
@@ -145,6 +145,7 @@ const PIXI = window.PIXI;
     // =========================================================================
     let sel = null;               // { unit, reachable, dist, eZOC }  (phase mouvement)
     let pending = null;           // { key, q, r, hasOwn } — déplacement en attente de confirmation
+    let showSupply = true;        // overlay de la zone ravitaillée du camp actif
     const attackers = new Set();  // ids des unités attaquantes       (phase combat)
     function clearPending() {
       pending = null;
@@ -167,8 +168,35 @@ const PIXI = window.PIXI;
       overlay.poly(hexCorners(x, y)).fill({ color, alpha });
     };
 
+    // Trace la ligne de ravitaillement de chaque unité du camp actif jusqu'à sa
+    // source, en suivant la route du flood-fill. Halo doré sur les sources.
+    // Une unité coupée n'a pas de ligne (repérable aussi au liseré orange).
+    function drawSupplyLines() {
+      const side = state.G.player;
+      const { supplied, parent } = supplyRoutes(state, side);
+      const color = side === 'axis' ? 0x7fd0b0 : 0xf0c86a;
+      for (const k of supplySources(state, side)) {
+        if (supplied.has(k)) drawHexOutline(k, 0xe8c85a, 2, 0.7);
+      }
+      for (const u of state.units) {
+        if (u.side !== side || !supplied.has(key(u.q, u.r))) continue;
+        const pts = [];
+        for (let k = key(u.q, u.r); k; k = parent.get(k)) {
+          const [q, r] = k.split(',').map(Number);
+          const { x, y } = axialToPixel(q, r);
+          pts.push(x, y);
+        }
+        if (pts.length < 4) continue;                       // unité déjà sur sa source
+        overlay.moveTo(pts[0], pts[1]);
+        for (let i = 2; i < pts.length; i += 2) overlay.lineTo(pts[i], pts[i + 1]);
+        overlay.stroke({ width: 2.5, color, alpha: 0.85 });
+        overlay.circle(pts[0], pts[1], 3).fill({ color, alpha: 0.9 }); // extrémité côté unité
+      }
+    }
+
     function drawOverlay() {
       overlay.clear();
+      if (showSupply) drawSupplyLines();
       if (state.G.phase === 'move') {
         const eZOC = zocOf(state.units, other(state.G.player), state.terrain);
         for (const k of eZOC) {
@@ -322,6 +350,14 @@ const PIXI = window.PIXI;
     document.getElementById('btnIn').onclick = () => zoomAt(1.2, app.screen.width / 2, app.screen.height / 2);
     document.getElementById('btnOut').onclick = () => zoomAt(0.83, app.screen.width / 2, app.screen.height / 2);
     document.getElementById('btnReset').onclick = fitView;
+    const btnSupply = document.getElementById('btnSupply');
+    btnSupply.classList.toggle('on', showSupply);
+    btnSupply.onclick = () => {
+      showSupply = !showSupply;
+      btnSupply.classList.toggle('on', showSupply);
+      drawOverlay();
+      draw();
+    };
     document.getElementById('btnPhase').onclick = () => endPhase(state);
 
     // =========================================================================

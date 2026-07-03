@@ -14,8 +14,10 @@ Propagation du ravitaillement par flood-fill dans `src/supply.js`.
 |---|---|
 | Sources d'un camp | `supplySources(state, side)` — ports tenus (`objControl`) + bord ami (Axe = colonne 0, Allié = `COLS-1`) |
 | Hexes ravitaillés | `suppliedHexes(state, side)` → `Set` (flood-fill depuis les sources) |
+| Routes de ravitaillement | `supplyRoutes(state, side)` → `{ supplied, parent }` (BFS ; remonter `parent` trace la route jusqu'à la source) |
 | Mise à jour des unités | `updateSupply(state)` → positionne `u.supplied` pour tous |
 | Effet hors ravito | défense et mouvement ÷2 (via `eDef`/`eMov`, voir `unites-facteurs`) |
+| Visualisation (overlay) | `render/app.js` → `drawSupplyLines` (bouton `RAV`) : trace la ligne de chaque unité jusqu'à sa source + halo des sources |
 
 ## Règles encodées
 

@@ -25,30 +25,39 @@ export function supplySources(state, side) {
   return src;
 }
 
-export function suppliedHexes(state, side) {
+// Flood-fill avec suivi du parent (BFS, file FIFO → routes courtes et lisibles).
+// `parent` mappe chaque hex ravitaillé vers l'hex d'où le ravitaillement l'atteint
+// (null pour une source). Remonter les parents trace la route jusqu'à la source.
+export function supplyRoutes(state, side) {
   const { units, terrain } = state;
   const eZOC = zocOf(units, other(side), terrain);
-  const seen = new Set();
+  const parent = new Map();
   const queue = [];
   for (const k of supplySources(state, side)) {
     const [q, r] = k.split(',').map(Number);
     if (enemyAt(units, q, r, side) || eZOC.has(k)) continue;               // source coupée
-    seen.add(k);
+    parent.set(k, null);
     queue.push([q, r]);
   }
-  while (queue.length) {
-    const [q, r] = queue.pop();
+  let head = 0;
+  while (head < queue.length) {
+    const [q, r] = queue[head++];
+    const ck = key(q, r);
     for (const [dq, dr] of DIRS) {
       const nq = q + dq, nr = r + dr, nk = key(nq, nr);
-      if (seen.has(nk) || !terrain.has(nk)) continue;
+      if (parent.has(nk) || !terrain.has(nk)) continue;
       if (!isFinite(TERRAIN[terrain.get(nk)].cost)) continue;             // pas par la mer
       if (enemyAt(units, nq, nr, side)) continue;                          // pas par l'ennemi
       if (eZOC.has(nk)) continue;                                          // la ZOC coupe la route
-      seen.add(nk);
+      parent.set(nk, ck);
       queue.push([nq, nr]);
     }
   }
-  return seen;
+  return { supplied: new Set(parent.keys()), parent };
+}
+
+export function suppliedHexes(state, side) {
+  return supplyRoutes(state, side).supplied;
 }
 
 // Recalcule l'état de ravitaillement de toutes les unités.

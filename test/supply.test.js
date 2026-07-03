@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { updateSupply } from '../src/supply.js';
+import { updateSupply, supplyRoutes, supplySources } from '../src/supply.js';
 import { createGame } from '../src/game.js';
 import { makeState, fillTerrain, makeUnit } from './helpers.js';
 
@@ -35,4 +35,12 @@ test('une ZOC ennemie coupe la ligne de ravitaillement', () => {
   updateSupply(state);
   assert.ok(a.supplied, 'unité reliée à la source est ravitaillée');
   assert.ok(!b.supplied, 'unité coupée par la ZOC est hors ravitaillement');
+
+  // La route de l'unité ravitaillée remonte jusqu'à une source.
+  const { supplied, parent } = supplyRoutes(state, 'axis');
+  assert.ok(supplied.has('2,0'));
+  const chain = [];
+  for (let k = '2,0'; k; k = parent.get(k)) chain.push(k);
+  assert.ok(supplySources(state, 'axis').has(chain[chain.length - 1]), 'la route se termine sur une source');
+  assert.ok(!supplied.has('3,1'), 'unité coupée absente des routes');
 });

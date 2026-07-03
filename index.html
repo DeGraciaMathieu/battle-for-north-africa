@@ -42,6 +42,7 @@
     color:#d9cca0; border:1px solid #5a5238; border-radius:4px; font-family:inherit; }
   #controls button:hover { background:#2c281c; color:#e8b95a; }
   #controls button.small { font-size:10px; letter-spacing:.5px; }
+  #controls button.on { background:#4a4029; color:#e8b95a; border-color:#8a7838; }
   #banner { position:absolute; z-index:30; inset:0; display:none; align-items:center; justify-content:center; }
   #banner .box { background:rgba(20,17,12,.94); border:2px solid #e8b95a; border-radius:6px; padding:26px 34px; text-align:center; }
   #banner h2 { margin:0 0 6px; color:#e8b95a; letter-spacing:2px; }
@@ -85,12 +86,14 @@
   <div style="margin-top:5px;padding-top:5px;border-top:1px solid #48412c">
     <span class="swatch" style="background:#b33a2a"></span>Pion réduit (verso, facteurs moindres)</div>
   <div><span class="swatch" style="background:#e08a2a"></span>Hors ravitaillement · déf & mvt ÷2</div>
+  <div><span class="swatch" style="background:#7fd0b0"></span>Ligne de ravitaillement (camp actif) · bouton RAV</div>
 </div>
 
 <div id="controls">
   <button id="btnIn">+</button>
   <button id="btnOut">−</button>
   <button class="small" id="btnReset">FIT</button>
+  <button class="small" id="btnSupply">RAV</button>
 </div>
 
 <div id="banner"><div class="box"><h2 id="bannerTitle"></h2><div id="bannerSub" class="sub"></div>
