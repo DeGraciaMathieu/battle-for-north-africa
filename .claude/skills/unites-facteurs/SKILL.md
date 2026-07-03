@@ -12,7 +12,7 @@ Modèle de pion et calcul des facteurs effectifs dans `src/units.js`. Roster ini
 
 | Concept | Implémentation |
 |---|---|
-| Roster de départ | `raw` (`src/units.js`) — facteurs + position offset `col`/`row` |
+| Roster de départ | `raw` (`src/units.js`) — `name` (libellé pion), `fullName` (nom complet inspecteur), facteurs, position offset `col`/`row` |
 | Instanciation | `createUnits()` → `{ id, ...facteurs, q, r, mpLeft, hasFought, reduced, supplied }` |
 | Face recto (pleine force) | `atk`, `def`, `mov` |
 | Face verso (réduite) | `ratk`, `rdef`, `rmov` |
@@ -35,7 +35,7 @@ Le pion **imprime** les facteurs de sa face courante (`render/app.js` → `makeC
 
 ## Ajouter / modifier une unité
 
-1. Ajouter ou éditer une ligne de `raw` (`src/units.js`) : `side`, `type`, `ech`, `name`, facteurs recto + verso (`r*`), position `col`/`row`.
+1. Ajouter ou éditer une ligne de `raw` (`src/units.js`) : `side`, `type`, `ech`, `name`, `fullName`, facteurs recto + verso (`r*`), position `col`/`row`.
 2. Si `type` est nouveau : l'intégrer à `isArmor`/`isFoot` selon sa catégorie, et dessiner son symbole dans `render/app.js` (`drawSymbol`).
 3. Vérifier l'empilement (`STACK_MAX`) si plusieurs unités partagent un hex de départ.
 4. Test macro si la modification change un résultat de combat/mouvement.

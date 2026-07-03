@@ -319,6 +319,7 @@ const PIXI = window.PIXI;
           ? '<span style="color:#8fbf6a">ravitaillée</span>'
           : '<span style="color:#e08a2a">HORS ravito</span>';
         html = `<div class="kv"><span>Unité</span><span><b>${u.name}</b>${u.reduced ? ' <span style="color:#d16a55">(réduite)</span>' : ''}</span></div>`
+          + `<div class="sub" style="margin:-2px 0 3px">${u.fullName}</div>`
           + `<div class="kv"><span>Att-Déf-Mvt</span><span>${eAtk(u)}-${eDef(u)}-${eMov(u)}</span></div>`
           + `<div class="kv"><span>Ravitaillement</span><span>${sup}</span></div>`
           + `<div class="kv"><span>PM restants</span><span><b>${u.mpLeft}</b></span></div>`;
