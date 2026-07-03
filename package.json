@@ -1,0 +1,16 @@
+{
+  "name": "battle-for-north-africa",
+  "version": "0.1.0",
+  "description": "Wargame hexagonal opérationnel (Desert War) — PixiJS v8, règles de jeu en modules ES testables.",
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes serve .",
+    "test": "node --test test/*.test.js",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{js,html,json,md}\""
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0"
+  }
+}
