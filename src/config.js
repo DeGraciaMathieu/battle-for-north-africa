@@ -12,7 +12,10 @@ export const STACK_MAX = 3;      // limite d'empilement par hex et par camp
 export const MAX_TURNS = 6;      // durée de la partie (objectifs comptés à la fin)
 export const ARTY_RANGE = 3;     // portée d'appui de l'artillerie (en hex)
 export const SUPPLY_RANGE = 14;  // longueur max d'une route de ravitaillement (hexes)
-export const SUPPLY_HEAD_ROWS = 8; // profondeur de la tête de pont côtière (bord ami)
+
+// Camp de base : hexe source du ravitaillement de chaque camp (col, row offset),
+// posé en retrait de son bord de carte.
+export const BASES = { axis: [1, 8], ally: [COLS - 2, 8] };
 
 // Voisinage axial (6 directions).
 export const DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
@@ -27,6 +30,7 @@ export const TERRAIN = {
   rock:  { name: 'Rocaille',     fill: 0x9c855c, stroke: 0x6f5c3c, cost: 2, def: 2 },
   town:  { name: 'Ville/port',   fill: 0xb7975a, stroke: 0x7a5f2e, cost: 1, def: 2 },
   oasis: { name: 'Oasis',        fill: 0x6f9a5c, stroke: 0x486a3a, cost: 1, def: 1 },
+  base:  { name: 'Camp de base', fill: 0x6b5a3a, stroke: 0x3a2c17, cost: 1, def: 0 },
 };
 
 // Positions (colonne, ligne offset) des villes/ports — objectifs de la partie.

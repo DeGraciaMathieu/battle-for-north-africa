@@ -17,11 +17,25 @@ test('au-delà de la portée, une unité est coupée du ravitaillement', () => {
   updateSupply(state);
   assert.ok(near.supplied, 'à portée = ravitaillée');
   assert.ok(!far.supplied, 'au-delà de la portée = coupée');
+
+  // La profondeur croît avec la distance à la source (base du numéro affiché).
+  const { depth } = supplyRoutes(state, 'axis');
+  assert.equal(depth.get('0,0'), 0, 'source à profondeur 0');
+  assert.equal(depth.get(`${SUPPLY_RANGE},0`), SUPPLY_RANGE, 'hex le plus loin à profondeur max');
 });
 
-test('au départ, toutes les unités sont ravitaillées depuis leur bord de carte', () => {
+test('au départ, toutes les unités sont ravitaillées depuis leur camp de base', () => {
   const state = createGame(() => 0);
   assert.ok(state.units.every((u) => u.supplied));
+});
+
+test('le ravitaillement part du camp de base', () => {
+  const state = createGame(() => 0);
+  // Le camp de base de chaque camp est bien une source de ravitaillement.
+  for (const side of ['axis', 'ally']) {
+    const src = [...supplySources(state, side)];
+    assert.ok(src.some((k) => state.terrain.get(k) === 'base'), `source 'base' présente pour ${side}`);
+  }
 });
 
 test('la mer bloque la propagation du ravitaillement', () => {

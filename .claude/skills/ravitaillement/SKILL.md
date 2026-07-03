@@ -12,13 +12,13 @@ Propagation du ravitaillement par flood-fill dans `src/supply.js`.
 
 | Concept | Implémentation |
 |---|---|
-| Sources d'un camp | `supplySources(state, side)` — ports tenus (`objControl`) + tête de pont côtière du bord ami (colonne 0/`COLS-1`, lignes 2..`SUPPLY_HEAD_ROWS`), pas tout le bord |
+| Sources d'un camp | `supplySources(state, side)` — camp de base (hexe `base`, position dans `BASES`) + ports tenus (`objControl`) |
 | Portée de route | `SUPPLY_RANGE` (`config.js`) — au-delà de N hexes de route depuis une source, l'hex n'est plus ravitaillé |
 | Hexes ravitaillés | `suppliedHexes(state, side)` → `Set` (flood-fill depuis les sources) |
-| Routes de ravitaillement | `supplyRoutes(state, side)` → `{ supplied, parent }` (BFS ; remonter `parent` trace la route jusqu'à la source) |
+| Routes de ravitaillement | `supplyRoutes(state, side)` → `{ supplied, parent, depth }` (BFS ; `parent` trace la route, `depth` = longueur de route depuis la source) |
 | Mise à jour des unités | `updateSupply(state)` → positionne `u.supplied` pour tous |
 | Effet hors ravito | défense et mouvement ÷2 (via `eDef`/`eMov`, voir `unites-facteurs`) |
-| Visualisation (overlay) | `render/app.js` → `drawSupplyLines` (bouton `RAV`) : trace la ligne de chaque unité jusqu'à sa source + halo des sources |
+| Visualisation (overlay) | `render/app.js` → `drawSupplyLines` (bouton `RAV`) : teinte les hexes ravitaillés + numéro de portée restante (`SUPPLY_RANGE − depth`) + ligne de chaque unité vers sa source + halo des sources |
 
 ## Règles encodées
 
@@ -29,7 +29,7 @@ Le flood-fill (BFS) part des sources et se propage d'hex en hex tant qu'il **ne 
 
 De plus, la propagation s'arrête au-delà de **`SUPPLY_RANGE`** hexes de route : un détour forcé (par une ZOC) allonge la route et peut faire dépasser la portée → coupure. Une source elle-même est ignorée si elle est occupée par l'ennemi ou en ZOC ennemie.
 
-Sources volontairement étroites (tête de pont côtière + ports tenus) : le centre de la carte n'est ravitaillé que si l'on tient un port relais.
+Sources volontairement étroites (camp de base + ports tenus) : le centre de la carte n'est ravitaillé que si l'on tient un port relais. Le camp de base est posé à la génération (`src/map.js`, terrain `base`) aux positions de `BASES`.
 
 ## Dépendances & ordre d'appel
 

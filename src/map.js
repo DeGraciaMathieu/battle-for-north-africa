@@ -3,7 +3,7 @@
 //  Déterministe (bruit à base de sinus), donc reproductible sans graine.
 // ===========================================================================
 
-import { COLS, ROWS, TOWNS } from './config.js';
+import { COLS, ROWS, TOWNS, BASES } from './config.js';
 import { key, offsetToAxial } from './geometry.js';
 
 // Bruit pseudo-aléatoire déterministe : même (c, rw) → même valeur.
@@ -35,6 +35,10 @@ export function generateMap() {
   for (const [c, rw] of TOWNS) {
     const { q, r } = offsetToAxial(c, rw);
     if (terrain.has(key(q, r))) terrain.set(key(q, r), 'town');
+  }
+  for (const [c, rw] of Object.values(BASES)) {
+    const { q, r } = offsetToAxial(c, rw);
+    if (terrain.has(key(q, r))) terrain.set(key(q, r), 'base');
   }
   const objectives = [...terrain.entries()]
     .filter(([, t]) => t === 'town')

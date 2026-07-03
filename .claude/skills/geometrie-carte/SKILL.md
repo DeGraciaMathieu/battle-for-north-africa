@@ -26,7 +26,7 @@ Grille hexagonale en coordonnées **axiales** `(q, r)`. Fonctions de géométrie
 
 ## Terrain (`src/config.js` → `TERRAIN`)
 
-`sea` (infranchissable), `coast`, `sand`/`sand2` (désert, coût 1), `rock` (coût 2, +2 déf), `town` (objectif, +2 déf), `oasis` (+1 déf).
+`sea` (infranchissable), `coast`, `sand`/`sand2` (désert, coût 1), `rock` (coût 2, +2 déf), `town` (objectif, +2 déf), `oasis` (+1 déf), `base` (camp de base, source de ravitaillement — posé via `BASES`, voir skill `ravitaillement`).
 
 ## Génération (`src/map.js` → `generateMap`)
 

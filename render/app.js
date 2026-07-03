@@ -4,8 +4,8 @@
 //  s'abonne au bus d'événements ; elle ne contient aucune règle de jeu.
 // ===========================================================================
 
-import { TERRAIN, MAX_TURNS } from '../src/config.js';
-import { key, axialToPixel, pixelToAxial, hexCorners, hexDistance, clamp } from '../src/geometry.js';
+import { TERRAIN, MAX_TURNS, BASES, SUPPLY_RANGE } from '../src/config.js';
+import { key, axialToPixel, offsetToAxial, pixelToAxial, hexCorners, hexDistance, clamp } from '../src/geometry.js';
 import { eAtk, eDef, eMov, other, unitsAt, enemyAt, stackCount, isArmor, isFoot } from '../src/units.js';
 import { zocOf, computeReachable, moveUnit } from '../src/movement.js';
 import { resolveCombat } from '../src/combat.js';
@@ -41,8 +41,8 @@ const PIXI = window.PIXI;
 
     const world = new PIXI.Container();
     const mapLayer = new PIXI.Graphics(), decoLayer = new PIXI.Graphics(),
-      overlay = new PIXI.Graphics(), unitLayer = new PIXI.Container();
-    world.addChild(mapLayer, decoLayer, overlay, unitLayer);
+      overlay = new PIXI.Graphics(), supplyLayer = new PIXI.Container(), unitLayer = new PIXI.Container();
+    world.addChild(mapLayer, decoLayer, overlay, supplyLayer, unitLayer);
     app.stage.addChild(world);
 
     for (const { q, r } of state.hexes) {
@@ -58,6 +58,16 @@ const PIXI = window.PIXI;
       } else if (type === 'oasis') {
         decoLayer.circle(x, y, 7).fill(0x2f4a25).stroke({ width: 1.5, color: 0xa8d488 });
       }
+    }
+    // Camps de base : encadré + fanion à la couleur du camp.
+    for (const s of ['axis', 'ally']) {
+      const [c, rw] = BASES[s];
+      const { q, r } = offsetToAxial(c, rw);
+      const { x, y } = axialToPixel(q, r);
+      const col = s === 'axis' ? 0x6d7061 : 0xcdb488;
+      decoLayer.rect(x - 9, y - 9, 18, 18).fill(0x241d10).stroke({ width: 2, color: col });
+      decoLayer.rect(x - 1, y - 10, 2, 9).fill(col);
+      decoLayer.poly([x + 1, y - 10, x + 8, y - 8, x + 1, y - 6]).fill(col);
     }
 
     // -- Pions ---------------------------------------------------------------
@@ -173,8 +183,21 @@ const PIXI = window.PIXI;
     // Une unité coupée n'a pas de ligne (repérable aussi au liseré orange).
     function drawSupplyLines() {
       const side = state.G.player;
-      const { supplied, parent } = supplyRoutes(state, side);
+      const { supplied, parent, depth } = supplyRoutes(state, side);
       const color = side === 'axis' ? 0x7fd0b0 : 0xf0c86a;
+      for (const k of supplied) {
+        fillHex(k, color, 0.1);                             // hexes ravitaillés (teinte)
+        // Numéro de ravitaillement = portée restante (élevé près de la source, faible au loin).
+        const [q, r] = k.split(',').map(Number);
+        const { x, y } = axialToPixel(q, r);
+        const t = new PIXI.Text({
+          text: String(SUPPLY_RANGE - depth.get(k)),
+          style: { fontFamily: 'Arial', fontSize: 11, fontWeight: '700', fill: 0x2a2115 },
+        });
+        t.anchor.set(0.5);
+        t.position.set(x, y - 15);
+        supplyLayer.addChild(t);
+      }
       for (const k of supplySources(state, side)) {
         if (supplied.has(k)) drawHexOutline(k, 0xe8c85a, 2, 0.7);
       }
@@ -196,6 +219,7 @@ const PIXI = window.PIXI;
 
     function drawOverlay() {
       overlay.clear();
+      for (const c of supplyLayer.removeChildren()) c.destroy();
       if (showSupply) drawSupplyLines();
       if (state.G.phase === 'move') {
         const eZOC = zocOf(state.units, other(state.G.player), state.terrain);
