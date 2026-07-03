@@ -76,6 +76,21 @@
   #combatModal table.crt td.r-AR { background:rgba(179,58,42,.24); color:#e6b3a6; }
   #combatModal table.crt td.r-AE { background:rgba(179,58,42,.5); color:#f3c9bd; }
   #combatModal table.crt td.hit { outline:2px solid #e8b95a; outline-offset:-2px; }
+  #combatModal .duel { display:flex; align-items:stretch; gap:8px; margin-bottom:8px; }
+  #combatModal .duel .side { flex:1; text-align:center; background:#221f16; border:1px solid #3a3323; border-top-width:3px; border-radius:5px; padding:7px 6px; }
+  #combatModal .duel .side.atk { border-top-color:#c98a4a; }
+  #combatModal .duel .side.def { border-top-color:#5b7a86; }
+  #combatModal .duel .lab { font-size:10px; letter-spacing:1px; text-transform:uppercase; color:#8a8064; }
+  #combatModal .duel .big { font-size:30px; font-weight:700; color:#efe4bc; line-height:1.15; }
+  #combatModal .duel .vs { align-self:center; font-size:11px; color:#8a8064; }
+  #combatModal .chips { display:flex; flex-wrap:wrap; gap:3px; justify-content:center; margin-top:4px; }
+  #combatModal .chip { font-size:10px; background:#33301f; border:1px solid #4a4029; border-radius:10px; padding:1px 7px; color:#d9cca0; }
+  #combatModal .chip b { color:#efe4bc; }
+  #combatModal .chip .rd { color:#d16a55; }
+  #combatModal .dn { display:block; font-size:10px; color:#e08a2a; margin-top:3px; }
+  #combatModal .flow { display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:12px; padding:6px 9px; background:#1c1a12; border-radius:4px; }
+  #combatModal .flow b { color:#efe4bc; }
+  #combatModal .flow .finalcol { color:#e8b95a; font-size:15px; }
   #combatModal #combatEffects { margin-top:2px; }
   #combatModal .fx { font-size:12px; color:#d9cca0; padding:2px 0; animation:fxIn .2s ease-out; }
   @keyframes fxIn { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:none; } }

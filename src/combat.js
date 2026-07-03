@@ -88,9 +88,12 @@ export function combatPlan(state, attackers, defender) {
   const idx = clamp(oddsIndex(atk, def) + combined + arty - terr, 0, 7);
   return {
     attackers: attackers.map((a) => a.fullName ?? a.name),
+    breakdown: attackers.map((a) => ({ name: a.fullName ?? a.name, atk: eAtk(a), reduced: a.reduced })),
     atk,
     defender: defender.fullName ?? defender.name,
     def,
+    defReduced: defender.reduced,
+    defSupplied: defender.supplied,
     baseCol: ODDS[oddsIndex(atk, def)],                     // colonne avant décalages
     combined, arty, terr,
     idx, col: ODDS[idx],                                    // colonne finale

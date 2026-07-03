@@ -529,6 +529,28 @@ const PIXI = window.PIXI;
       + `<div class="kv"><span>Défenseur</span><span>${p.defender}</span></div>`
       + `<div class="kv"><span>Décalages de colonne</span><span>${modsList(p)}</span></div>`
       + `<div class="kv"><span>Colonne finale</span><span><b>${p.col}</b></span></div>`;
+    // Version visuelle du calcul (aperçu, avant décision) : duel Attaque/Défense.
+    const combatCalcHtml = (p) => {
+      const chips = p.breakdown
+        .map((b) => `<span class="chip">${b.name} <b>${b.atk}</b>${b.reduced ? ' <span class="rd">réd.</span>' : ''}</span>`)
+        .join('');
+      const dn = [];
+      if (p.defReduced) dn.push('réduite');
+      if (!p.defSupplied) dn.push('÷2 hors ravito');
+      const defNote = dn.length ? `<span class="dn">${dn.join(' · ')}</span>` : '';
+      const ratio = (p.atk / p.def).toFixed(1).replace('.', ',');
+      const net = p.combined + p.arty - p.terr;
+      const shift = modsList(p) === 'aucun' ? 'aucun décalage' : `${modsList(p)} → net ${net > 0 ? '+' : ''}${net}`;
+      return `<div class="duel">`
+        + `<div class="side atk"><div class="lab">Attaque</div><div class="big">${p.atk}</div><div class="chips">${chips}</div></div>`
+        + `<div class="vs">contre</div>`
+        + `<div class="side def"><div class="lab">Défense</div><div class="big">${p.def}</div><div class="chips"><span class="chip">${p.defender}</span></div>${defNote}</div>`
+        + `</div>`
+        + `<div class="flow"><span>Rapport <b>${p.atk} ÷ ${p.def} ≈ ${ratio}</b></span>`
+        + `<span>→ base <b>${p.baseCol}</b></span>`
+        + `<span class="sub">${shift}</span>`
+        + `<span>→ colonne <b class="finalcol">${p.col}</b></span></div>`;
+    };
     // Table de combat complète : colonne active surlignée ; si `dieIdx >= 0`, la
     // case (colonne active × dé) est mise en évidence.
     const crtTableHtml = (activeCol, dieIdx) => {
@@ -555,7 +577,7 @@ const PIXI = window.PIXI;
       clearCombatTimers();
       const p = combatPlan(state, atkUnits, defender);
       pendingCombat = { atkUnits, defender };
-      $('combatBody').innerHTML = combatHeader(p);
+      $('combatBody').innerHTML = combatCalcHtml(p);
       $('combatTable').innerHTML =
         `<div class="sub" style="margin-top:6px">Table de combat — ta colonne <b>${p.col}</b> surlignée (droite = plus favorable à l'attaquant) :</div>`
         + crtTableHtml(p.col, -1);
