@@ -24,9 +24,13 @@ test('au-delà de la portée, une unité est coupée du ravitaillement', () => {
   assert.equal(depth.get(`${SUPPLY_RANGE},0`), SUPPLY_RANGE, 'hex le plus loin à profondeur max');
 });
 
-test('au départ, toutes les unités sont ravitaillées depuis leur camp de base', () => {
+test('au départ, la base ravitaille ses unités proches mais pas au-delà de la portée', () => {
   const state = createGame(() => 0);
-  assert.ok(state.units.every((u) => u.supplied));
+  for (const side of ['axis', 'ally']) {
+    const us = state.units.filter((u) => u.side === side);
+    assert.ok(us.some((u) => u.supplied), `${side} : au moins une unité ravitaillée depuis la base`);
+    assert.ok(us.some((u) => !u.supplied), `${side} : les unités avancées sortent de la portée`);
+  }
 });
 
 test('le ravitaillement part du camp de base', () => {
