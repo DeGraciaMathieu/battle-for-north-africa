@@ -13,18 +13,18 @@ import { offsetToAxial } from './geometry.js';
 // position initiale en coordonnées offset (col, row). `name` = libellé court
 // imprimé sur le pion ; `fullName` = nom complet affiché dans l'inspecteur.
 export const raw = [
-  { side: 'axis', type: 'armor', ech: 'XX', name: 'BLD-1', fullName: 'Blindés 1',    atk: 8, def: 7, mov: 12, ratk: 5, rdef: 4, rmov: 10, col: 9,  row: 6 },
-  { side: 'axis', type: 'armor', ech: 'XX', name: 'BLD-2', fullName: 'Blindés 2',    atk: 8, def: 7, mov: 12, ratk: 5, rdef: 4, rmov: 10, col: 9,  row: 8 },
-  { side: 'axis', type: 'mech',  ech: 'XX', name: 'MEC-1', fullName: 'Mécanisée 1',  atk: 6, def: 6, mov: 10, ratk: 4, rdef: 4, rmov: 8,  col: 11, row: 7 },
-  { side: 'axis', type: 'armor', ech: 'XX', name: 'BLD-3', fullName: 'Blindés 3',    atk: 6, def: 5, mov: 10, ratk: 3, rdef: 3, rmov: 8,  col: 8,  row: 10 },
-  { side: 'axis', type: 'moto',  ech: 'XX', name: 'MOT-1', fullName: 'Motorisée 1',  atk: 4, def: 5, mov: 9,  ratk: 2, rdef: 3, rmov: 7,  col: 11, row: 10 },
-  { side: 'axis', type: 'arty',  ech: 'X',  name: 'ART-1', fullName: 'Artillerie 1', atk: 2, def: 3, mov: 6,  ratk: 1, rdef: 2, rmov: 5,  col: 7,  row: 8 },
-  { side: 'ally', type: 'armor', ech: 'XX', name: 'BLD-1', fullName: 'Blindés 1',    atk: 7, def: 7, mov: 12, ratk: 4, rdef: 4, rmov: 10, col: 22, row: 6 },
-  { side: 'ally', type: 'armor', ech: 'XX', name: 'BLD-2', fullName: 'Blindés 2',    atk: 6, def: 6, mov: 11, ratk: 4, rdef: 4, rmov: 9,  col: 22, row: 8 },
-  { side: 'ally', type: 'inf',   ech: 'XX', name: 'INF-1', fullName: 'Infanterie 1', atk: 6, def: 6, mov: 7,  ratk: 4, rdef: 4, rmov: 5,  col: 20, row: 7 },
-  { side: 'ally', type: 'inf',   ech: 'XX', name: 'INF-2', fullName: 'Infanterie 2', atk: 5, def: 6, mov: 6,  ratk: 3, rdef: 4, rmov: 5,  col: 20, row: 10 },
-  { side: 'ally', type: 'inf',   ech: 'XX', name: 'INF-3', fullName: 'Infanterie 3', atk: 5, def: 6, mov: 6,  ratk: 3, rdef: 4, rmov: 5,  col: 24, row: 9 },
-  { side: 'ally', type: 'arty',  ech: 'X',  name: 'ART-1', fullName: 'Artillerie 1', atk: 2, def: 3, mov: 6,  ratk: 1, rdef: 2, rmov: 5,  col: 25, row: 7 },
+  { side: 'axis', type: 'armor', ech: 'XX', name: 'BLD-1', fullName: 'Blindés 1',    atk: 8, def: 7, mov: 6, ratk: 5, rdef: 4, rmov: 5, col: 9,  row: 6 },
+  { side: 'axis', type: 'armor', ech: 'XX', name: 'BLD-2', fullName: 'Blindés 2',    atk: 8, def: 7, mov: 6, ratk: 5, rdef: 4, rmov: 5, col: 9,  row: 8 },
+  { side: 'axis', type: 'mech',  ech: 'XX', name: 'MEC-1', fullName: 'Mécanisée 1',  atk: 6, def: 6, mov: 5, ratk: 4, rdef: 4, rmov: 4, col: 11, row: 7 },
+  { side: 'axis', type: 'armor', ech: 'XX', name: 'BLD-3', fullName: 'Blindés 3',    atk: 6, def: 5, mov: 5, ratk: 3, rdef: 3, rmov: 4, col: 8,  row: 10 },
+  { side: 'axis', type: 'moto',  ech: 'XX', name: 'MOT-1', fullName: 'Motorisée 1',  atk: 4, def: 5, mov: 5, ratk: 2, rdef: 3, rmov: 4, col: 11, row: 10 },
+  { side: 'axis', type: 'arty',  ech: 'X',  name: 'ART-1', fullName: 'Artillerie 1', atk: 2, def: 3, mov: 3, ratk: 1, rdef: 2, rmov: 3, col: 7,  row: 8 },
+  { side: 'ally', type: 'armor', ech: 'XX', name: 'BLD-1', fullName: 'Blindés 1',    atk: 7, def: 7, mov: 6, ratk: 4, rdef: 4, rmov: 5, col: 22, row: 6 },
+  { side: 'ally', type: 'armor', ech: 'XX', name: 'BLD-2', fullName: 'Blindés 2',    atk: 6, def: 6, mov: 6, ratk: 4, rdef: 4, rmov: 5, col: 22, row: 8 },
+  { side: 'ally', type: 'inf',   ech: 'XX', name: 'INF-1', fullName: 'Infanterie 1', atk: 6, def: 6, mov: 4, ratk: 4, rdef: 4, rmov: 3, col: 20, row: 7 },
+  { side: 'ally', type: 'inf',   ech: 'XX', name: 'INF-2', fullName: 'Infanterie 2', atk: 5, def: 6, mov: 3, ratk: 3, rdef: 4, rmov: 3, col: 20, row: 10 },
+  { side: 'ally', type: 'inf',   ech: 'XX', name: 'INF-3', fullName: 'Infanterie 3', atk: 5, def: 6, mov: 3, ratk: 3, rdef: 4, rmov: 3, col: 24, row: 9 },
+  { side: 'ally', type: 'arty',  ech: 'X',  name: 'ART-1', fullName: 'Artillerie 1', atk: 2, def: 3, mov: 3, ratk: 1, rdef: 2, rmov: 3, col: 25, row: 7 },
 ];
 
 // Instancie les unités de jeu depuis le roster (état mutable par pion).

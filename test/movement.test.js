@@ -43,12 +43,12 @@ test('un empilement plein bloque l\'entrée', () => {
   assert.ok(!reachable.has('1,0'), 'hex saturé inaccessible');
 });
 
-test('le coût du terrain est respecté (rocaille = 2 PM)', () => {
+test('le coût du terrain est respecté (coteau = 3 PM)', () => {
   const terrain = fillTerrain([[0, 0], [2, 0]]);
-  terrain.set('1,0', 'rock'); // coût 2
-  const unit = makeUnit({ q: 0, r: 0, mpLeft: 2 });
+  terrain.set('1,0', 'rock'); // coût 3
+  const unit = makeUnit({ q: 0, r: 0, mpLeft: 3 });
   const state = makeState({ terrain, units: [unit] });
   const { reachable } = computeReachable(state, unit);
-  assert.ok(reachable.has('1,0'), 'rocaille atteignable à 2 PM');
-  assert.ok(!reachable.has('2,0'), 'hex au-delà (2 + 1) hors de portée');
+  assert.ok(reachable.has('1,0'), 'coteau atteignable à 3 PM');
+  assert.ok(!reachable.has('2,0'), 'hex au-delà (3 + 1) hors de portée');
 });
