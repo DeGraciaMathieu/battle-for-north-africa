@@ -8,7 +8,7 @@ import { TERRAIN, MAX_TURNS, BASES, SUPPLY_RANGE, CRT } from '../src/config.js';
 import { key, axialToPixel, offsetToAxial, pixelToAxial, hexCorners, hexDistance, clamp } from '../src/geometry.js';
 import { eAtk, eDef, eMov, other, unitsAt, enemyAt, stackCount, isArmor, isFoot } from '../src/units.js';
 import { zocOf, computeReachable, moveUnit } from '../src/movement.js';
-import { resolveCombat } from '../src/combat.js';
+import { resolveCombat, combatPlan } from '../src/combat.js';
 import { updateSupply, supplyRoutes, supplySources } from '../src/supply.js';
 import { createGame, updateObjectives, objCount, endPhase } from '../src/game.js';
 
@@ -155,6 +155,7 @@ const PIXI = window.PIXI;
     // =========================================================================
     let sel = null;               // { unit, reachable, dist, eZOC }  (phase mouvement)
     let pending = null;           // { key, q, r, hasOwn } — déplacement en attente de confirmation
+    let pendingCombat = null;     // { atkUnits, defender } — combat en attente de décision
     let showSupply = true;        // overlay de la zone ravitaillée du camp actif
     const attackers = new Set();  // ids des unités attaquantes       (phase combat)
     function clearPending() {
@@ -318,8 +319,7 @@ const PIXI = window.PIXI;
           log('Aucun attaquant adjacent.');
           return;
         }
-        resolveCombat(state, atkUnits, top);
-        attackers.clear();
+        showCombatPreview(atkUnits, top);                   // aperçu → décider d'engager
       } else {                                               // clic ami → (dé)sélection attaquant
         if (top.hasFought) return;
         if (!state.units.some((e) => e.side !== state.G.player && hexDistance(e.q, e.r, q, r) === 1)) return;
@@ -516,25 +516,59 @@ const PIXI = window.PIXI;
     let combatTimers = [];
     const clearCombatTimers = () => { combatTimers.forEach(clearTimeout); combatTimers = []; };
     const at = (fn, ms) => combatTimers.push(setTimeout(fn, ms));
+    const modsList = (p) => {
+      const m = [];
+      if (p.combined) m.push('combiné +1');
+      if (p.arty) m.push(`artillerie +${p.arty}`);
+      if (p.terr) m.push(`terrain −${p.terr}`);
+      return m.length ? m.join(', ') : 'aucun';
+    };
+    const combatHeader = (p) =>
+      `<div class="kv"><span>Attaquants</span><span>${p.attackers.join(', ')}</span></div>`
+      + `<div class="kv"><span>Rapport de force</span><span><b>${p.atk}</b> contre <b>${p.def}</b> → <b>${p.baseCol}</b></span></div>`
+      + `<div class="kv"><span>Défenseur</span><span>${p.defender}</span></div>`
+      + `<div class="kv"><span>Décalages de colonne</span><span>${modsList(p)}</span></div>`
+      + `<div class="kv"><span>Colonne finale</span><span><b>${p.col}</b></span></div>`;
+    // Ligne de CRT ; si `dieIdx` est fourni, la case correspondante est surlignée.
+    const crtRowHtml = (col, dieIdx) => {
+      const row = CRT[col];
+      let cells = '';
+      for (let i = 0; i < 6; i++) {
+        cells += `<span class="crtcell${i === dieIdx ? ' hit' : ''}"><span class="d">${i + 1}</span>${row[i]}</span>`;
+      }
+      return `<div class="crtrow">${cells}</div>`
+        + '<div class="sub" style="margin-top:3px;font-size:10px">DE déf. éliminé · DR déf. repoussé · EX échange · AR att. repoussé · AE att. éliminé</div>';
+    };
+
+    // Aperçu AVANT le dé : stats, colonne, issues possibles, et décision.
+    function showCombatPreview(atkUnits, defender) {
+      if (state.G.over) return;
+      clearCombatTimers();
+      const p = combatPlan(state, atkUnits, defender);
+      pendingCombat = { atkUnits, defender };
+      $('combatBody').innerHTML = combatHeader(p);
+      $('combatTable').innerHTML =
+        `<div class="sub" style="margin-top:6px">Issues possibles — colonne ${p.col} (droite = plus favorable à l'attaquant) :</div>`
+        + crtRowHtml(p.col, -1);
+      $('combatRes').textContent = '';
+      $('combatRes').style.background = 'transparent';
+      $('combatEffects').innerHTML = '';
+      $('combatBtn').style.display = 'none';
+      $('combatBtns').style.display = 'flex';
+      $('combatModal').style.display = 'flex';
+    }
+
     function showCombatModal(p) {
       if (state.G.over) return;                             // la victoire est déjà annoncée
       clearCombatTimers();
-      const mods = [];
-      if (p.combined) mods.push('combiné +1');
-      if (p.arty) mods.push(`artillerie +${p.arty}`);
-      if (p.terr) mods.push(`terrain −${p.terr}`);
-      $('combatBody').innerHTML =
-        `<div class="kv"><span>Attaquants</span><span>${p.attackers.join(', ')}</span></div>`
-        + `<div class="kv"><span>Rapport de force</span><span><b>${p.atk}</b> contre <b>${p.def}</b> → <b>${p.baseCol}</b></span></div>`
-        + `<div class="kv"><span>Défenseur</span><span>${p.defender}</span></div>`
-        + `<div class="kv"><span>Décalages de colonne</span><span>${mods.length ? mods.join(', ') : 'aucun'}</span></div>`
-        + `<div class="kv"><span>Colonne finale</span><span><b>${p.col}</b></span></div>`
+      $('combatBody').innerHTML = combatHeader(p)
         + `<div class="kv"><span>Jet de dé</span><span><b id="dieVal" class="spin">–</b></span></div>`;
-      const resEl = $('combatRes');
-      resEl.textContent = '';
-      resEl.style.background = 'transparent';
+      $('combatRes').textContent = '';
+      $('combatRes').style.background = 'transparent';
       $('combatTable').innerHTML = '';
       $('combatEffects').innerHTML = '';
+      $('combatBtns').style.display = 'none';
+      $('combatBtn').style.display = 'block';
       $('combatBtn').style.visibility = 'hidden';
       $('combatModal').style.display = 'flex';
 
@@ -557,15 +591,9 @@ const PIXI = window.PIXI;
     }
     function revealResult(p) {
       // Ligne de CRT de la colonne finale, case du dé surlignée (impact du dé).
-      const row = CRT[p.col];
-      let cells = '';
-      for (let i = 0; i < 6; i++) {
-        cells += `<span class="crtcell${i === p.die - 1 ? ' hit' : ''}"><span class="d">${i + 1}</span>${row[i]}</span>`;
-      }
       $('combatTable').innerHTML =
-        `<div class="sub" style="margin-top:6px">Colonne ${p.col} — résultat selon le dé (droite = plus favorable à l'attaquant) :</div>`
-        + `<div class="crtrow">${cells}</div>`
-        + '<div class="sub" style="margin-top:3px;font-size:10px">DE déf. éliminé · DR déf. repoussé · EX échange · AR att. repoussé · AE att. éliminé</div>';
+        `<div class="sub" style="margin-top:6px">Colonne ${p.col} — résultat selon le dé :</div>`
+        + crtRowHtml(p.col, p.die - 1);
 
       const good = p.res === 'DE' || p.res === 'DR';        // favorable à l'attaquant
       const resEl = $('combatRes');
@@ -582,6 +610,21 @@ const PIXI = window.PIXI;
       at(() => { $('combatBtn').style.visibility = 'visible'; }, 300 * (p.effects.length + 1));
     }
     $('combatBtn').onclick = () => { clearCombatTimers(); $('combatModal').style.display = 'none'; };
+    $('btnRollCombat').onclick = () => {
+      if (!pendingCombat) return;
+      const { atkUnits, defender } = pendingCombat;
+      pendingCombat = null;
+      $('combatBtns').style.display = 'none';
+      resolveCombat(state, atkUnits, defender);             // → combatResolved → showCombatModal (animation)
+      attackers.clear();
+      refresh();
+      if (state.G.over) $('combatModal').style.display = 'none'; // le bandeau de victoire prend le relais
+    };
+    $('btnRefuseCombat').onclick = () => {
+      pendingCombat = null;
+      $('combatModal').style.display = 'none';
+      log('Combat refusé.');
+    };
 
     // -- Abonnements au bus : le rendu réagit aux événements des règles -------
     state.bus.on('log', log);

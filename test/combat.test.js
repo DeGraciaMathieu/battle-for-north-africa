@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { oddsIndex, resolveCombat } from '../src/combat.js';
+import { oddsIndex, resolveCombat, combatPlan } from '../src/combat.js';
 import { hexDistance } from '../src/geometry.js';
 import { makeState, fillTerrain, makeUnit } from './helpers.js';
 
@@ -9,6 +9,18 @@ test('oddsIndex mappe le rapport de force sur une colonne', () => {
   assert.equal(oddsIndex(6, 3), 3); // 2:1
   assert.equal(oddsIndex(6, 2), 4); // 3:1
   assert.equal(oddsIndex(6, 0), 7); // défense nulle → colonne max
+});
+
+test('combatPlan expose la colonne sans lancer le dé ni muter l\'état', () => {
+  const terrain = fillTerrain([[0, 0], [0, 1], [1, 0]]);
+  const armor = makeUnit({ id: 0, side: 'axis', type: 'armor', q: 0, r: 0, atk: 4 });
+  const inf = makeUnit({ id: 1, side: 'axis', type: 'inf', q: 0, r: 1, atk: 2 });
+  const defender = makeUnit({ id: 2, side: 'ally', type: 'inf', q: 1, r: 0, def: 3 });
+  const state = makeState({ terrain, units: [armor, inf, defender] });
+  const plan = combatPlan(state, [armor, inf], defender);
+  assert.equal(plan.baseCol, '2:1');           // 6 contre 3
+  assert.equal(plan.col, '3:1');               // armes combinées +1
+  assert.ok(!defender.reduced && !armor.reduced, 'aucune mutation');
 });
 
 test('un « Échange » réduit défenseur et attaquant', () => {

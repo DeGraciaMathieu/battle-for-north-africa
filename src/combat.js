@@ -67,8 +67,10 @@ export function retreatOrDie(state, unit, awayQ, awayR) {
 
 // Résout un combat : calcule la colonne (odds + décalages), tire le dé,
 // applique le résultat CRT, gère l'avance après combat. Renvoie { col, die, res }.
-export function resolveCombat(state, attackers, defender) {
-  const { terrain, bus } = state;
+// Plan de combat : tout le déterministe AVANT le dé (aucune mutation, aucun jet).
+// Permet d'afficher forces, décalages et colonne pour décider d'engager ou non.
+export function combatPlan(state, attackers, defender) {
+  const { terrain } = state;
   const atk = attackers.reduce((s, u) => s + eAtk(u), 0);   // attaque effective
   const terr = TERRAIN[terrain.get(key(defender.q, defender.r))].def; // décalage terrain
   // Armes combinées : au moins un blindé ET une unité à pied → +1 colonne.
@@ -82,27 +84,33 @@ export function resolveCombat(state, attackers, defender) {
         && hexDistance(u.q, u.r, defender.q, defender.r) <= ARTY_RANGE) arty++;
   }
   arty = Math.min(arty, 2);
+  const def = eDef(defender);
+  const idx = clamp(oddsIndex(atk, def) + combined + arty - terr, 0, 7);
+  return {
+    attackers: attackers.map((a) => a.fullName ?? a.name),
+    atk,
+    defender: defender.fullName ?? defender.name,
+    def,
+    baseCol: ODDS[oddsIndex(atk, def)],                     // colonne avant décalages
+    combined, arty, terr,
+    idx, col: ODDS[idx],                                    // colonne finale
+  };
+}
 
-  const idx = clamp(oddsIndex(atk, eDef(defender)) + combined + arty - terr, 0, 7);
-  const col = ODDS[idx];                                    // colonne finale
+export function resolveCombat(state, attackers, defender) {
+  const { bus } = state;
+  const plan = combatPlan(state, attackers, defender);
+  const { col, combined, arty, terr } = plan;
   const die = 1 + Math.floor(state.rng() * 6);
   const res = CRT[col][die - 1];
   const defHex = { q: defender.q, r: defender.r };
   const atkRef = attackers[0];                              // point de fuite pour reculs
 
-  // Récapitulatif du combat, figé AVANT d'appliquer les pertes (facteurs pleins).
-  // `effects` narre les conséquences, rempli au fil de la résolution.
+  // Conséquences narrées, remplies au fil de la résolution.
   const nm = (u) => u.fullName ?? u.name;
-  const dName = nm(defender);
+  const dName = plan.defender;
   const effects = [];
-  const summary = {
-    attackers: attackers.map(nm),
-    atk,
-    defender: dName,
-    def: eDef(defender),
-    baseCol: ODDS[oddsIndex(atk, eDef(defender))],         // colonne avant décalages
-    combined, arty, terr, col, die, res, result: RESULT_FR[res], effects,
-  };
+  const summary = { ...plan, die, res, result: RESULT_FR[res], effects };
 
   if (res === 'DE') {
     effects.push(hitUnit(state, defender) ? `${dName} est réduit.` : `${dName} est éliminé.`);
