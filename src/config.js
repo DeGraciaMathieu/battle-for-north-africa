@@ -23,14 +23,14 @@ export const DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
 // Terrain : couleur (fill/stroke), coût de mouvement (PM) et décalage défensif
 // (nombre de colonnes retirées à l'attaquant sur la CRT).
 export const TERRAIN = {
-  sea:   { name: 'Méditerranée', fill: 0x3d6270, stroke: 0x2a4650, cost: Infinity, def: 0 },
-  coast: { name: 'Littoral',     fill: 0x5c8290, stroke: 0x3d6270, cost: 1, def: 0 },
-  sand:  { name: 'Désert',       fill: 0xc9b078, stroke: 0x8f7c4f, cost: 1, def: 0 },
-  sand2: { name: 'Désert',       fill: 0xd2ba82, stroke: 0x8f7c4f, cost: 1, def: 0 },
-  rock:  { name: 'Rocaille',     fill: 0x9c855c, stroke: 0x6f5c3c, cost: 2, def: 2 },
-  town:  { name: 'Ville/port',   fill: 0xb7975a, stroke: 0x7a5f2e, cost: 1, def: 2 },
-  oasis: { name: 'Oasis',        fill: 0x6f9a5c, stroke: 0x486a3a, cost: 1, def: 1 },
-  base:  { name: 'Camp de base', fill: 0x6b5a3a, stroke: 0x3a2c17, cost: 1, def: 0 },
+  sea:   { name: 'Méditerranée', fill: 0x35597f, stroke: 0x243f5c, cost: Infinity, def: 0 },
+  coast: { name: 'Littoral',     fill: 0x6a97ab, stroke: 0x3f6f86, cost: 1, def: 0 },
+  sand:  { name: 'Désert',       fill: 0x8faa5c, stroke: 0x67813f, cost: 1, def: 0 },
+  sand2: { name: 'Désert',       fill: 0x9cb768, stroke: 0x67813f, cost: 1, def: 0 },
+  rock:  { name: 'Rocaille',     fill: 0x8f8b7a, stroke: 0x605d4d, cost: 2, def: 2 },
+  town:  { name: 'Ville/port',   fill: 0xa89a72, stroke: 0x726643, cost: 1, def: 2 },
+  oasis: { name: 'Oasis',        fill: 0x4d7a3c, stroke: 0x335627, cost: 1, def: 1 },
+  base:  { name: 'Camp de base', fill: 0x556a44, stroke: 0x2f3d24, cost: 1, def: 0 },
 };
 
 // Positions (colonne, ligne offset) des villes/ports — objectifs de la partie.
