@@ -4,15 +4,17 @@
 //  les objectifs et les conditions de victoire.
 // ===========================================================================
 
-import { MAX_TURNS } from './config.js';
+import { MAX_TURNS, TERRAIN, DIRS } from './config.js';
 import { createUnits, eMov, unitsAt } from './units.js';
 import { generateMap } from './map.js';
 import { createBus } from './events.js';
 import { updateSupply } from './supply.js';
+import { key } from './geometry.js';
 
-// Crée une partie prête à jouer. `rng` est injectable (déterminisme des tests).
-export function createGame(rng = Math.random) {
-  const { terrain, hexes, objectives } = generateMap();
+// Crée une partie prête à jouer. `rng` est injectable (déterminisme des tests) ;
+// `seed` fixe la carte générée (aléatoire côté rendu, fixe dans les tests).
+export function createGame(rng = Math.random, seed) {
+  const { terrain, hexes, objectives } = generateMap(seed);
   const state = {
     terrain,
     hexes,
@@ -23,11 +25,38 @@ export function createGame(rng = Math.random) {
     bus: createBus(),
     rng,
   };
+  relocateOffWater(state);
   updateObjectives(state);
   startMove(state, 'axis');
   // Après chaque combat, vérifier l'anéantissement d'un camp.
   state.bus.on('combatResolved', () => checkElimination(state));
   return state;
+}
+
+// Le tracé de l'eau est indépendant du déploiement : toute unité tombée sur un
+// hex infranchissable est repoussée vers la terre atteignable la plus proche.
+function relocateOffWater(state) {
+  const passable = (q, r) => { const t = state.terrain.get(key(q, r)); return t && TERRAIN[t].cost !== Infinity; };
+  for (const u of state.units) {
+    if (passable(u.q, u.r)) continue;
+    const seen = new Set([key(u.q, u.r)]);
+    let ring = [[u.q, u.r]], found = null;
+    while (ring.length && !found) {
+      const next = [];
+      for (const [q, r] of ring) {
+        for (const [dq, dr] of DIRS) {
+          const nq = q + dq, nr = r + dr, nk = key(nq, nr);
+          if (seen.has(nk)) continue;
+          seen.add(nk);
+          if (passable(nq, nr)) { found = { q: nq, r: nr }; break; }
+          next.push([nq, nr]);
+        }
+        if (found) break;
+      }
+      ring = next;
+    }
+    if (found) { u.q = found.q; u.r = found.r; }
+  }
 }
 
 // Met à jour le contrôle des objectifs selon l'occupant courant.

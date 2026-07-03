@@ -16,7 +16,13 @@ const PIXI = window.PIXI;
 
 (async () => {
   try {
-    const state = createGame();
+    // Seed de carte : reprise depuis l'URL (?seed=) si valide, sinon aléatoire.
+    // Poussée dans l'URL pour pouvoir repartager la carte courante.
+    const urlSeed = Number(new URLSearchParams(location.search).get('seed'));
+    const seed = Number.isInteger(urlSeed) && urlSeed >= 0 ? urlSeed : Math.floor(Math.random() * 0xffffffff);
+    history.replaceState(null, '', `?seed=${seed}`);
+    document.getElementById('seedVal').textContent = seed;
+    const state = createGame(Math.random, seed);
     const sideLabel = (s) => (s === 'axis' ? 'BLEU' : 'ROUGE');
     const FILL = { axis: 0x4a6b9a, ally: 0xa8544a };   // couleurs des camps (pions, camp de base)
     const SUP = { axis: 0x8fb0d8, ally: 0xe0968f };    // teinte de ravitaillement par camp
@@ -676,7 +682,7 @@ const PIXI = window.PIXI;
       $('bannerSub').textContent = reason;
       $('banner').style.display = 'flex';
     });
-    $('bannerBtn').onclick = () => location.reload();
+    $('bannerBtn').onclick = () => { location.href = location.pathname; }; // nouvelle carte
     $('btnConfirmMove').onclick = confirmMove;
     $('btnSelectMove').onclick = selectPendingUnit;
     $('btnCancelMove').onclick = () => { clearPending(); refresh(); };
