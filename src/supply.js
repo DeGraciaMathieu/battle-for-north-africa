@@ -3,8 +3,9 @@
 //
 //  Sources d'un camp : son camp de base (hexe `base`, voir BASES) + ses
 //  villes/ports tenus. Le ravitaillement se propage d'hex en hex tant qu'il ne
-//  traverse ni la mer, ni un hex ennemi, ni une ZOC ennemie, ET dans la limite
-//  de SUPPLY_RANGE hexes de route depuis la source. Une unité sur un hex atteint
+//  traverse ni la mer, ni un hex ennemi, ni une ZOC ennemie (sauf sur un hex
+//  occupé par une unité amie, qui annule la ZOC), ET dans la limite de
+//  SUPPLY_RANGE hexes de route depuis la source. Une unité sur un hex atteint
 //  est ravitaillée.
 // ===========================================================================
 
@@ -30,12 +31,17 @@ export function supplySources(state, side) {
 export function supplyRoutes(state, side) {
   const { units, terrain } = state;
   const eZOC = zocOf(units, other(side), terrain);
+  // Une unité amie annule la ZOC ennemie sur son propre hex : sans cela, deux
+  // unités au corps à corps (chacune dans la ZOC de l'autre) se couperaient
+  // mutuellement le ravitaillement.
+  const friendly = new Set(units.filter((u) => u.side === side).map((u) => key(u.q, u.r)));
+  const blockedZOC = (k) => eZOC.has(k) && !friendly.has(k);
   const parent = new Map();
   const depth = new Map();                                                 // longueur de route depuis la source
   const queue = [];
   for (const k of supplySources(state, side)) {
     const [q, r] = k.split(',').map(Number);
-    if (enemyAt(units, q, r, side) || eZOC.has(k)) continue;               // source coupée
+    if (enemyAt(units, q, r, side) || blockedZOC(k)) continue;             // source coupée
     parent.set(k, null);
     depth.set(k, 0);
     queue.push([q, r, 0]);
@@ -50,7 +56,7 @@ export function supplyRoutes(state, side) {
       if (parent.has(nk) || !terrain.has(nk)) continue;
       if (!isFinite(TERRAIN[terrain.get(nk)].cost)) continue;             // pas par la mer
       if (enemyAt(units, nq, nr, side)) continue;                          // pas par l'ennemi
-      if (eZOC.has(nk)) continue;                                          // la ZOC coupe la route
+      if (blockedZOC(nk)) continue;                                        // la ZOC coupe la route (sauf hex ami)
       parent.set(nk, ck);
       depth.set(nk, d + 1);
       queue.push([nq, nr, d + 1]);

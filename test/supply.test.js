@@ -49,27 +49,38 @@ test('la mer bloque la propagation du ravitaillement', () => {
   assert.ok(!unit.supplied);
 });
 
-test('une ZOC ennemie coupe la ligne de ravitaillement', () => {
-  // Corridor de désert ; source = objectif (0,0) tenu par l'Axe.
-  const terrain = fillTerrain([[0, 0], [1, 0], [2, 0], [3, 0], [3, 1], [2, 1]]);
+test('une ZOC ennemie sur le chemin coupe la ligne de ravitaillement', () => {
+  // Corridor (0,0)→(3,0) ; l'ennemi en (2,1) met (2,0) sous ZOC et casse la route.
+  const terrain = fillTerrain([[0, 0], [1, 0], [2, 0], [3, 0]]);
   terrain.set('0,0', 'town');
   const objectives = ['0,0'];
 
-  const a = makeUnit({ id: 0, side: 'axis', q: 2, r: 0 }); // ravitaillé depuis (0,0)
-  const b = makeUnit({ id: 1, side: 'axis', q: 3, r: 1 }); // dans la ZOC ennemie
-  const enemy = makeUnit({ id: 2, side: 'ally', q: 4, r: 0 }); // ZOC couvre (3,0) et (3,1)
+  const a = makeUnit({ id: 0, side: 'axis', q: 1, r: 0 }); // ravitaillé depuis (0,0)
+  const b = makeUnit({ id: 1, side: 'axis', q: 3, r: 0 }); // coupé : seul accès (2,0) sous ZOC
+  const enemy = makeUnit({ id: 2, side: 'ally', q: 2, r: 1 }); // ZOC couvre (2,0) et (3,0)
   const state = makeState({ terrain, units: [a, b, enemy], objectives });
   state.objControl.set('0,0', 'axis');
 
   updateSupply(state);
   assert.ok(a.supplied, 'unité reliée à la source est ravitaillée');
-  assert.ok(!b.supplied, 'unité coupée par la ZOC est hors ravitaillement');
+  assert.ok(!b.supplied, 'unité dont la seule route passe par une ZOC est coupée');
 
   // La route de l'unité ravitaillée remonte jusqu'à une source.
   const { supplied, parent } = supplyRoutes(state, 'axis');
-  assert.ok(supplied.has('2,0'));
   const chain = [];
-  for (let k = '2,0'; k; k = parent.get(k)) chain.push(k);
+  for (let k = '1,0'; k; k = parent.get(k)) chain.push(k);
   assert.ok(supplySources(state, 'axis').has(chain[chain.length - 1]), 'la route se termine sur une source');
-  assert.ok(!supplied.has('3,1'), 'unité coupée absente des routes');
+  assert.ok(!supplied.has('3,0'), 'unité coupée absente des routes');
+});
+
+test('deux unités au corps à corps restent ravitaillées via leur arrière', () => {
+  // Régression : chacune est dans la ZOC de l'autre, mais garde sa ligne arrière.
+  const terrain = fillTerrain([[0, 0], [1, 0], [2, 0]]);
+  terrain.set('0,0', 'town');
+  const mine = makeUnit({ id: 0, side: 'axis', q: 2, r: 0 });  // au contact de l'ennemi
+  const enemy = makeUnit({ id: 1, side: 'ally', q: 2, r: 1 }); // adjacent → ZOC sur (2,0)
+  const state = makeState({ terrain, units: [mine, enemy], objectives: ['0,0'] });
+  state.objControl.set('0,0', 'axis');
+  updateSupply(state);
+  assert.ok(mine.supplied, 'l\'unité au contact reste ravitaillée par l\'arrière');
 });

@@ -25,7 +25,7 @@ Propagation du ravitaillement par flood-fill dans `src/supply.js`.
 Le flood-fill (BFS) part des sources et se propage d'hex en hex tant qu'il **ne traverse pas** :
 - la **mer** (`cost === Infinity`) ;
 - un **hex ennemi** (`enemyAt`) ;
-- une **ZOC ennemie** (`zocOf(other(side))`) — c'est elle qui « coupe » l'artère.
+- une **ZOC ennemie** (`zocOf(other(side))`) — c'est elle qui « coupe » l'artère, **sauf sur un hex occupé par une unité amie** (l'unité annule la ZOC sur son propre hex, sinon deux unités au corps à corps se couperaient mutuellement).
 
 De plus, la propagation s'arrête au-delà de **`SUPPLY_RANGE`** hexes de route : un détour forcé (par une ZOC) allonge la route et peut faire dépasser la portée → coupure. Une source elle-même est ignorée si elle est occupée par l'ennemi ou en ZOC ennemie.
 
