@@ -129,7 +129,19 @@ export function generateMap(seed = 1) {
     }
   }
 
-  // 5) Ponts sur le cours d'eau principal, répartis le long du tracé.
+  // 5) Routes traversantes : quelques axes rapides posés sur la terre ferme
+  //    (interrompus par l'eau, franchie ensuite aux ponts). Elles ne recouvrent
+  //    que la terre ; ponts, bases et villes priment (posés après).
+  for (let i = 0, n = rint(1, 3); i < n; i++) {
+    const build = rint(0, 2);
+    const cells = build === 0 ? buildHorizontal() : build === 1 ? buildVertical() : buildDiagonal();
+    for (const [c, rw] of cells) {
+      const { q, r } = offsetToAxial(c, rw);
+      if (LAND.has(terrain.get(key(q, r)))) terrain.set(key(q, r), 'road');
+    }
+  }
+
+  // 6) Ponts sur le cours d'eau principal, répartis le long du tracé.
   const nBridges = rint(3, 5);
   for (let i = 1; i <= nBridges; i++) {
     const [c, rw] = path[Math.floor((path.length * i) / (nBridges + 1))];
@@ -137,7 +149,7 @@ export function generateMap(seed = 1) {
     terrain.set(key(q, r), 'town');
   }
 
-  // 6) Bases (elles priment sur tout) puis villes de terre, espacées et à
+  // 7) Bases (elles priment sur tout) puis villes de terre, espacées et à
   //    l'écart des bases.
   const baseKeys = new Set();
   for (const [c, rw] of Object.values(BASES)) {
@@ -159,7 +171,7 @@ export function generateMap(seed = 1) {
     placed++;
   }
 
-  // 7) Jouabilité : tant que les deux bases ne sont pas reliées par voie
+  // 8) Jouabilité : tant que les deux bases ne sont pas reliées par voie
   //    terrestre, on transforme un hex d'eau frontalier en pont.
   const passable = (k) => { const t = terrain.get(k); return t && TERRAIN[t].cost !== Infinity; };
   const baseKey = (side) => { const { q, r } = offsetToAxial(...BASES[side]); return key(q, r); };
