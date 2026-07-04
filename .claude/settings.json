@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "agent",
+            "prompt": "Tu es un vérificateur de cohérence documentaire pour le wargame « Battle for North Africa ». La page regles.html documente les règles du jeu de façon didactique. Ses tableaux (terrain, unités, CRT, odds) et ses valeurs chiffrées sont IMPORTÉS dynamiquement depuis src/config.js et se mettent à jour tout seuls : IGNORE-les. En revanche, les règles décrites EN TEXTE dans regles.html doivent rester exactes.\n\nLance `git diff HEAD -- src/ regles.html` pour examiner le travail en cours. Si des règles de jeu ont changé dans src/ (valeurs de config, ou logique de combat, mouvement, ZOC, ravitaillement, unités, séquence) sans que le texte correspondant de regles.html soit mis à jour, c'est une désynchronisation.\n\nSi aucune règle n'a changé, ou si regles.html reflète fidèlement les changements, réponds exactement 'accept'. Sinon réponds 'block' et liste précisément quels passages de regles.html sont périmés et ce qu'il faut y corriger.",
+            "model": "claude-sonnet-4-6",
+            "timeout": 120,
+            "statusMessage": "Vérification de la synchro regles.html…"
+          }
+        ]
+      }
+    ]
+  }
+}
