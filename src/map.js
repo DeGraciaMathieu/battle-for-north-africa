@@ -8,7 +8,7 @@
 // ===========================================================================
 
 import { COLS, ROWS, BASES, DIRS, TERRAIN } from './config.js';
-import { key, offsetToAxial, clamp, axialRound, hexDistance } from './geometry.js';
+import { key, offsetToAxial, clamp, hexDistance } from './geometry.js';
 
 // PRNG déterministe seedé : même seed → même suite de nombres [0, 1).
 function mulberry32(seed) {
@@ -151,7 +151,7 @@ export function generateMap(seed = 1) {
     const [tq, tr] = k.split(',').map(Number);
     return (Math.abs(tq - q) + Math.abs(tq + tr - q - r) + Math.abs(tr - r)) / 2 < 3;
   });
-  for (let placed = 0, tries = 0; placed < rint(6, 8) && tries < 800; tries++) {
+  for (let placed = 0, tries = 0; placed < rint(9, 13) && tries < 1500; tries++) {
     const { q, r } = offsetToAxial(rint(1, COLS - 2), rint(1, ROWS - 2));
     const k = key(q, r);
     if (!LAND.has(terrain.get(k)) || baseKeys.has(k) || near(q, r)) continue;
@@ -190,15 +190,49 @@ export function generateMap(seed = 1) {
   }
 
   // 8) Réseau routier : relie villes, villages et bases par un arbre couvrant
-  //    minimal (arêtes les plus courtes). Chaque arête est tracée en ligne
-  //    d'hexes ; la route franchit tout (berge, rivière comprises) sauf les
-  //    peuplements et les bases → ruban continu, crossings de rivière inclus.
+  //    minimal (arêtes reliant les nœuds les plus proches). Chaque arête est
+  //    tracée par un Dijkstra pondéré : la route préfère la plaine, contourne
+  //    relief et eau (franchissables mais coûteux), et RÉUTILISE les routes déjà
+  //    posées (coût quasi nul) → tronçons partagés, embranchements, tracé
+  //    organique. Un bruit seedé donne le méandre.
+  const SETTLE = (t) => t === 'town' || t === 'village' || t === 'base';
+  const BASE_COST = { road: 0.2, sand: 1, sand2: 1, oasis: 2, rock: 3, coast: 3, sea: 6 };
+  const stepCost = (q, r) => {
+    const t = terrain.get(key(q, r));
+    if (!t) return Infinity;                                 // hors carte
+    if (SETTLE(t)) return 0.4;                               // traverse un peuplement
+    return (BASE_COST[t] ?? 1) * (0.8 + noise(q, r) * 0.7);  // + jitter organique
+  };
+  // Chemin de moindre coût entre deux hexes (Dijkstra), renvoie les clés
+  // intermédiaires (hors extrémités).
+  const roadPath = (a, b) => {
+    const start = key(a.q, a.r), goal = key(b.q, b.r);
+    const dist = new Map([[start, 0]]);
+    const prev = new Map();
+    const done = new Set();
+    for (;;) {
+      let ck = null, cd = Infinity;
+      for (const [k, d] of dist) if (!done.has(k) && d < cd) { cd = d; ck = k; }
+      if (ck === null || ck === goal) break;
+      done.add(ck);
+      const [q, r] = ck.split(',').map(Number);
+      for (const [dq, dr] of DIRS) {
+        const nq = q + dq, nr = r + dr, nk = key(nq, nr);
+        if (done.has(nk) || !terrain.has(nk)) continue;
+        const nd = cd + stepCost(nq, nr);
+        if (nd < (dist.get(nk) ?? Infinity)) { dist.set(nk, nd); prev.set(nk, ck); }
+      }
+    }
+    const path = [];
+    for (let cur = goal; cur !== start && cur !== undefined; cur = prev.get(cur)) {
+      if (cur !== goal) path.push(cur);                       // exclut les deux extrémités
+    }
+    return path;
+  };
+
   const nodes = [];
   for (const [k, t] of terrain) {
-    if (t === 'town' || t === 'village' || t === 'base') {
-      const [q, r] = k.split(',').map(Number);
-      nodes.push({ q, r });
-    }
+    if (SETTLE(t)) { const [q, r] = k.split(',').map(Number); nodes.push({ q, r }); }
   }
   const inTree = new Set([0]);
   while (nodes.length > 1 && inTree.size < nodes.length) {
@@ -211,12 +245,8 @@ export function generateMap(seed = 1) {
       }
     }
     inTree.add(best.j);
-    const a = nodes[best.i], b = nodes[best.j];
-    for (let s = 1; s < best.d; s++) {                       // hexes intermédiaires (hors extrémités)
-      const t = s / best.d;
-      const { q, r } = axialRound(a.q + (b.q - a.q) * t, a.r + (b.r - a.r) * t);
-      const cur = terrain.get(key(q, r));                    // franchit berge/rivière, épargne peuplements/bases
-      if (cur && cur !== 'town' && cur !== 'village' && cur !== 'base') terrain.set(key(q, r), 'road');
+    for (const k of roadPath(nodes[best.i], nodes[best.j])) {
+      if (!SETTLE(terrain.get(k))) terrain.set(k, 'road');    // n'écrase pas les peuplements traversés
     }
   }
 
