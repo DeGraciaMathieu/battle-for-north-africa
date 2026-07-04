@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Battle for North Africa — Règles</title>
+<title>Battle for North Africa - Règles</title>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; background: #14110c;
@@ -57,7 +57,7 @@
   <div class="wrap">
     <a class="back" href="index.html">◂ Retour à la composition des armées</a>
     <h1>Battle for North Africa</h1>
-    <div class="tag">Manuel de règles — wargame hexagonal opérationnel · deux camps, <b>Bleu</b> et <b>Rouge</b></div>
+    <div class="tag">Manuel de règles - wargame hexagonal opérationnel · deux camps, <b>Bleu</b> et <b>Rouge</b></div>
 
     <nav class="toc">
       <h2>Sommaire</h2>
@@ -79,13 +79,13 @@
     <section id="apercu">
       <h2>1 · Vue d'ensemble</h2>
       <p><b>Battle for North Africa</b> est un wargame au tour par tour opposant deux armées sur une carte hexagonale
-        du désert nord-africain. Chacun commande une poignée de divisions — blindés, mécanisés, infanterie, artillerie —
+        du désert nord-africain. Chacun commande une poignée de divisions - blindés, mécanisés, infanterie, artillerie -
         et cherche à contrôler les <em>villes</em> stratégiques tout en évitant que ses lignes de ravitaillement ne soient coupées.</p>
       <p>Le jeu se déroule en <b id="p-turns"></b> tours. À chaque tour, les deux camps jouent l'un après l'autre
         (système <em>IGO-UGO</em> : « je joue, tu joues »). Quand le dernier tour s'achève, on compte les villes tenues : le
         camp qui en contrôle le plus l'emporte. Un camp entièrement anéanti perd immédiatement.</p>
       <div class="note"><b>L'idée maîtresse.</b> Une unité n'est dangereuse et solide que si elle est <em>ravitaillée</em>.
-        Couper la ligne d'approvisionnement de l'adversaire — en manœuvrant derrière ses lignes ou en verrouillant un défilé —
+        Couper la ligne d'approvisionnement de l'adversaire - en manœuvrant derrière ses lignes ou en verrouillant un défilé -
         vaut souvent mieux qu'un assaut frontal.</div>
     </section>
 
@@ -108,9 +108,9 @@
       <h2>3 · Les unités</h2>
       <p>Chaque pion est décrit par trois facteurs, notés <code>attaque-défense-mouvement</code> :</p>
       <ul>
-        <li><b>Attaque</b> — la puissance offensive apportée à un assaut.</li>
-        <li><b>Défense</b> — la résistance opposée quand l'unité est attaquée.</li>
-        <li><b>Mouvement</b> — le nombre de <em>points de mouvement</em> (PM) disponibles par tour.</li>
+        <li><b>Attaque</b> - la puissance offensive apportée à un assaut.</li>
+        <li><b>Défense</b> - la résistance opposée quand l'unité est attaquée.</li>
+        <li><b>Mouvement</b> - le nombre de <em>points de mouvement</em> (PM) disponibles par tour.</li>
       </ul>
       <p>Un pion a deux faces. Le <b>recto</b> (pleine puissance) et le <b>verso</b> (face <em>réduite</em>, affaiblie).
         Lorsqu'une unité subit une perte, elle est d'abord <b>retournée</b> sur sa face réduite ; une seconde perte l'<b>élimine</b>.
@@ -130,8 +130,8 @@
 
     <section id="facteurs">
       <h2>4 · Facteurs effectifs</h2>
-      <p>Les chiffres imprimés sur le pion ne sont pas toujours ceux appliqués. La valeur réellement utilisée — le
-        <b>facteur effectif</b> — combine la face courante (recto/verso) et l'état de ravitaillement :</p>
+      <p>Les chiffres imprimés sur le pion ne sont pas toujours ceux appliqués. La valeur réellement utilisée - le
+        <b>facteur effectif</b> - combine la face courante (recto/verso) et l'état de ravitaillement :</p>
       <ul>
         <li><b>Attaque effective</b> = attaque de la face courante (le ravitaillement ne la modifie pas).</li>
         <li><b>Défense effective</b> = défense de la face courante, <b>divisée par deux</b> (arrondi au supérieur, minimum 1)
@@ -139,7 +139,7 @@
         <li><b>Mouvement effectif</b> = mouvement de la face courante, <b>divisé par deux</b> (arrondi à l'inférieur, minimum 1)
           si l'unité est hors ravitaillement.</li>
       </ul>
-      <p>Une unité coupée de ses arrières se retrouve donc à la fois plus lente et bien plus vulnérable — sans pour autant
+      <p>Une unité coupée de ses arrières se retrouve donc à la fois plus lente et bien plus vulnérable - sans pour autant
         perdre sa capacité à attaquer, ce qui autorise les percées désespérées.</p>
     </section>
 
@@ -148,9 +148,9 @@
       <p>Le tour applique le système <b>IGO-UGO</b> : un camp joue son tour complet, puis l'autre. Chaque camp enchaîne
         deux phases dans l'ordre :</p>
       <ol class="steps">
-        <li><b>Phase de mouvement</b> — le ravitaillement est recalculé (il conditionne les PM), puis toutes les unités du
+        <li><b>Phase de mouvement</b> - le ravitaillement est recalculé (il conditionne les PM), puis toutes les unités du
           camp récupèrent leurs points de mouvement et peuvent se déplacer.</li>
-        <li><b>Phase de combat</b> — les unités adjacentes à l'ennemi peuvent déclencher des assauts.</li>
+        <li><b>Phase de combat</b> - les unités adjacentes à l'ennemi peuvent déclencher des assauts.</li>
       </ol>
       <p>L'ordre complet d'un tour est donc : <em>Bleu mouvement → Bleu combat → Rouge mouvement → Rouge combat</em>.
         Quand les deux camps ont joué, le numéro de tour augmente. La partie s'arrête à la fin du tour <b id="p-turns2"></b>.</p>
@@ -165,7 +165,7 @@
       <p>Règles de déplacement :</p>
       <ul>
         <li>Impossible d'entrer sur un hexe de <b>rivière</b> (infranchissable) ou occupé par une unité <b>ennemie</b>.</li>
-        <li>Un hexe ne peut contenir qu'un nombre limité d'unités du même camp — l'<b>empilement</b> est plafonné à
+        <li>Un hexe ne peut contenir qu'un nombre limité d'unités du même camp - l'<b>empilement</b> est plafonné à
           <b id="p-stack"></b> pions par camp et par hexe.</li>
         <li>Entrer dans une <b>zone de contrôle</b> ennemie stoppe net l'unité (voir §7).</li>
       </ul>
@@ -180,7 +180,7 @@
         <li><b>Elle arrête le mouvement.</b> Une unité qui <em>pénètre</em> dans une ZOC ennemie doit s'y immobiliser :
           l'hexe atteint devient terminal, ses PM restants sont perdus. On peut y entrer, pas la traverser d'un trait.</li>
         <li><b>Elle coupe le ravitaillement.</b> Une ligne d'approvisionnement ne peut pas passer par un hexe sous ZOC
-          ennemie — à moins qu'une unité amie n'occupe cet hexe, ce qui neutralise la ZOC à cet endroit (voir §8).</li>
+          ennemie - à moins qu'une unité amie n'occupe cet hexe, ce qui neutralise la ZOC à cet endroit (voir §8).</li>
         <li><b>Elle interdit le repli.</b> Une unité repoussée après un combat ne peut pas reculer dans une ZOC ennemie.</li>
       </ul>
       <div class="note"><b>Verrouiller un passage.</b> Poster une unité près d'un défilé étend sa ZOC sur les hexes voisins
@@ -199,7 +199,7 @@
       <ul>
         <li>la <b>mer / rivière</b> (infranchissable) ;</li>
         <li>un hexe occupé par une unité <b>ennemie</b> ;</li>
-        <li>un hexe sous <b>ZOC ennemie</b> — sauf si une unité amie s'y trouve, ce qui rétablit le passage.</li>
+        <li>un hexe sous <b>ZOC ennemie</b> - sauf si une unité amie s'y trouve, ce qui rétablit le passage.</li>
       </ul>
       <p>Toute unité posée sur un hexe atteint par cet écoulement est <b>ravitaillée</b>. Les autres sont
         <b>hors ravitaillement</b> et subissent la pénalité de défense et de mouvement décrite au §4. Le ravitaillement est
@@ -213,12 +213,12 @@
         <b>table de résultats des combats</b> (CRT) lue en deux temps : d'abord on détermine une <em>colonne</em>, puis on
         lance un <b>dé à six faces</b> pour lire le résultat dans cette colonne.</p>
 
-      <h3>Étape 1 — le rapport de force (odds)</h3>
+      <h3>Étape 1 - le rapport de force (odds)</h3>
       <p>On additionne l'attaque effective de tous les attaquants et on la compare à la défense effective du défenseur.
         Le rapport est arrondi vers le bas à l'une des colonnes suivantes :</p>
       <p style="text-align:center; color:#cbbf94;" id="odds-line"></p>
 
-      <h3>Étape 2 — les décalages de colonne</h3>
+      <h3>Étape 2 - les décalages de colonne</h3>
       <p>La colonne de départ glisse ensuite selon les circonstances :</p>
       <table>
         <thead><tr><th>Modificateur</th><th>Effet</th></tr></thead>
@@ -230,7 +230,7 @@
       </table>
       <p>La colonne finale est bornée entre <code>1:3</code> et <code>6:1</code>.</p>
 
-      <h3>Étape 3 — le jet de dé</h3>
+      <h3>Étape 3 - le jet de dé</h3>
       <p>On lance le dé (1 à 6) et on lit le résultat à l'intersection de la colonne finale et du dé :</p>
       <table class="crt" id="crt-table">
         <thead><tr><th class="odds">Odds</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr></thead>
@@ -243,16 +243,16 @@
       <h2>10 · Recul &amp; avance après combat</h2>
       <p>Les résultats de la CRT se lisent ainsi :</p>
       <ul>
-        <li><b>DE — Défenseur éliminé</b> : le défenseur encaisse un palier (retourné, ou éliminé s'il l'était déjà).</li>
-        <li><b>DR — Défenseur repoussé</b> : il recule d'un hexe, aussi loin que possible de l'attaquant. S'il ne peut
+        <li><b>DE - Défenseur éliminé</b> : le défenseur encaisse un palier (retourné, ou éliminé s'il l'était déjà).</li>
+        <li><b>DR - Défenseur repoussé</b> : il recule d'un hexe, aussi loin que possible de l'attaquant. S'il ne peut
           reculer nulle part (mer, ennemi, empilement plein, ZOC ennemie), il est éliminé.</li>
-        <li><b>EX — Échange</b> : le défenseur encaisse un palier, et les attaquants perdent des paliers à hauteur de la
+        <li><b>EX - Échange</b> : le défenseur encaisse un palier, et les attaquants perdent des paliers à hauteur de la
           défense encaissée (les pions les plus faibles trinquent d'abord).</li>
-        <li><b>AR — Attaquant repoussé</b> : chaque attaquant recule d'un hexe (ou est éliminé faute de repli).</li>
-        <li><b>AE — Attaquant éliminé</b> : chaque attaquant encaisse un palier.</li>
+        <li><b>AR - Attaquant repoussé</b> : chaque attaquant recule d'un hexe (ou est éliminé faute de repli).</li>
+        <li><b>AE - Attaquant éliminé</b> : chaque attaquant encaisse un palier.</li>
       </ul>
       <p><b>Avance après combat.</b> Si le défenseur est éliminé ou repoussé et que son hexe se retrouve <em>vide</em>,
-        l'attaquant adjacent le plus puissant peut s'y installer — de quoi exploiter une percée et progresser vers un objectif.</p>
+        l'attaquant adjacent le plus puissant peut s'y installer - de quoi exploiter une percée et progresser vers un objectif.</p>
       <div class="note"><b>Reculer, c'est mourir un peu.</b> Une unité acculée à ses propres lignes, à la mer ou à une ZOC
         ennemie n'a nulle part où fuir : un simple « repoussé » l'anéantit. Gardez toujours une case de repli.</div>
     </section>
@@ -261,8 +261,8 @@
       <h2>11 · Objectifs &amp; victoire</h2>
       <p>La victoire se décide de deux façons :</p>
       <ul>
-        <li><b>Anéantissement</b> — dès qu'un camp n'a plus aucune unité en jeu, il perd immédiatement.</li>
-        <li><b>Décompte des objectifs</b> — à la fin du tour <b id="p-turns3"></b>, on compte les <b>villes</b> contrôlées
+        <li><b>Anéantissement</b> - dès qu'un camp n'a plus aucune unité en jeu, il perd immédiatement.</li>
+        <li><b>Décompte des objectifs</b> - à la fin du tour <b id="p-turns3"></b>, on compte les <b>villes</b> contrôlées
           par chaque camp (le contrôle revient au dernier occupant). Le camp qui en tient le plus l'emporte ; en cas
           d'égalité, l'avantage revient au camp Bleu.</li>
       </ul>
@@ -295,7 +295,7 @@
       : tp.supply ? `Source de ravitaillement (portée ${tp.supply})`
       : t === 'road' ? 'Accélère le déplacement, expose le défenseur'
       : tp.def >= 2 ? 'Bon abri défensif'
-      : '—';
+      : '-';
     const tbody = $('terrain-table').querySelector('tbody');
     for (const t of TERRAIN_ORDER) {
       const tp = TERRAIN[t];
@@ -314,7 +314,7 @@
 
     // -- Tableau des unités -------------------------------------------------
     const PROFILE = {
-      armor: 'Frappe fort, rapide, coûteux — fer de lance de la percée.',
+      armor: 'Frappe fort, rapide, coûteux - fer de lance de la percée.',
       mech:  'Polyvalente et mobile, solide en défense comme en attaque.',
       arty:  'Faible au contact mais appuie les assauts voisins à distance.',
       inf:   'Bon marché, tient le terrain, lente.',
