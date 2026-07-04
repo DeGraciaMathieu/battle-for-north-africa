@@ -12,11 +12,9 @@ test('hors ravitaillement, défense et mouvement effectifs sont divisés par deu
   assert.equal(eMov(u), 12);
 });
 
-test('la face réduite (verso) bascule les facteurs sur ratk/rdef', () => {
-  const u = makeUnit({ atk: 8, def: 7, ratk: 5, rdef: 4, reduced: true, supplied: true });
-  assert.equal(eAtk(u), 5);
-  assert.equal(eDef(u), 4);
+test('la face réduite (verso) bascule les facteurs sur ratk/rdef/rmov', () => {
+  const u = makeUnit({ atk: 8, def: 7, mov: 6, ratk: 5, rdef: 4, rmov: 5, reduced: true, supplied: true });
+  assert.deepEqual([eAtk(u), eDef(u), eMov(u)], [5, 4, 5], 'verso : facteurs réduits');
   u.reduced = false;
-  assert.equal(eAtk(u), 8);
-  assert.equal(eDef(u), 7);
+  assert.deepEqual([eAtk(u), eDef(u), eMov(u)], [8, 7, 6], 'recto : facteurs pleine force');
 });

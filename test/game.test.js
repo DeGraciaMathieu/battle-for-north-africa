@@ -69,6 +69,19 @@ test('au dernier tour, le camp avec le plus d\'objectifs l\'emporte', () => {
   assert.match(over.reason, /Fin du tour/);
 });
 
+test('à égalité d\'objectifs au dernier tour, Bleu (axis) l\'emporte', () => {
+  const state = createGame(() => 0);
+  let over = null;
+  state.bus.on('gameOver', (e) => { over = e; });
+  state.objControl.clear();
+  state.objControl.set(state.objectives[0], 'axis'); // 1 objectif chacun → égalité
+  state.objControl.set(state.objectives[1], 'ally');
+  state.G.turn = MAX_TURNS + 1;
+  checkTurnEnd(state);
+  assert.ok(state.G.over);
+  assert.equal(over.side, 'axis', 'égalité (a >= b) → Bleu');
+});
+
 test('hors ravitaillement, startMove réduit les PM de moitié', () => {
   // Unité isolée sur un hex sans source (ni objectif ami, ni bord de carte).
   const terrain = fillTerrain([[5, 5]]);

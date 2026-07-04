@@ -141,3 +141,50 @@ test('hors ravitaillement, la défense réduite fait monter les odds', () => {
   const { col } = resolveCombat(state, [attacker], defender);
   assert.equal(col, '3:1');
 });
+
+test('un résultat AE réduit l\'attaquant', () => {
+  // atk 2 vs def 6 → colonne « 1:3 » ; dé 1 → AE (attaquant éliminé/réduit).
+  const terrain = fillTerrain([[0, 0], [1, 0]]);
+  const attacker = makeUnit({ id: 0, side: 'axis', q: 0, r: 0, atk: 2 });
+  const defender = makeUnit({ id: 1, side: 'ally', q: 1, r: 0, def: 6 });
+  const state = makeState({ terrain, units: [attacker, defender], rng: () => 0 });
+  const { res } = resolveCombat(state, [attacker], defender);
+  assert.equal(res, 'AE');
+  assert.ok(attacker.reduced && state.units.includes(attacker), 'attaquant pleine force → réduit');
+  assert.ok(!defender.reduced, 'défenseur intact');
+});
+
+test('un résultat AR repousse l\'attaquant', () => {
+  // même rapport « 1:3 » ; dé 3 → AR (attaquant repoussé d\'un hexe).
+  const terrain = fillTerrain([[-1, 0], [-1, 1], [0, -1], [0, 0], [0, 1], [1, -1], [1, 0]]);
+  const attacker = makeUnit({ id: 0, side: 'axis', q: 0, r: 0, atk: 2 });
+  const defender = makeUnit({ id: 1, side: 'ally', q: 1, r: 0, def: 6 });
+  const state = makeState({ terrain, units: [attacker, defender], rng: () => 0.4 });
+  const { res } = resolveCombat(state, [attacker], defender);
+  assert.equal(res, 'AR');
+  assert.ok(state.units.includes(attacker), 'attaquant survit');
+  assert.ok(attacker.q !== 0 || attacker.r !== 0, 'attaquant a reculé d\'un hexe');
+});
+
+test('un défenseur cerné de ZOC ennemie ne peut reculer et est éliminé sur DR', () => {
+  // Seule case de repli = (-1,0), mais elle est sous ZOC du bloqueur axis (-2,0).
+  const terrain = fillTerrain([[-2, 0], [-1, 0], [0, 0], [1, 0]]);
+  const attacker = makeUnit({ id: 0, side: 'axis', q: 1, r: 0, atk: 6 });
+  const defender = makeUnit({ id: 1, side: 'ally', q: 0, r: 0, def: 6 });
+  const blocker = makeUnit({ id: 2, side: 'axis', q: -2, r: 0 }); // sa ZOC couvre (-1,0)
+  const state = makeState({ terrain, units: [attacker, defender, blocker], rng: () => 0.5 });
+  const { res } = resolveCombat(state, [attacker], defender); // « 1:1 », dé 4 → DR
+  assert.equal(res, 'DR');
+  assert.ok(!state.units.includes(defender), 'sans repli hors ZOC, le défenseur est éliminé');
+});
+
+test('une artillerie hors ravitaillement n\'appuie pas', () => {
+  const terrain = fillTerrain([[0, 0], [1, 0], [2, 0]]);
+  const attacker = makeUnit({ id: 0, side: 'axis', q: 0, r: 0 });
+  const defender = makeUnit({ id: 1, side: 'ally', q: 1, r: 0 });
+  const arty = makeUnit({ id: 2, side: 'axis', type: 'arty', q: 2, r: 0, supplied: false });
+  const state = makeState({ terrain, units: [attacker, defender, arty] });
+  assert.equal(combatPlan(state, [attacker], defender).arty, 0, 'hors ravito → pas d\'appui');
+  arty.supplied = true;
+  assert.equal(combatPlan(state, [attacker], defender).arty, 1, 'ravitaillée → +1 colonne');
+});

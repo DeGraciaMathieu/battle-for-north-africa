@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { updateSupply, supplyRoutes, supplySources } from '../src/supply.js';
-import { createGame } from '../src/game.js';
+import { createGame, updateObjectives } from '../src/game.js';
 import { TERRAIN, BASES } from '../src/config.js';
 import { offsetToAxial, hexDistance } from '../src/geometry.js';
 import { makeState, fillTerrain, makeUnit } from './helpers.js';
@@ -41,6 +41,19 @@ test('une ville (6) ravitaille plus loin qu\'un village (4)', () => {
   assert.ok(ville.has('6,0'), 'ville : ravitaille jusqu\'à 6 hexes');
   assert.ok(!village.has('5,0'), 'village : ne dépasse pas 4 hexes');
   assert.ok(village.has('4,0'), 'village : ravitaille jusqu\'à 4 hexes');
+});
+
+test('occuper une ville ennemie en prend le contrôle et l\'ajoute aux sources', () => {
+  const terrain = fillTerrain([[0, 0], [1, 0]]);
+  terrain.set('0,0', 'town');
+  const state = makeState({ terrain, units: [], objectives: ['0,0'] });
+  state.objControl.set('0,0', 'ally');                    // ville tenue par Rouge
+  assert.ok(!supplySources(state, 'axis').has('0,0'), 'pas encore une source pour Bleu');
+
+  state.units.push(makeUnit({ id: 0, side: 'axis', q: 0, r: 0 })); // Bleu occupe la ville
+  updateObjectives(state);
+  assert.equal(state.objControl.get('0,0'), 'axis', 'contrôle basculé à Bleu');
+  assert.ok(supplySources(state, 'axis').has('0,0'), 'la ville devient source de ravito pour Bleu');
 });
 
 test('au départ, chaque unité déploie à ≤3 hexes de sa base et est ravitaillée', () => {
