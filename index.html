@@ -126,7 +126,7 @@
       if (/^\d+$/.test(raw)) q.set('seed', raw);
       q.set('b', enc('axis'));
       q.set('r', enc('ally'));
-      location.href = 'game.html?' + q.toString();
+      location.href = 'game?' + q.toString(); // URL propre : évite la redirection de serve qui perd la query
     };
 
     render();

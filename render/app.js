@@ -22,16 +22,16 @@ const PIXI = window.PIXI;
     const seedParam = params.get('seed');
     const seed = seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : Math.floor(Math.random() * 0xffffffff);
     document.getElementById('seedVal').textContent = seed;
-    // Composition des armées (éditeur point-buy) : b/r = comptes par type, dans
-    // l'ordre CATALOG_ORDER. Absente → roster fixe par défaut.
+    // Armées de l'éditeur (accueil) : b/r = comptes par type (ordre CATALOG_ORDER).
+    // Absentes (accès direct) → roster par défaut.
     const parseArmy = (s) => {
-      const parts = (s || '').split('.').map(Number);
+      const parts = s.split('.').map(Number);
       const army = {};
       CATALOG_ORDER.forEach((t, i) => { if (parts[i] > 0) army[t] = parts[i]; });
       return army;
     };
     const b = params.get('b'), r = params.get('r');
-    const composition = b && r ? { axis: parseArmy(b), ally: parseArmy(r) } : null;
+    const composition = b && r ? { axis: parseArmy(b), ally: parseArmy(r) } : undefined;
     const q = new URLSearchParams({ seed: String(seed) });
     if (composition) { q.set('b', b); q.set('r', r); }
     history.replaceState(null, '', `?${q.toString()}`);
@@ -794,9 +794,9 @@ const PIXI = window.PIXI;
     $('bannerBtn').onclick = () => {                                       // nouvelle carte, mêmes armées
       const p = new URLSearchParams(location.search);
       p.delete('seed');
-      location.href = 'game.html' + (p.toString() ? `?${p.toString()}` : '');
+      location.href = 'game' + (p.toString() ? `?${p.toString()}` : '');   // URL propre (garde la query)
     };
-    $('bannerHome').onclick = () => { location.href = 'index.html'; };     // retour à l'accueil
+    $('bannerHome').onclick = () => { location.href = '/'; };              // retour à l'accueil
     $('btnConfirmMove').onclick = confirmMove;
     $('btnSelectMove').onclick = selectPendingUnit;
     $('btnCancelMove').onclick = () => { clearPending(); refresh(); };

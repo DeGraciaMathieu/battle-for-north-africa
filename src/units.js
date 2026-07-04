@@ -62,8 +62,8 @@ function rosterFrom(composition) {
 
 // Instancie les unités de jeu (état mutable par pion). Sans composition, on
 // utilise le roster par défaut ; les pions se déploient à ≤ 3 hexes de leur base.
-export function createUnits(composition = DEFAULT_COMPOSITION) {
-  return rosterFrom(composition).map((u, i) => {
+export function createUnits(composition) {
+  return rosterFrom(composition ?? DEFAULT_COMPOSITION).map((u, i) => {
     const { q, r } = offsetToAxial(u.col, u.row);
     return { id: i, ...u, q, r, mpLeft: u.mov, hasFought: false, reduced: false, supplied: true };
   });
