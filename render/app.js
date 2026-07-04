@@ -54,10 +54,21 @@ const PIXI = window.PIXI;
     world.addChild(mapLayer, decoLayer, overlay, unitLayer);
     app.stage.addChild(world);
 
+    // voisin axial d → arête correspondante de l'hexe flat-top (partagé plus bas).
+    const DIR_TO_EDGE = [0, 5, 4, 3, 2, 1];
+    const UPPER_EDGES = [3, 4, 5], LOWER_EDGES = [0, 1, 2];
+    const strokeEdge = (g, c, e, color, alpha, width) => {
+      const a = e * 2, b = ((e + 1) % 6) * 2;
+      g.moveTo(c[a], c[a + 1]).lineTo(c[b], c[b + 1]).stroke({ width, color, alpha });
+    };
     for (const { q, r } of state.hexes) {
       const { x, y } = axialToPixel(q, r);
       const t = TERRAIN[state.terrain.get(key(q, r))];
-      mapLayer.poly(hexCorners(x, y)).fill(t.fill).stroke({ width: 1, color: t.stroke, alpha: 0.55 });
+      const c = hexCorners(x, y);
+      mapLayer.poly(c).fill(t.fill).stroke({ width: 1, color: t.stroke, alpha: 0.4 });
+      // Relief : arêtes hautes éclairées, arêtes basses ombrées → profondeur.
+      for (const e of UPPER_EDGES) strokeEdge(mapLayer, c, e, 0xffffff, 0.1, 1.5);
+      for (const e of LOWER_EDGES) strokeEdge(mapLayer, c, e, 0x000000, 0.13, 1.5);
     }
     for (const { q, r } of state.hexes) {
       const type = state.terrain.get(key(q, r));
@@ -65,7 +76,38 @@ const PIXI = window.PIXI;
       if (type === 'town') {
         decoLayer.rect(x - 7, y - 7, 14, 14).fill(0x3a2c17).stroke({ width: 1.5, color: 0xe8d29a });
       } else if (type === 'oasis') {
-        decoLayer.circle(x, y, 7).fill(0x2f4a25).stroke({ width: 1.5, color: 0xa8d488 });
+        // bois : petit bosquet de touffes plutôt qu'un seul rond.
+        decoLayer.circle(x - 4, y + 2, 4.5).fill(0x2f4a25).stroke({ width: 1, color: 0x7fb45f });
+        decoLayer.circle(x + 4, y + 2, 4.5).fill(0x2f4a25).stroke({ width: 1, color: 0x7fb45f });
+        decoLayer.circle(x, y - 3, 5).fill(0x365a2c).stroke({ width: 1, color: 0xa8d488 });
+      } else if (type === 'rock') {
+        // coteau : deux bosses.
+        decoLayer.poly([x - 9, y + 4, x - 3, y - 5, x + 3, y + 4]).fill(0x7c7360).stroke({ width: 1, color: 0xc7bfa6 });
+        decoLayer.poly([x + 1, y + 5, x + 6, y - 3, x + 10, y + 5]).fill(0x8b8168).stroke({ width: 1, color: 0xc7bfa6 });
+      } else if (type === 'sea') {
+        // rivière : rides.
+        decoLayer.moveTo(x - 6, y - 3).quadraticCurveTo(x - 3, y - 5, x, y - 3).quadraticCurveTo(x + 3, y - 1, x + 6, y - 3).stroke({ width: 1, color: 0xaed3e2, alpha: 0.5 });
+        decoLayer.moveTo(x - 6, y + 4).quadraticCurveTo(x - 3, y + 2, x, y + 4).quadraticCurveTo(x + 3, y + 6, x + 6, y + 4).stroke({ width: 1, color: 0xaed3e2, alpha: 0.5 });
+      } else if (type === 'road') {
+        // route : trait vers chaque voisin carrossable (route/pont/base) → réseau.
+        let linked = false;
+        for (const [dq, dr] of DIRS) {
+          const nt = state.terrain.get(key(q + dq, r + dr));
+          if (nt === 'road' || nt === 'town' || nt === 'base') {
+            const np = axialToPixel(q + dq, r + dr);
+            decoLayer.moveTo(x, y).lineTo((x + np.x) / 2, (y + np.y) / 2).stroke({ width: 3, color: 0x8a7550 });
+            linked = true;
+          }
+        }
+        if (!linked) decoLayer.circle(x, y, 2.5).fill(0x8a7550);
+      }
+      // Rivage : arête entre eau et terre soulignée d'écume.
+      if (type === 'sea') {
+        const c = hexCorners(x, y);
+        for (let d = 0; d < 6; d++) {
+          const nt = state.terrain.get(key(q + DIRS[d][0], r + DIRS[d][1]));
+          if (nt && nt !== 'sea') strokeEdge(decoLayer, c, DIR_TO_EDGE[d], 0xcde7ef, 0.6, 1.5);
+        }
       }
     }
     // Camps de base : encadré + fanion à la couleur du camp.
@@ -189,9 +231,8 @@ const PIXI = window.PIXI;
       overlay.poly(hexCorners(x, y)).fill({ color, alpha });
     };
     // Trace uniquement le pourtour extérieur d'un ensemble d'hexes : pour chaque
-    // hexe de la zone, on dessine les arêtes qui bordent un hexe hors zone.
-    // DIRS[d] (voisin axial) → arête correspondante de l'hexe flat-top.
-    const DIR_TO_EDGE = [0, 5, 4, 3, 2, 1];
+    // hexe de la zone, on dessine les arêtes qui bordent un hexe hors zone
+    // (DIR_TO_EDGE défini plus haut).
     const drawZoneOutline = (keys, color, width, alpha) => {
       for (const k of keys) {
         const [q, r] = k.split(',').map(Number);
