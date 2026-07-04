@@ -118,6 +118,20 @@ test('le terrain défensif retire une colonne à l\'attaquant', () => {
   assert.equal(col, '1:2');
 });
 
+test('une route n\'offre aucune protection : aucun décalage de colonne défensif', () => {
+  const colOnTerrain = (t) => {
+    const terrain = fillTerrain([[0, 0]]);
+    terrain.set('1,0', t);
+    const attacker = makeUnit({ id: 0, side: 'axis', q: 0, r: 0, atk: 6 });
+    const defender = makeUnit({ id: 1, side: 'ally', type: 'inf', q: 1, r: 0, def: 3 });
+    const state = makeState({ terrain, units: [attacker, defender] });
+    return combatPlan(state, [attacker], defender).col; // atk 6 vs def 3 → base « 2:1 »
+  };
+  assert.equal(colOnTerrain('road'), colOnTerrain('sand'), 'route : identique à la plaine, aucune protection');
+  assert.equal(colOnTerrain('rock'), '1:2', 'coteau : −2 colonnes (protection défensive)');
+  assert.notEqual(colOnTerrain('road'), colOnTerrain('rock'), 'la route ne protège pas comme le coteau');
+});
+
 test('hors ravitaillement, la défense réduite fait monter les odds', () => {
   const terrain = fillTerrain([[0, 0], [1, 0]]);
   const attacker = makeUnit({ id: 0, side: 'axis', q: 0, r: 0, atk: 6 });
