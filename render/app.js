@@ -254,7 +254,8 @@ const PIXI = window.PIXI;
       const side = state.G.player;
       const { supplied, parent } = supplyRoutes(state, side);
       const color = SUP[side];
-      drawZoneOutline(supplied, color, 2.5, 0.9);          // pourtour de la zone ravitaillée
+      for (const k of supplied) fillHex(k, color, 0.16);   // teinte de toute la zone ravitaillée
+      drawZoneOutline(supplied, color, 3, 0.95);           // pourtour renforcé
       for (const k of supplySources(state, side)) {
         if (supplied.has(k)) drawHexOutline(k, 0xe8c85a, 2, 0.7);
       }
@@ -386,7 +387,7 @@ const PIXI = window.PIXI;
     }
 
     // -- Survol : récap de l'hexe après une courte pause ----------------------
-    const HOVER_DELAY = 1500;
+    const HOVER_DELAY = 300;
     let hoverKey = null, hoverTimer = null, hoverPos = null;
     function hideHexTooltip() {
       if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
