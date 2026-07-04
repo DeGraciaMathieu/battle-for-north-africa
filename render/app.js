@@ -206,6 +206,7 @@ const PIXI = window.PIXI;
     // =========================================================================
     let sel = null;               // { unit, reachable, dist, eZOC }  (phase mouvement)
     let pending = null;           // { key, q, r, hasOwn } — déplacement en attente de confirmation
+    let dragOverKey = null;       // hexe survolé pendant un glisser d'unité (drag & drop)
     let pendingCombat = null;     // { atkUnits, defender } — combat en attente de décision
     let showSupply = true;        // overlay de la zone ravitaillée du camp actif
     let showLegend = true;        // panneau de légende (coin bas-droit)
@@ -290,6 +291,7 @@ const PIXI = window.PIXI;
           drawHexOutline(key(sel.unit.q, sel.unit.r), 0xffffff, 3, 0.75);
         }
         if (pending) drawHexOutline(pending.key, 0x8fbf6a, 4, 1); // destination en attente
+        if (sel && dragOverKey && sel.reachable.has(dragOverKey)) drawHexOutline(dragOverKey, 0x8fbf6a, 4, 1); // cible du glisser
       } else {
         // cibles valides = ennemis adjacents à une unité amie non engagée
         const targets = new Set();
@@ -455,24 +457,62 @@ const PIXI = window.PIXI;
       hoverKey = null;
       hideHexTooltip();
       ptr = { sx: e.global.x, sy: e.global.y, wx: world.x, wy: world.y, moved: false };
+      // Saisir une unité amie déplaçable → glisser-déposer (au lieu de paner).
+      if (!state.G.over && state.G.phase === 'move') {
+        const p = world.toLocal(e.global);
+        const { q, r } = pixelToAxial(p.x, p.y);
+        const own = state.terrain.has(key(q, r))
+          ? unitsAt(state.units, q, r).filter((u) => u.side === state.G.player) : [];
+        if (own.length) {
+          clearPending();
+          sel = { unit: own[own.length - 1], ...computeReachable(state, own[own.length - 1]) };
+          ptr.dragUnit = sel.unit;
+          dragOverKey = null;
+          refresh();                                   // reconstruit les pions
+          const c = counters.get(ptr.dragUnit.id);     // le pion saisi passe devant et se soulève
+          if (c) { unitLayer.setChildIndex(c, unitLayer.children.length - 1); c.scale.set(1.15); draw(); }
+        }
+      }
     });
     app.stage.on('pointermove', (e) => {
       handleHover(e);
       if (!ptr) return;
       const dx = e.global.x - ptr.sx, dy = e.global.y - ptr.sy;
       if (!ptr.moved && Math.hypot(dx, dy) > 6) ptr.moved = true;
-      if (ptr.moved) {
+      if (ptr.dragUnit) {                              // glisser une unité : le pion suit le curseur
+        if (!ptr.moved) return;
+        const p = world.toLocal(e.global);
+        const c = counters.get(ptr.dragUnit.id);
+        if (c) c.position.set(p.x, p.y);               // pion au bout de la souris
+        const { q, r } = pixelToAxial(p.x, p.y);
+        const k = key(q, r);
+        if (k !== dragOverKey) { dragOverKey = k; drawOverlay(); }
+        draw();
+      } else if (ptr.moved) {
         world.position.set(ptr.wx + dx, ptr.wy + dy);
         draw();
         if (pending) positionMoveTooltip();
       }
     });
     app.stage.on('pointerup', (e) => {
-      if (ptr && !ptr.moved) handleClick(world.toLocal(e.global));
-      ptr = null;
+      if (ptr && ptr.dragUnit && ptr.moved) {          // lâcher : déplacer si la cible est atteignable
+        const p = world.toLocal(e.global);
+        const { q, r } = pixelToAxial(p.x, p.y);
+        const k = key(q, r);
+        if (sel && sel.reachable.has(k)) {
+          moveUnit(sel.unit, k, sel.dist, sel.eZOC);
+          sel = sel.unit.mpLeft > 0 ? { unit: sel.unit, ...computeReachable(state, sel.unit) } : null;
+        }
+        dragOverKey = null;
+        ptr = null;
+        refresh();
+      } else {
+        if (ptr && !ptr.moved) handleClick(world.toLocal(e.global));
+        ptr = null;
+      }
       hideHexTooltip();
     });
-    app.stage.on('pointerupoutside', () => { ptr = null; });
+    app.stage.on('pointerupoutside', () => { if (ptr) { ptr = null; dragOverKey = null; refresh(); } });
     app.canvas.addEventListener('pointerleave', () => { hoverKey = null; hideHexTooltip(); });
 
     const zoomAt = (m, cx, cy) => {
