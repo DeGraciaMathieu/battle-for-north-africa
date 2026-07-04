@@ -149,8 +149,9 @@ export function generateMap(seed = 1) {
     terrain.set(key(q, r), 'town');
   }
 
-  // 7) Bases (elles priment sur tout) puis villes de terre, espacées et à
-  //    l'écart des bases.
+  // 7) Bases (elles priment sur tout) puis peuplements de terre, espacés et à
+  //    l'écart des bases : chacun est une ville (objectif, portée 6) ou un
+  //    village (relais de ravito seul, portée 4). Les ponts restent des villes.
   const baseKeys = new Set();
   for (const [c, rw] of Object.values(BASES)) {
     const { q, r } = offsetToAxial(c, rw);
@@ -166,7 +167,7 @@ export function generateMap(seed = 1) {
     const { q, r } = offsetToAxial(rint(1, COLS - 2), rint(1, ROWS - 2));
     const k = key(q, r);
     if (!LAND.has(terrain.get(k)) || baseKeys.has(k) || near(q, r)) continue;
-    terrain.set(k, 'town');
+    terrain.set(k, rng() < 0.5 ? 'village' : 'town');
     townKeys.push(k);
     placed++;
   }

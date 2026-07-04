@@ -1,33 +1,37 @@
 // ===========================================================================
 //  Ravitaillement (flood-fill depuis les sources).
 //
-//  Sources d'un camp : son camp de base (hexe `base`, voir BASES) + ses
-//  villes/ports tenus. Le ravitaillement se propage d'hex en hex tant qu'il ne
-//  traverse ni la mer, ni un hex ennemi, ni une ZOC ennemie (sauf sur un hex
-//  occupé par une unité amie, qui annule la ZOC), ET dans la limite de
-//  SUPPLY_RANGE hexes de route depuis la source. Une unité sur un hex atteint
-//  est ravitaillée.
+//  Sources d'un camp : son camp de base (hexe `base`, voir BASES) + ses villes
+//  et villages tenus. Chaque source a sa PROPRE portée (`TERRAIN[t].supply` :
+//  base 8, ville 6, village 4). Le ravitaillement se propage d'hex en hex tant
+//  qu'il ne traverse ni la mer, ni un hex ennemi, ni une ZOC ennemie (sauf sur
+//  un hex occupé par une unité amie, qui annule la ZOC), dans la limite de la
+//  portée de la source. Une unité sur un hex atteint est ravitaillée.
 // ===========================================================================
 
-import { DIRS, TERRAIN, SUPPLY_RANGE, BASES } from './config.js';
+import { DIRS, TERRAIN, BASES } from './config.js';
 import { key, offsetToAxial } from './geometry.js';
 import { other, enemyAt } from './units.js';
 import { zocOf } from './movement.js';
 
 export function supplySources(state, side) {
-  const { terrain, objectives, objControl } = state;
+  const { terrain, objControl } = state;
   const src = new Set();
-  for (const k of objectives) if (objControl.get(k) === side) src.add(k); // ports tenus
-  const [bc, br] = BASES[side];                                            // camp de base
-  const { q, r } = offsetToAxial(bc, br);
+  for (const [k, t] of terrain) {                                          // villes/villages tenus
+    if ((t === 'town' || t === 'village') && objControl.get(k) === side) src.add(k);
+  }
+  const { q, r } = offsetToAxial(...BASES[side]);                          // camp de base
   const k = key(q, r);
   if (terrain.has(k)) src.add(k);
   return src;
 }
 
-// Flood-fill avec suivi du parent (BFS, file FIFO → routes courtes et lisibles).
-// `parent` mappe chaque hex ravitaillé vers l'hex d'où le ravitaillement l'atteint
-// (null pour une source). Remonter les parents trace la route jusqu'à la source.
+// Flood-fill à portée par source : chaque source démarre avec sa portée
+// (`reach`), qui décroît de 1 par hex. On garde par hex la MEILLEURE portée
+// restante (une source lointaine mais généreuse peut l'emporter sur une proche
+// mais courte). `parent` remonte la route jusqu'à la source ; `reach` (portée
+// restante) sert d'indicateur affiché. Une portée 0 est ravitaillée mais ne
+// s'étend plus.
 export function supplyRoutes(state, side) {
   const { units, terrain } = state;
   const eZOC = zocOf(units, other(side), terrain);
@@ -37,32 +41,39 @@ export function supplyRoutes(state, side) {
   const friendly = new Set(units.filter((u) => u.side === side).map((u) => key(u.q, u.r)));
   const blockedZOC = (k) => eZOC.has(k) && !friendly.has(k);
   const parent = new Map();
-  const depth = new Map();                                                 // longueur de route depuis la source
+  const reach = new Map();                                                 // portée restante depuis la source
   const queue = [];
   for (const k of supplySources(state, side)) {
     const [q, r] = k.split(',').map(Number);
     if (enemyAt(units, q, r, side) || blockedZOC(k)) continue;             // source coupée
-    parent.set(k, null);
-    depth.set(k, 0);
-    queue.push([q, r, 0]);
+    const rng = TERRAIN[terrain.get(k)].supply ?? 0;
+    if (rng > (reach.get(k) ?? -1)) {
+      parent.set(k, null);
+      reach.set(k, rng);
+      queue.push([q, r, rng]);
+    }
   }
   let head = 0;
   while (head < queue.length) {
-    const [q, r, d] = queue[head++];
-    if (d >= SUPPLY_RANGE) continue;                                       // limite de portée
+    const [q, r, rc] = queue[head++];
     const ck = key(q, r);
+    if (rc !== reach.get(ck)) continue;                                    // entrée périmée
+    if (rc <= 0) continue;                                                 // plus de portée
     for (const [dq, dr] of DIRS) {
       const nq = q + dq, nr = r + dr, nk = key(nq, nr);
-      if (parent.has(nk) || !terrain.has(nk)) continue;
+      if (!terrain.has(nk)) continue;
       if (!isFinite(TERRAIN[terrain.get(nk)].cost)) continue;             // pas par la mer
       if (enemyAt(units, nq, nr, side)) continue;                          // pas par l'ennemi
       if (blockedZOC(nk)) continue;                                        // la ZOC coupe la route (sauf hex ami)
-      parent.set(nk, ck);
-      depth.set(nk, d + 1);
-      queue.push([nq, nr, d + 1]);
+      const nrc = rc - 1;
+      if (nrc > (reach.get(nk) ?? -1)) {
+        parent.set(nk, ck);
+        reach.set(nk, nrc);
+        queue.push([nq, nr, nrc]);
+      }
     }
   }
-  return { supplied: new Set(parent.keys()), parent, depth };
+  return { supplied: new Set(reach.keys()), parent, reach };
 }
 
 export function suppliedHexes(state, side) {

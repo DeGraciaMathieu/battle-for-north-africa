@@ -59,9 +59,12 @@ function relocateOffWater(state) {
   }
 }
 
-// Met à jour le contrôle des objectifs selon l'occupant courant.
+// Met à jour le contrôle des peuplements (villes ET villages) selon l'occupant.
+// Le contrôle sert au ravitaillement ; la victoire (objCount) ne compte que les
+// villes (state.objectives).
 export function updateObjectives(state) {
-  for (const k of state.objectives) {
+  for (const [k, t] of state.terrain) {
+    if (t !== 'town' && t !== 'village') continue;
     const [q, r] = k.split(',').map(Number);
     const occ = unitsAt(state.units, q, r)[0];
     if (occ) state.objControl.set(k, occ.side);

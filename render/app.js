@@ -4,7 +4,7 @@
 //  s'abonne au bus d'événements ; elle ne contient aucune règle de jeu.
 // ===========================================================================
 
-import { TERRAIN, MAX_TURNS, BASES, SUPPLY_RANGE, CRT, ODDS, DIRS } from '../src/config.js';
+import { TERRAIN, MAX_TURNS, BASES, CRT, ODDS, DIRS } from '../src/config.js';
 import { key, axialToPixel, offsetToAxial, pixelToAxial, hexCorners, hexDistance, clamp } from '../src/geometry.js';
 import { eAtk, eDef, eMov, other, unitsAt, enemyAt, stackCount, isArmor, isFoot } from '../src/units.js';
 import { zocOf, computeReachable, moveUnit } from '../src/movement.js';
@@ -76,6 +76,9 @@ const PIXI = window.PIXI;
       const { x, y } = axialToPixel(q, r);
       if (type === 'town') {
         decoLayer.rect(x - 7, y - 7, 14, 14).fill(0x3a2c17).stroke({ width: 1.5, color: 0xe8d29a });
+      } else if (type === 'village') {
+        // village : marqueur plus petit qu'une ville.
+        decoLayer.rect(x - 4, y - 4, 8, 8).fill(0x4a3c22).stroke({ width: 1.2, color: 0xd8c48a });
       } else if (type === 'oasis') {
         // bois : petit bosquet de touffes plutôt qu'un seul rond.
         decoLayer.circle(x - 4, y + 2, 4.5).fill(0x2f4a25).stroke({ width: 1, color: 0x7fb45f });
@@ -413,10 +416,10 @@ const PIXI = window.PIXI;
       }
       if (isFinite(t.cost)) {
         const side = state.G.player;
-        const { supplied, depth } = supplyRoutes(state, side);
+        const { supplied, reach } = supplyRoutes(state, side);
         const camp = sideLabel(side);
         html += supplied.has(k)
-          ? `<div class="kv"><span>Ravito ${camp}</span><span>portée ${SUPPLY_RANGE - depth.get(k)}</span></div>`
+          ? `<div class="kv"><span>Ravito ${camp}</span><span>portée ${reach.get(k)}</span></div>`
           : `<div class="kv"><span>Ravito ${camp}</span><span style="color:#e08a2a">hors portée</span></div>`;
       }
       const here = unitsAt(state.units, q, r);

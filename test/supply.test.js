@@ -2,26 +2,44 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { updateSupply, supplyRoutes, supplySources } from '../src/supply.js';
 import { createGame } from '../src/game.js';
-import { SUPPLY_RANGE } from '../src/config.js';
+import { TERRAIN } from '../src/config.js';
 import { makeState, fillTerrain, makeUnit } from './helpers.js';
 
-test('au-delà de la portée, une unité est coupée du ravitaillement', () => {
+test('au-delà de la portée d\'une ville (6), une unité est coupée du ravitaillement', () => {
+  const R = TERRAIN.town.supply;                                  // portée d'une ville = 6
   const coords = [];
-  for (let q = 0; q <= SUPPLY_RANGE + 1; q++) coords.push([q, 0]); // corridor rectiligne
+  for (let q = 0; q <= R + 1; q++) coords.push([q, 0]);          // corridor rectiligne
   const terrain = fillTerrain(coords);
   terrain.set('0,0', 'town');
-  const near = makeUnit({ id: 0, side: 'axis', q: SUPPLY_RANGE, r: 0 });     // route = portée max
-  const far = makeUnit({ id: 1, side: 'axis', q: SUPPLY_RANGE + 1, r: 0 });  // un hex au-delà
-  const state = makeState({ terrain, units: [near, far], objectives: ['0,0'] });
+  const near = makeUnit({ id: 0, side: 'axis', q: R, r: 0 });     // route = portée max
+  const far = makeUnit({ id: 1, side: 'axis', q: R + 1, r: 0 });  // un hex au-delà
+  const state = makeState({ terrain, units: [near, far] });
   state.objControl.set('0,0', 'axis');
   updateSupply(state);
   assert.ok(near.supplied, 'à portée = ravitaillée');
   assert.ok(!far.supplied, 'au-delà de la portée = coupée');
 
-  // La profondeur croît avec la distance à la source (base du numéro affiché).
-  const { depth } = supplyRoutes(state, 'axis');
-  assert.equal(depth.get('0,0'), 0, 'source à profondeur 0');
-  assert.equal(depth.get(`${SUPPLY_RANGE},0`), SUPPLY_RANGE, 'hex le plus loin à profondeur max');
+  // La portée restante décroît avec la distance à la source.
+  const { reach } = supplyRoutes(state, 'axis');
+  assert.equal(reach.get('0,0'), R, 'source à portée pleine');
+  assert.equal(reach.get(`${R},0`), 0, 'hex le plus loin à portée restante nulle');
+});
+
+test('une ville (6) ravitaille plus loin qu\'un village (4)', () => {
+  const coords = [];
+  for (let q = 0; q <= 6; q++) coords.push([q, 0]);
+  const build = (type) => {
+    const terrain = fillTerrain(coords);
+    terrain.set('0,0', type);
+    const state = makeState({ terrain, units: [] });
+    state.objControl.set('0,0', 'axis');
+    return supplyRoutes(state, 'axis').supplied;
+  };
+  const ville = build('town');
+  const village = build('village');
+  assert.ok(ville.has('6,0'), 'ville : ravitaille jusqu\'à 6 hexes');
+  assert.ok(!village.has('5,0'), 'village : ne dépasse pas 4 hexes');
+  assert.ok(village.has('4,0'), 'village : ravitaille jusqu\'à 4 hexes');
 });
 
 test('au départ, chaque camp est ravitaillé depuis sa base, mais la portée en laisse hors d\'atteinte', () => {
