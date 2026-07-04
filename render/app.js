@@ -67,8 +67,9 @@ const PIXI = window.PIXI;
       const c = hexCorners(x, y);
       mapLayer.poly(c).fill(t.fill).stroke({ width: 1, color: t.stroke, alpha: 0.4 });
       // Relief : arêtes hautes éclairées, arêtes basses ombrées → profondeur.
-      for (const e of UPPER_EDGES) strokeEdge(mapLayer, c, e, 0xffffff, 0.1, 1.5);
-      for (const e of LOWER_EDGES) strokeEdge(mapLayer, c, e, 0x000000, 0.13, 1.5);
+      // Biseau discret pour ne pas concurrencer les contours de zone.
+      for (const e of UPPER_EDGES) strokeEdge(mapLayer, c, e, 0xffffff, 0.05, 1.5);
+      for (const e of LOWER_EDGES) strokeEdge(mapLayer, c, e, 0x000000, 0.06, 1.5);
     }
     for (const { q, r } of state.hexes) {
       const type = state.terrain.get(key(q, r));
@@ -255,7 +256,9 @@ const PIXI = window.PIXI;
       const side = state.G.player;
       const { supplied, parent } = supplyRoutes(state, side);
       const color = SUP[side];
-      for (const k of supplied) fillHex(k, color, 0.16);   // teinte de toute la zone ravitaillée
+      // Atténué quand on planifie un déplacement, pour laisser la portée dominer.
+      const fillA = state.G.phase === 'move' && sel ? 0.06 : 0.16;
+      for (const k of supplied) fillHex(k, color, fillA);  // teinte de la zone ravitaillée
       drawZoneOutline(supplied, color, 3, 0.95);           // pourtour renforcé
       for (const k of supplySources(state, side)) {
         if (supplied.has(k)) drawHexOutline(k, 0xe8c85a, 2, 0.7);
@@ -287,7 +290,10 @@ const PIXI = window.PIXI;
         }
         drawZoneOutline(zone, 0xcc4433, 2.5, 0.9);
         if (sel) {
-          for (const k of sel.reachable) fillHex(k, 0xe8c85a, 0.22);
+          const terminal = new Set([...sel.reachable].filter((k) => eZOC.has(k))); // ZOC → arrêt forcé
+          for (const k of sel.reachable) fillHex(k, terminal.has(k) ? 0xe0742a : 0xe8c85a, terminal.has(k) ? 0.3 : 0.22);
+          drawZoneOutline(sel.reachable, 0xf0c040, 2.5, 0.85);              // frontière nette de la portée
+          for (const k of terminal) drawHexOutline(k, 0xe0742a, 2.5, 0.95); // liseré « on s'arrête ici »
           drawHexOutline(key(sel.unit.q, sel.unit.r), 0xffffff, 3, 0.75);
         }
         if (pending) drawHexOutline(pending.key, 0x8fbf6a, 4, 1); // destination en attente
