@@ -24,7 +24,7 @@ export const DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
 // (nombre de colonnes retirées à l'attaquant sur la CRT).
 export const TERRAIN = {
   sea:     { name: 'Rivière',      fill: 0x336d94, stroke: 0x1f4c6e, cost: Infinity, def: 0 },
-  coast:   { name: 'Berge',        fill: 0x77aec2, stroke: 0x437a92, cost: 1, def: 0 },
+  coast:   { name: 'Berge',        fill: 0x77aec2, stroke: 0x437a92, cost: 2, def: 0 },
   sand:    { name: 'Plaine',       fill: 0x93b957, stroke: 0x67863a, cost: 1, def: 0 },
   sand2:   { name: 'Plaine',       fill: 0xaacb69, stroke: 0x67863a, cost: 1, def: 0 },
   rock:    { name: 'Coteau',       fill: 0x9a9078, stroke: 0x655d49, cost: 3, def: 2 },
