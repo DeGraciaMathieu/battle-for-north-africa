@@ -261,7 +261,7 @@ const PIXI = window.PIXI;
       for (const k of supplied) fillHex(k, color, fillA);  // teinte de la zone ravitaillée
       drawZoneOutline(supplied, color, 3, 0.95);           // pourtour renforcé
       for (const k of supplySources(state, side)) {
-        if (supplied.has(k)) drawHexOutline(k, 0xe8c85a, 2, 0.7);
+        if (supplied.has(k)) drawHexOutline(k, 0xffffff, 2.5, 0.85); // halo clair = source (distinct de la portée)
       }
       for (const u of state.units) {
         if (u.side !== side || !supplied.has(key(u.q, u.r))) continue;
@@ -291,9 +291,9 @@ const PIXI = window.PIXI;
         drawZoneOutline(zone, 0xcc4433, 2.5, 0.9);
         if (sel) {
           const terminal = new Set([...sel.reachable].filter((k) => eZOC.has(k))); // ZOC → arrêt forcé
-          for (const k of sel.reachable) fillHex(k, terminal.has(k) ? 0xe0742a : 0xe8c85a, terminal.has(k) ? 0.3 : 0.22);
+          for (const k of sel.reachable) fillHex(k, terminal.has(k) ? 0xd23b2b : 0xe8c85a, terminal.has(k) ? 0.3 : 0.22);
           drawZoneOutline(sel.reachable, 0xf0c040, 2.5, 0.85);              // frontière nette de la portée
-          for (const k of terminal) drawHexOutline(k, 0xe0742a, 2.5, 0.95); // liseré « on s'arrête ici »
+          for (const k of terminal) drawHexOutline(k, 0xd23b2b, 2.5, 0.95); // liseré « on s'arrête ici »
           drawHexOutline(key(sel.unit.q, sel.unit.r), 0xffffff, 3, 0.75);
         }
         if (pending) drawHexOutline(pending.key, 0x8fbf6a, 4, 1); // destination en attente
