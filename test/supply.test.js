@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { updateSupply, supplyRoutes, supplySources } from '../src/supply.js';
 import { createGame } from '../src/game.js';
-import { TERRAIN } from '../src/config.js';
+import { TERRAIN, BASES } from '../src/config.js';
+import { offsetToAxial, hexDistance } from '../src/geometry.js';
 import { makeState, fillTerrain, makeUnit } from './helpers.js';
 
 test('au-delà de la portée d\'une ville (6), une unité est coupée du ravitaillement', () => {
@@ -42,12 +43,13 @@ test('une ville (6) ravitaille plus loin qu\'un village (4)', () => {
   assert.ok(village.has('4,0'), 'village : ravitaille jusqu\'à 4 hexes');
 });
 
-test('au départ, chaque camp est ravitaillé depuis sa base, mais la portée en laisse hors d\'atteinte', () => {
+test('au départ, chaque unité déploie à ≤3 hexes de sa base et est ravitaillée', () => {
   const state = createGame(() => 0);
-  for (const side of ['axis', 'ally']) {
-    assert.ok(state.units.some((u) => u.side === side && u.supplied), `${side} : ravitaillé depuis la base`);
+  for (const u of state.units) {
+    const b = offsetToAxial(...BASES[u.side]);
+    assert.ok(hexDistance(b.q, b.r, u.q, u.r) <= 3, `${u.name} à ≤3 hexes de la base`);
+    assert.ok(u.supplied, `${u.name} ravitaillée au départ`);
   }
-  assert.ok(state.units.some((u) => !u.supplied), 'la portée laisse des unités hors ravitaillement');
 });
 
 test('le ravitaillement part du camp de base', () => {

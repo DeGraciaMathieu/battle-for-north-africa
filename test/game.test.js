@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MAX_TURNS } from '../src/config.js';
+import { MAX_TURNS, STACK_MAX } from '../src/config.js';
 import { createGame, endPhase, startMove, checkElimination, checkTurnEnd } from '../src/game.js';
 import { makeState, fillTerrain, makeUnit } from './helpers.js';
 
@@ -29,6 +29,21 @@ test('une composition (point-buy) construit les armées demandées', () => {
   assert.equal(count('axis', 'arty'), 1, 'Bleu : 1 artillerie');
   assert.equal(state.units.filter((u) => u.side === 'ally').length, 5, 'Rouge : 5 pions');
   assert.equal(count('ally', 'inf'), 5, 'Rouge : 5 infanteries');
+});
+
+test('une grande armée se déploie sans dépasser la limite d\'empilement', () => {
+  // Budget max avec l'unité la moins chère : 15 infanteries par camp (45 pts),
+  // à caser dans le rayon de déploiement réduit (≤3 hexes de la base).
+  const big = { axis: { inf: 15 }, ally: { inf: 15 } };
+  const state = createGame(() => 0, 1, big);
+  const perHex = new Map();
+  for (const u of state.units) {
+    const k = `${u.side}:${u.q},${u.r}`;
+    perHex.set(k, (perHex.get(k) || 0) + 1);
+  }
+  for (const [k, n] of perHex) {
+    assert.ok(n <= STACK_MAX, `${k} : ${n} pions au déploiement (> STACK_MAX ${STACK_MAX})`);
+  }
 });
 
 test('l\'anéantissement d\'un camp termine la partie', () => {
