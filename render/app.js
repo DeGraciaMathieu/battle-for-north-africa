@@ -225,8 +225,8 @@ const PIXI = window.PIXI;
     let pending = null;           // { key, q, r, hasOwn } — déplacement en attente de confirmation
     let dragOverKey = null;       // hexe survolé pendant un glisser d'unité (drag & drop)
     let pendingCombat = null;     // { atkUnits, defender } — combat en attente de décision
-    let showSupply = true;        // overlay de la zone ravitaillée du camp actif
-    let showLegend = true;        // panneau de légende (coin bas-droit)
+    let showSupply = false;       // overlay de la zone ravitaillée du camp actif
+    let showLegend = false;       // panneau de légende (coin bas-droit)
     const attackers = new Set();  // ids des unités attaquantes       (phase combat)
     function clearPending() {
       pending = null;
@@ -577,6 +577,7 @@ const PIXI = window.PIXI;
     const legend = document.getElementById('legend');
     const btnLegend = document.getElementById('btnLegend');
     btnLegend.classList.toggle('on', showLegend);
+    legend.style.display = showLegend ? '' : 'none';
     btnLegend.onclick = () => {
       showLegend = !showLegend;
       btnLegend.classList.toggle('on', showLegend);
