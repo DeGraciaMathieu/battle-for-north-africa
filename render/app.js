@@ -632,7 +632,7 @@ const PIXI = window.PIXI;
       const m = [];
       if (p.combined) m.push('combiné +1');
       if (p.arty) m.push(`artillerie +${p.arty}`);
-      if (p.terr) m.push(`terrain −${p.terr}`);
+      if (p.terr) m.push(p.terr > 0 ? `terrain −${p.terr}` : `terrain +${-p.terr}`); // <0 = malus attaquant
       return m.length ? m.join(', ') : 'aucun';
     };
     // Version visuelle du calcul (aperçu, avant décision) : duel Attaque/Défense.

@@ -159,7 +159,7 @@ export function resolveCombat(state, attackers, defender) {
   const mods = [];
   if (combined) mods.push('combiné +1');
   if (arty) mods.push(`artillerie +${arty}`);
-  if (terr) mods.push(`terrain −${terr}`);
+  if (terr) mods.push(terr > 0 ? `terrain −${terr}` : `terrain +${-terr}`); // <0 = malus → +colonnes attaquant
   const modStr = mods.length ? ` (${mods.join(', ')})` : '';
   bus.emit('log', `<b>${col}</b>${modStr}, dé ${die} → ${RESULT_FR[res]}`);
   bus.emit('combatResolved', summary);

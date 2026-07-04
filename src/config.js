@@ -30,7 +30,7 @@ export const TERRAIN = {
   rock:  { name: 'Coteau',       fill: 0x9a9078, stroke: 0x655d49, cost: 3, def: 2 },
   town:  { name: 'Ville/pont',   fill: 0xbaa971, stroke: 0x7a6a3f, cost: 1, def: 2 },
   oasis: { name: 'Bois',         fill: 0x468236, stroke: 0x2c5622, cost: 2, def: 1 },
-  road:  { name: 'Route',        fill: 0xc2ab7a, stroke: 0x8a7550, cost: 0.5, def: 0 },
+  road:  { name: 'Route',        fill: 0xc2ab7a, stroke: 0x8a7550, cost: 0.5, def: -1 },
   base:  { name: 'Camp de base', fill: 0x5c7649, stroke: 0x33422a, cost: 1, def: 0 },
 };
 
