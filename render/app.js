@@ -425,8 +425,13 @@ const PIXI = window.PIXI;
         for (const u of here) {
           const camp = sideLabel(u.side);
           html += `<div class="kv"><span>${u.fullName} <span class="sub">(${camp})</span></span>`
-            + `<span>${eAtk(u)}-${eDef(u)}-${eMov(u)}${u.reduced ? ' <span style="color:#d16a55">réd.</span>' : ''}`
-            + `${u.supplied ? '' : ' <span style="color:#e08a2a">✗rav</span>'}</span></div>`;
+            + `<span>${eAtk(u)}-${eDef(u)}-${eMov(u)}${u.reduced ? ' <span style="color:#d16a55">réd.</span>' : ''}</span></div>`;
+        }
+        if (here.length > 1) {
+          const tAtk = here.reduce((s, u) => s + eAtk(u), 0);
+          const tDef = here.reduce((s, u) => s + eDef(u), 0);
+          html += `<div class="kv" style="margin-top:2px;border-top:1px solid #48412c;padding-top:2px">`
+            + `<span><b>Total (${here.length} pions)</b></span><span><b>${tAtk} atk · ${tDef} déf</b></span></div>`;
         }
       }
       return html;
