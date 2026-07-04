@@ -19,12 +19,20 @@ export const raw = [
   { side: 'axis', type: 'armor', ech: 'XX', name: 'BLD-3', fullName: 'Blindés 3',    atk: 6, def: 5, mov: 5, ratk: 3, rdef: 3, rmov: 4, col: 8,  row: 17 },
   { side: 'axis', type: 'moto',  ech: 'XX', name: 'MOT-1', fullName: 'Motorisée 1',  atk: 4, def: 5, mov: 5, ratk: 2, rdef: 3, rmov: 4, col: 11, row: 17 },
   { side: 'axis', type: 'arty',  ech: 'X',  name: 'ART-1', fullName: 'Artillerie 1', atk: 2, def: 3, mov: 3, ratk: 1, rdef: 2, rmov: 3, col: 7,  row: 15 },
+  { side: 'axis', type: 'armor', ech: 'XX', name: 'BLD-4', fullName: 'Blindés 4',    atk: 7, def: 6, mov: 6, ratk: 4, rdef: 4, rmov: 5, col: 7,  row: 13 },
+  { side: 'axis', type: 'mech',  ech: 'XX', name: 'MEC-2', fullName: 'Mécanisée 2',  atk: 6, def: 6, mov: 5, ratk: 4, rdef: 4, rmov: 4, col: 12, row: 15 },
+  { side: 'axis', type: 'moto',  ech: 'XX', name: 'MOT-2', fullName: 'Motorisée 2',  atk: 4, def: 5, mov: 5, ratk: 2, rdef: 3, rmov: 4, col: 9,  row: 18 },
+  { side: 'axis', type: 'arty',  ech: 'X',  name: 'ART-2', fullName: 'Artillerie 2', atk: 2, def: 3, mov: 3, ratk: 1, rdef: 2, rmov: 3, col: 6,  row: 16 },
   { side: 'ally', type: 'armor', ech: 'XX', name: 'BLD-1', fullName: 'Blindés 1',    atk: 7, def: 7, mov: 6, ratk: 4, rdef: 4, rmov: 5, col: 22, row: 3 },
   { side: 'ally', type: 'armor', ech: 'XX', name: 'BLD-2', fullName: 'Blindés 2',    atk: 6, def: 6, mov: 6, ratk: 4, rdef: 4, rmov: 5, col: 22, row: 5 },
   { side: 'ally', type: 'inf',   ech: 'XX', name: 'INF-1', fullName: 'Infanterie 1', atk: 6, def: 6, mov: 4, ratk: 4, rdef: 4, rmov: 3, col: 20, row: 2 },
   { side: 'ally', type: 'inf',   ech: 'XX', name: 'INF-2', fullName: 'Infanterie 2', atk: 5, def: 6, mov: 3, ratk: 3, rdef: 4, rmov: 3, col: 20, row: 6 },
   { side: 'ally', type: 'inf',   ech: 'XX', name: 'INF-3', fullName: 'Infanterie 3', atk: 5, def: 6, mov: 3, ratk: 3, rdef: 4, rmov: 3, col: 24, row: 6 },
   { side: 'ally', type: 'arty',  ech: 'X',  name: 'ART-1', fullName: 'Artillerie 1', atk: 2, def: 3, mov: 3, ratk: 1, rdef: 2, rmov: 3, col: 25, row: 4 },
+  { side: 'ally', type: 'armor', ech: 'XX', name: 'BLD-3', fullName: 'Blindés 3',    atk: 6, def: 6, mov: 6, ratk: 4, rdef: 4, rmov: 5, col: 24, row: 3 },
+  { side: 'ally', type: 'inf',   ech: 'XX', name: 'INF-4', fullName: 'Infanterie 4', atk: 5, def: 6, mov: 3, ratk: 3, rdef: 4, rmov: 3, col: 26, row: 5 },
+  { side: 'ally', type: 'inf',   ech: 'XX', name: 'INF-5', fullName: 'Infanterie 5', atk: 6, def: 6, mov: 4, ratk: 4, rdef: 4, rmov: 3, col: 22, row: 7 },
+  { side: 'ally', type: 'arty',  ech: 'X',  name: 'ART-2', fullName: 'Artillerie 2', atk: 2, def: 3, mov: 3, ratk: 1, rdef: 2, rmov: 3, col: 27, row: 6 },
 ];
 
 // Instancie les unités de jeu depuis le roster (état mutable par pion).
