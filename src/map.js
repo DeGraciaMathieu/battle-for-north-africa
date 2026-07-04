@@ -170,7 +170,7 @@ export function generateMap(seed = 1) {
     }
   };
   stamp('oasis', rint(4, 9), 4, 14); // bois
-  stamp('rock', rint(3, 7), 3, 11);  // coteaux
+  stamp('rock', rint(6, 11), 2, 5);  // coteaux
   stamp('sea', rint(1, 4), 2, 6);    // étangs
 
   // 4) Berges : toute plaine bordant l'eau devient une berge.
