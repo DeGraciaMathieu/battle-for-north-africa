@@ -8,7 +8,7 @@
 // ===========================================================================
 
 import { COLS, ROWS, BASES, DIRS, TERRAIN } from './config.js';
-import { key, offsetToAxial, clamp } from './geometry.js';
+import { key, offsetToAxial, clamp, axialRound, hexDistance } from './geometry.js';
 
 // PRNG déterministe seedé : même seed → même suite de nombres [0, 1).
 function mulberry32(seed) {
@@ -129,19 +129,7 @@ export function generateMap(seed = 1) {
     }
   }
 
-  // 5) Routes traversantes : quelques axes rapides posés sur la terre ferme
-  //    (interrompus par l'eau, franchie ensuite aux ponts). Elles ne recouvrent
-  //    que la terre ; ponts, bases et villes priment (posés après).
-  for (let i = 0, n = rint(1, 3); i < n; i++) {
-    const build = rint(0, 2);
-    const cells = build === 0 ? buildHorizontal() : build === 1 ? buildVertical() : buildDiagonal();
-    for (const [c, rw] of cells) {
-      const { q, r } = offsetToAxial(c, rw);
-      if (LAND.has(terrain.get(key(q, r)))) terrain.set(key(q, r), 'road');
-    }
-  }
-
-  // 6) Ponts sur le cours d'eau principal, répartis le long du tracé.
+  // 5) Ponts sur le cours d'eau principal, répartis le long du tracé.
   const nBridges = rint(3, 5);
   for (let i = 1; i <= nBridges; i++) {
     const [c, rw] = path[Math.floor((path.length * i) / (nBridges + 1))];
@@ -149,7 +137,7 @@ export function generateMap(seed = 1) {
     terrain.set(key(q, r), 'town');
   }
 
-  // 7) Bases (elles priment sur tout) puis peuplements de terre, espacés et à
+  // 6) Bases (elles priment sur tout) puis peuplements de terre, espacés et à
   //    l'écart des bases : chacun est une ville (objectif, portée 6) ou un
   //    village (relais de ravito seul, portée 4). Les ponts restent des villes.
   const baseKeys = new Set();
@@ -167,12 +155,14 @@ export function generateMap(seed = 1) {
     const { q, r } = offsetToAxial(rint(1, COLS - 2), rint(1, ROWS - 2));
     const k = key(q, r);
     if (!LAND.has(terrain.get(k)) || baseKeys.has(k) || near(q, r)) continue;
+    // Jamais un îlot : au moins un voisin terrestre (accès par la terre garanti).
+    if (!DIRS.some(([dq, dr]) => LAND.has(terrain.get(key(q + dq, r + dr))))) continue;
     terrain.set(k, rng() < 0.5 ? 'village' : 'town');
     townKeys.push(k);
     placed++;
   }
 
-  // 8) Jouabilité : tant que les deux bases ne sont pas reliées par voie
+  // 7) Jouabilité : tant que les deux bases ne sont pas reliées par voie
   //    terrestre, on transforme un hex d'eau frontalier en pont.
   const passable = (k) => { const t = terrain.get(k); return t && TERRAIN[t].cost !== Infinity; };
   const baseKey = (side) => { const { q, r } = offsetToAxial(...BASES[side]); return key(q, r); };
@@ -197,6 +187,37 @@ export function generateMap(seed = 1) {
     }
     if (!bridge) break;
     terrain.set(bridge, 'town');
+  }
+
+  // 8) Réseau routier : relie villes, villages et bases par un arbre couvrant
+  //    minimal (arêtes les plus courtes). Chaque arête est tracée en ligne
+  //    d'hexes ; la route franchit tout (berge, rivière comprises) sauf les
+  //    peuplements et les bases → ruban continu, crossings de rivière inclus.
+  const nodes = [];
+  for (const [k, t] of terrain) {
+    if (t === 'town' || t === 'village' || t === 'base') {
+      const [q, r] = k.split(',').map(Number);
+      nodes.push({ q, r });
+    }
+  }
+  const inTree = new Set([0]);
+  while (nodes.length > 1 && inTree.size < nodes.length) {
+    let best = null;
+    for (const i of inTree) {
+      for (let j = 0; j < nodes.length; j++) {
+        if (inTree.has(j)) continue;
+        const d = hexDistance(nodes[i].q, nodes[i].r, nodes[j].q, nodes[j].r);
+        if (!best || d < best.d) best = { i, j, d };
+      }
+    }
+    inTree.add(best.j);
+    const a = nodes[best.i], b = nodes[best.j];
+    for (let s = 1; s < best.d; s++) {                       // hexes intermédiaires (hors extrémités)
+      const t = s / best.d;
+      const { q, r } = axialRound(a.q + (b.q - a.q) * t, a.r + (b.r - a.r) * t);
+      const cur = terrain.get(key(q, r));                    // franchit berge/rivière, épargne peuplements/bases
+      if (cur && cur !== 'town' && cur !== 'village' && cur !== 'base') terrain.set(key(q, r), 'road');
+    }
   }
 
   const objectives = [...terrain.entries()]

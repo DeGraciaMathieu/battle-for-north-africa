@@ -36,6 +36,22 @@ test('quelle que soit la seed : au moins 4 objectifs et les deux bases sont reli
   }
 });
 
+test('quelle que soit la seed : aucun peuplement n\'est entouré d\'eau', () => {
+  const WATER = new Set(['sea', 'coast']);
+  for (const seed of SEEDS) {
+    const { terrain } = generateMap(seed);
+    for (const [k, t] of terrain) {
+      if (t !== 'town' && t !== 'village') continue;
+      const [q, r] = k.split(',').map(Number);
+      const dry = DIRS.some(([dq, dr]) => {
+        const nt = terrain.get(key(q + dq, r + dr));
+        return nt && !WATER.has(nt);           // voisin terre / route / peuplement
+      });
+      assert.ok(dry, `seed ${seed} : peuplement ${k} entouré d'eau`);
+    }
+  }
+});
+
 test('quelle que soit la seed : aucune unité ne démarre sur un hex infranchissable', () => {
   for (const seed of SEEDS) {
     const state = createGame(() => 0, seed);
