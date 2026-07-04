@@ -130,7 +130,7 @@ export function generateMap(seed = 1) {
   }
 
   // 5) Ponts sur le cours d'eau principal, répartis le long du tracé.
-  const nBridges = rint(3, 5);
+  const nBridges = rint(2, 3);
   for (let i = 1; i <= nBridges; i++) {
     const [c, rw] = path[Math.floor((path.length * i) / (nBridges + 1))];
     const { q, r } = offsetToAxial(c, rw);
@@ -151,13 +151,13 @@ export function generateMap(seed = 1) {
     const [tq, tr] = k.split(',').map(Number);
     return (Math.abs(tq - q) + Math.abs(tq + tr - q - r) + Math.abs(tr - r)) / 2 < 3;
   });
-  for (let placed = 0, tries = 0; placed < rint(4, 5) && tries < 500; tries++) {
+  for (let placed = 0, tries = 0; placed < rint(6, 8) && tries < 800; tries++) {
     const { q, r } = offsetToAxial(rint(1, COLS - 2), rint(1, ROWS - 2));
     const k = key(q, r);
     if (!LAND.has(terrain.get(k)) || baseKeys.has(k) || near(q, r)) continue;
     // Jamais un îlot : au moins un voisin terrestre (accès par la terre garanti).
     if (!DIRS.some(([dq, dr]) => LAND.has(terrain.get(key(q + dq, r + dr))))) continue;
-    terrain.set(k, rng() < 0.5 ? 'village' : 'town');
+    terrain.set(k, rng() < 0.85 ? 'village' : 'town'); // grande majorité de villages sur les terres
     townKeys.push(k);
     placed++;
   }
@@ -218,6 +218,14 @@ export function generateMap(seed = 1) {
       const cur = terrain.get(key(q, r));                    // franchit berge/rivière, épargne peuplements/bases
       if (cur && cur !== 'town' && cur !== 'village' && cur !== 'base') terrain.set(key(q, r), 'road');
     }
+  }
+
+  // Plancher d'objectifs : garantir au moins 3 villes (on promeut des villages
+  // si les tirages en ont laissé trop peu).
+  let villes = [...terrain.values()].filter((t) => t === 'town').length;
+  for (const [k, t] of terrain) {
+    if (villes >= 3) break;
+    if (t === 'village') { terrain.set(k, 'town'); villes++; }
   }
 
   const objectives = [...terrain.entries()]
