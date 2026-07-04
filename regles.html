@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Battle for North Africa — Règles</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: #14110c;
+    font-family: "Courier New", ui-monospace, monospace; color: #d9cca0; line-height: 1.6; }
+  body { display: flex; flex-direction: column; align-items: center; padding: 24px 16px 80px; }
+  .wrap { width: 100%; max-width: 820px; }
+  h1 { margin: 0; color: #e8b95a; letter-spacing: 2px; text-transform: uppercase; font-size: 24px; text-align: center; }
+  .tag { color: #9a9070; font-size: 12px; margin: 6px 0 28px; letter-spacing: .5px; text-align: center; }
+  .tag b { color: #efe4bc; }
+  nav.toc { background: rgba(26,24,18,.92); border: 1px solid #5a5238; border-radius: 6px; padding: 14px 18px; margin-bottom: 30px; }
+  nav.toc h2 { margin: 0 0 8px; font-size: 12px; color: #9a9070; letter-spacing: 1px; text-transform: uppercase; }
+  nav.toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 24px; }
+  nav.toc li { padding: 2px 0; }
+  nav.toc a { color: #cbbf94; text-decoration: none; }
+  nav.toc a:hover { color: #e8b95a; text-decoration: underline; }
+  section { background: rgba(26,24,18,.72); border: 1px solid #40392790; border-left: 3px solid #6d5f38;
+    border-radius: 6px; padding: 4px 22px 18px; margin-bottom: 22px; }
+  h2 { color: #e8b95a; font-size: 17px; letter-spacing: 1px; border-bottom: 1px solid #48412c; padding-bottom: 8px; margin: 20px 0 12px; }
+  h3 { color: #efe4bc; font-size: 14px; letter-spacing: .5px; margin: 20px 0 6px; }
+  p { margin: 10px 0; font-size: 13.5px; }
+  b { color: #efe4bc; }
+  em { color: #e8b95a; font-style: normal; }
+  ul, ol.steps { font-size: 13.5px; margin: 10px 0; padding-left: 22px; }
+  li { margin: 5px 0; }
+  code { background: #211d14; color: #e0cd94; padding: 1px 6px; border-radius: 3px; font-size: 12.5px; border: 1px solid #3a3323; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 12.5px; }
+  th, td { text-align: left; padding: 6px 9px; border-bottom: 1px solid #322c1e; }
+  th { color: #9a9070; text-transform: uppercase; letter-spacing: .6px; font-size: 11px; font-weight: 400; }
+  td b { color: #efe4bc; }
+  tr:hover td { background: rgba(232,185,90,.04); }
+  .num { text-align: center; font-variant-numeric: tabular-nums; }
+  .crt td, .crt th { text-align: center; }
+  .crt .odds { color: #e8b95a; font-weight: 700; text-align: left; }
+  .r-AE, .r-AR { color: #e0968f; }
+  .r-EX { color: #d9cca0; }
+  .r-DR, .r-DE { color: #8fb0d8; }
+  .swatch { display: inline-block; width: 13px; height: 13px; border-radius: 3px; vertical-align: -1px; margin-right: 7px; border: 1px solid #00000060; }
+  .note { background: #201d13; border: 1px solid #4a4229; border-radius: 5px; padding: 10px 14px; margin: 14px 0; font-size: 12.5px; color: #c4b98f; }
+  .note b { color: #e8b95a; }
+  .legend { font-size: 12px; color: #9a9070; margin-top: 8px; }
+  .legend span { margin-right: 14px; white-space: nowrap; }
+  .back { display: inline-block; margin-bottom: 18px; color: #9a9070; text-decoration: none; font-size: 12px; letter-spacing: .5px; }
+  .back:hover { color: #e8b95a; }
+  .cta { text-align: center; margin-top: 34px; }
+  .cta a { display: inline-block; padding: 12px 30px; font-size: 15px; letter-spacing: 1px; font-weight: 700;
+    background: #3a3323; color: #e8b95a; border: 1px solid #6d5f38; border-radius: 4px; text-decoration: none; }
+  .cta a:hover { background: #4a4029; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="index.html">◂ Retour à la composition des armées</a>
+    <h1>Battle for North Africa</h1>
+    <div class="tag">Manuel de règles — wargame hexagonal opérationnel · deux camps, <b>Bleu</b> et <b>Rouge</b></div>
+
+    <nav class="toc">
+      <h2>Sommaire</h2>
+      <ol>
+        <li><a href="#apercu">Vue d'ensemble</a></li>
+        <li><a href="#carte">La carte &amp; le terrain</a></li>
+        <li><a href="#unites">Les unités</a></li>
+        <li><a href="#facteurs">Facteurs effectifs</a></li>
+        <li><a href="#sequence">La séquence de jeu</a></li>
+        <li><a href="#mouvement">Le mouvement</a></li>
+        <li><a href="#zoc">Zones de contrôle</a></li>
+        <li><a href="#ravito">Le ravitaillement</a></li>
+        <li><a href="#combat">Le combat (CRT)</a></li>
+        <li><a href="#recul">Recul &amp; avance</a></li>
+        <li><a href="#victoire">Objectifs &amp; victoire</a></li>
+      </ol>
+    </nav>
+
+    <section id="apercu">
+      <h2>1 · Vue d'ensemble</h2>
+      <p><b>Battle for North Africa</b> est un wargame au tour par tour opposant deux armées sur une carte hexagonale
+        du désert nord-africain. Chacun commande une poignée de divisions — blindés, mécanisés, infanterie, artillerie —
+        et cherche à contrôler les <em>villes</em> stratégiques tout en évitant que ses lignes de ravitaillement ne soient coupées.</p>
+      <p>Le jeu se déroule en <b id="p-turns"></b> tours. À chaque tour, les deux camps jouent l'un après l'autre
+        (système <em>IGO-UGO</em> : « je joue, tu joues »). Quand le dernier tour s'achève, on compte les villes tenues : le
+        camp qui en contrôle le plus l'emporte. Un camp entièrement anéanti perd immédiatement.</p>
+      <div class="note"><b>L'idée maîtresse.</b> Une unité n'est dangereuse et solide que si elle est <em>ravitaillée</em>.
+        Couper la ligne d'approvisionnement de l'adversaire — en manœuvrant derrière ses lignes ou en verrouillant un défilé —
+        vaut souvent mieux qu'un assaut frontal.</div>
+    </section>
+
+    <section id="carte">
+      <h2>2 · La carte &amp; le terrain</h2>
+      <p>La carte est une grille d'<b>hexagones</b>. Chaque hexe possède un type de terrain qui définit deux choses :
+        son <b>coût de mouvement</b> (combien de points de mouvement il faut dépenser pour y entrer) et son
+        <b>décalage défensif</b> (l'avantage qu'il donne au défenseur lors d'un combat, exprimé en colonnes retirées à l'attaquant).</p>
+      <table id="terrain-table">
+        <thead><tr><th>Terrain</th><th class="num">Coût (PM)</th><th class="num">Défense</th><th>Rôle particulier</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="legend" id="terrain-legend"></div>
+      <p>Un coût de <code>0.5</code> (route) permet d'aller plus vite ; un décalage défensif <b>négatif</b> (route) <em>désavantage</em> le
+        défenseur. La <em>rivière</em> est infranchissable : aucune unité ne peut y entrer. Les <em>villes</em> et <em>villages</em>,
+        en plus de protéger le défenseur, sont des <b>sources de ravitaillement</b> une fois occupés (voir §8).</p>
+    </section>
+
+    <section id="unites">
+      <h2>3 · Les unités</h2>
+      <p>Chaque pion est décrit par trois facteurs, notés <code>attaque-défense-mouvement</code> :</p>
+      <ul>
+        <li><b>Attaque</b> — la puissance offensive apportée à un assaut.</li>
+        <li><b>Défense</b> — la résistance opposée quand l'unité est attaquée.</li>
+        <li><b>Mouvement</b> — le nombre de <em>points de mouvement</em> (PM) disponibles par tour.</li>
+      </ul>
+      <p>Un pion a deux faces. Le <b>recto</b> (pleine puissance) et le <b>verso</b> (face <em>réduite</em>, affaiblie).
+        Lorsqu'une unité subit une perte, elle est d'abord <b>retournée</b> sur sa face réduite ; une seconde perte l'<b>élimine</b>.
+        Une division encaisse donc toujours un palier avant de disparaître.</p>
+      <table id="unit-table">
+        <thead><tr>
+          <th>Unité</th><th class="num">Coût</th>
+          <th class="num">Recto (A-D-M)</th><th class="num">Verso (A-D-M)</th><th>Profil</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      <p>Avant la partie, chaque camp compose son armée en dépensant un budget de <b id="p-points"></b> points
+        (voir l'écran d'accueil). Un blindé coûte cher mais frappe fort et loin ; l'infanterie est bon marché et tient le terrain.</p>
+      <div class="note"><b>Armes combinées.</b> Un blindé et une unité « à pied » (infanterie, mécanisée, motorisée)
+        attaquant <em>ensemble</em> le même hexe débloquent un bonus de combat (voir §9).</div>
+    </section>
+
+    <section id="facteurs">
+      <h2>4 · Facteurs effectifs</h2>
+      <p>Les chiffres imprimés sur le pion ne sont pas toujours ceux appliqués. La valeur réellement utilisée — le
+        <b>facteur effectif</b> — combine la face courante (recto/verso) et l'état de ravitaillement :</p>
+      <ul>
+        <li><b>Attaque effective</b> = attaque de la face courante (le ravitaillement ne la modifie pas).</li>
+        <li><b>Défense effective</b> = défense de la face courante, <b>divisée par deux</b> (arrondi au supérieur, minimum 1)
+          si l'unité est <em>hors ravitaillement</em>.</li>
+        <li><b>Mouvement effectif</b> = mouvement de la face courante, <b>divisé par deux</b> (arrondi à l'inférieur, minimum 1)
+          si l'unité est hors ravitaillement.</li>
+      </ul>
+      <p>Une unité coupée de ses arrières se retrouve donc à la fois plus lente et bien plus vulnérable — sans pour autant
+        perdre sa capacité à attaquer, ce qui autorise les percées désespérées.</p>
+    </section>
+
+    <section id="sequence">
+      <h2>5 · La séquence de jeu</h2>
+      <p>Le tour applique le système <b>IGO-UGO</b> : un camp joue son tour complet, puis l'autre. Chaque camp enchaîne
+        deux phases dans l'ordre :</p>
+      <ol class="steps">
+        <li><b>Phase de mouvement</b> — le ravitaillement est recalculé (il conditionne les PM), puis toutes les unités du
+          camp récupèrent leurs points de mouvement et peuvent se déplacer.</li>
+        <li><b>Phase de combat</b> — les unités adjacentes à l'ennemi peuvent déclencher des assauts.</li>
+      </ol>
+      <p>L'ordre complet d'un tour est donc : <em>Bleu mouvement → Bleu combat → Rouge mouvement → Rouge combat</em>.
+        Quand les deux camps ont joué, le numéro de tour augmente. La partie s'arrête à la fin du tour <b id="p-turns2"></b>.</p>
+    </section>
+
+    <section id="mouvement">
+      <h2>6 · Le mouvement</h2>
+      <p>Pendant sa phase, une unité dépense ses <b>points de mouvement</b> (PM) pour se déplacer d'hexe en hexe.
+        Entrer dans un hexe coûte le montant indiqué par son terrain (§2). Le calcul cherche toujours le chemin le
+        <em>moins coûteux</em> : emprunter une route (coût <code>0.5</code>) permet d'aller loin, franchir un coteau (coût
+        <code>3</code>) épuise vite la réserve.</p>
+      <p>Règles de déplacement :</p>
+      <ul>
+        <li>Impossible d'entrer sur un hexe de <b>rivière</b> (infranchissable) ou occupé par une unité <b>ennemie</b>.</li>
+        <li>Un hexe ne peut contenir qu'un nombre limité d'unités du même camp — l'<b>empilement</b> est plafonné à
+          <b id="p-stack"></b> pions par camp et par hexe.</li>
+        <li>Entrer dans une <b>zone de contrôle</b> ennemie stoppe net l'unité (voir §7).</li>
+      </ul>
+    </section>
+
+    <section id="zoc">
+      <h2>7 · Zones de contrôle (ZOC)</h2>
+      <p>Toute unité projette une <b>zone de contrôle</b> sur les <b>6 hexes</b> qui l'entourent. Cette zone matérialise
+        l'emprise tactique de la division sur son voisinage immédiat.</p>
+      <p>Effets d'une ZOC ennemie :</p>
+      <ul>
+        <li><b>Elle arrête le mouvement.</b> Une unité qui <em>pénètre</em> dans une ZOC ennemie doit s'y immobiliser :
+          l'hexe atteint devient terminal, ses PM restants sont perdus. On peut y entrer, pas la traverser d'un trait.</li>
+        <li><b>Elle coupe le ravitaillement.</b> Une ligne d'approvisionnement ne peut pas passer par un hexe sous ZOC
+          ennemie — à moins qu'une unité amie n'occupe cet hexe, ce qui neutralise la ZOC à cet endroit (voir §8).</li>
+        <li><b>Elle interdit le repli.</b> Une unité repoussée après un combat ne peut pas reculer dans une ZOC ennemie.</li>
+      </ul>
+      <div class="note"><b>Verrouiller un passage.</b> Poster une unité près d'un défilé étend sa ZOC sur les hexes voisins
+        et peut, à elle seule, bloquer une avance ou étrangler une route de ravitaillement.</div>
+    </section>
+
+    <section id="ravito">
+      <h2>8 · Le ravitaillement</h2>
+      <p>Le ravitaillement se propage depuis des <b>sources</b> par un « écoulement » d'hexe en hexe (flood-fill). Les sources d'un camp sont :</p>
+      <ul>
+        <li>son <b>camp de base</b> (portée <b id="p-supply"></b> hexes) ;</li>
+        <li>chaque <b>ville</b> (portée 6) et <b>village</b> (portée 4) qu'il <em>tient</em>.</li>
+      </ul>
+      <p>Depuis chaque source, le ravitaillement se répand en perdant 1 de portée par hexe traversé. Il <b>ne peut pas</b>
+        franchir :</p>
+      <ul>
+        <li>la <b>mer / rivière</b> (infranchissable) ;</li>
+        <li>un hexe occupé par une unité <b>ennemie</b> ;</li>
+        <li>un hexe sous <b>ZOC ennemie</b> — sauf si une unité amie s'y trouve, ce qui rétablit le passage.</li>
+      </ul>
+      <p>Toute unité posée sur un hexe atteint par cet écoulement est <b>ravitaillée</b>. Les autres sont
+        <b>hors ravitaillement</b> et subissent la pénalité de défense et de mouvement décrite au §4. Le ravitaillement est
+        recalculé au début de chaque phase de mouvement : capturer une ville ennemie peut instantanément raviver vos unités
+        avancées… ou assécher les siennes.</p>
+    </section>
+
+    <section id="combat">
+      <h2>9 · Le combat (CRT)</h2>
+      <p>Le combat oppose un ou plusieurs <b>attaquants</b> adjacents à un <b>défenseur</b>. La résolution suit une
+        <b>table de résultats des combats</b> (CRT) lue en deux temps : d'abord on détermine une <em>colonne</em>, puis on
+        lance un <b>dé à six faces</b> pour lire le résultat dans cette colonne.</p>
+
+      <h3>Étape 1 — le rapport de force (odds)</h3>
+      <p>On additionne l'attaque effective de tous les attaquants et on la compare à la défense effective du défenseur.
+        Le rapport est arrondi vers le bas à l'une des colonnes suivantes :</p>
+      <p style="text-align:center; color:#cbbf94;" id="odds-line"></p>
+
+      <h3>Étape 2 — les décalages de colonne</h3>
+      <p>La colonne de départ glisse ensuite selon les circonstances :</p>
+      <table>
+        <thead><tr><th>Modificateur</th><th>Effet</th></tr></thead>
+        <tbody>
+          <tr><td><b>Terrain défensif</b></td><td>décale vers la <em>gauche</em> (défenseur avantagé) du nombre de colonnes indiqué par l'hexe ; une route décale vers la droite.</td></tr>
+          <tr><td><b>Armes combinées</b></td><td><b>+1</b> colonne si l'assaut mêle au moins un blindé et une unité à pied.</td></tr>
+          <tr><td><b>Appui d'artillerie</b></td><td><b>+1</b> par pièce d'artillerie amie ravitaillée, à portée <b id="p-arty"></b> du défenseur et <em>hors</em> de la pile d'assaut (maximum +2).</td></tr>
+        </tbody>
+      </table>
+      <p>La colonne finale est bornée entre <code>1:3</code> et <code>6:1</code>.</p>
+
+      <h3>Étape 3 — le jet de dé</h3>
+      <p>On lance le dé (1 à 6) et on lit le résultat à l'intersection de la colonne finale et du dé :</p>
+      <table class="crt" id="crt-table">
+        <thead><tr><th class="odds">Odds</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="legend" id="crt-legend"></div>
+    </section>
+
+    <section id="recul">
+      <h2>10 · Recul &amp; avance après combat</h2>
+      <p>Les résultats de la CRT se lisent ainsi :</p>
+      <ul>
+        <li><b>DE — Défenseur éliminé</b> : le défenseur encaisse un palier (retourné, ou éliminé s'il l'était déjà).</li>
+        <li><b>DR — Défenseur repoussé</b> : il recule d'un hexe, aussi loin que possible de l'attaquant. S'il ne peut
+          reculer nulle part (mer, ennemi, empilement plein, ZOC ennemie), il est éliminé.</li>
+        <li><b>EX — Échange</b> : le défenseur encaisse un palier, et les attaquants perdent des paliers à hauteur de la
+          défense encaissée (les pions les plus faibles trinquent d'abord).</li>
+        <li><b>AR — Attaquant repoussé</b> : chaque attaquant recule d'un hexe (ou est éliminé faute de repli).</li>
+        <li><b>AE — Attaquant éliminé</b> : chaque attaquant encaisse un palier.</li>
+      </ul>
+      <p><b>Avance après combat.</b> Si le défenseur est éliminé ou repoussé et que son hexe se retrouve <em>vide</em>,
+        l'attaquant adjacent le plus puissant peut s'y installer — de quoi exploiter une percée et progresser vers un objectif.</p>
+      <div class="note"><b>Reculer, c'est mourir un peu.</b> Une unité acculée à ses propres lignes, à la mer ou à une ZOC
+        ennemie n'a nulle part où fuir : un simple « repoussé » l'anéantit. Gardez toujours une case de repli.</div>
+    </section>
+
+    <section id="victoire">
+      <h2>11 · Objectifs &amp; victoire</h2>
+      <p>La victoire se décide de deux façons :</p>
+      <ul>
+        <li><b>Anéantissement</b> — dès qu'un camp n'a plus aucune unité en jeu, il perd immédiatement.</li>
+        <li><b>Décompte des objectifs</b> — à la fin du tour <b id="p-turns3"></b>, on compte les <b>villes</b> contrôlées
+          par chaque camp (le contrôle revient au dernier occupant). Le camp qui en tient le plus l'emporte ; en cas
+          d'égalité, l'avantage revient au camp Bleu.</li>
+      </ul>
+      <p>Villages et villes servent aussi de sources de ravitaillement, mais seules les <b>villes</b> comptent pour la
+        victoire finale : elles sont le cœur de l'enjeu stratégique.</p>
+    </section>
+
+    <div class="cta"><a href="index.html">Composer mon armée ▸</a></div>
+  </div>
+
+  <script type="module">
+    import { TERRAIN, UNIT_CATALOG, CATALOG_ORDER, ODDS, CRT, RESULT_FR,
+             ARMY_POINTS, MAX_TURNS, SUPPLY_RANGE, ARTY_RANGE, STACK_MAX } from './src/config.js';
+
+    const $ = (id) => document.getElementById(id);
+    const hex = (n) => '#' + n.toString(16).padStart(6, '0');
+
+    // -- Constantes injectées dans le texte --------------------------------
+    ['p-turns', 'p-turns2', 'p-turns3'].forEach((id) => ($(id).textContent = MAX_TURNS));
+    $('p-points').textContent = ARMY_POINTS;
+    $('p-stack').textContent = STACK_MAX;
+    $('p-supply').textContent = SUPPLY_RANGE;
+    $('p-arty').textContent = ARTY_RANGE;
+
+    // -- Tableau des terrains ----------------------------------------------
+    const TERRAIN_ORDER = ['sand', 'road', 'oasis', 'rock', 'town', 'village', 'coast', 'sea', 'base'];
+    const seen = new Set();
+    const roleOf = (t, tp) =>
+      tp.cost === Infinity ? 'Infranchissable'
+      : tp.supply ? `Source de ravitaillement (portée ${tp.supply})`
+      : t === 'road' ? 'Accélère le déplacement, expose le défenseur'
+      : tp.def >= 2 ? 'Bon abri défensif'
+      : '—';
+    const tbody = $('terrain-table').querySelector('tbody');
+    for (const t of TERRAIN_ORDER) {
+      const tp = TERRAIN[t];
+      if (!tp || seen.has(tp.name)) continue;               // fusionne les doublons (plaine)
+      seen.add(tp.name);
+      const cost = tp.cost === Infinity ? '∞' : tp.cost;
+      const row = document.createElement('tr');
+      row.innerHTML = `<td><span class="swatch" style="background:${hex(tp.fill)}"></span><b>${tp.name}</b></td>`
+        + `<td class="num">${cost}</td><td class="num">${tp.def > 0 ? '−' + tp.def : tp.def < 0 ? '+' + -tp.def : '0'}</td>`
+        + `<td>${roleOf(t, tp)}</td>`;
+      tbody.appendChild(row);
+    }
+    $('terrain-legend').innerHTML =
+      '<span><b>Coût</b> = points de mouvement pour entrer</span>'
+      + '<span><b>Défense</b> = colonnes retirées à l\'attaquant (− avantage le défenseur, + le désavantage)</span>';
+
+    // -- Tableau des unités -------------------------------------------------
+    const PROFILE = {
+      armor: 'Frappe fort, rapide, coûteux — fer de lance de la percée.',
+      mech:  'Polyvalente et mobile, solide en défense comme en attaque.',
+      arty:  'Faible au contact mais appuie les assauts voisins à distance.',
+      inf:   'Bon marché, tient le terrain, lente.',
+      moto:  'Rapide et bon marché, mais fragile.',
+    };
+    const ub = $('unit-table').querySelector('tbody');
+    for (const t of CATALOG_ORDER) {
+      const u = UNIT_CATALOG[t];
+      const row = document.createElement('tr');
+      row.innerHTML = `<td><b>${u.label}</b></td><td class="num">${u.cost}</td>`
+        + `<td class="num">${u.atk}-${u.def}-${u.mov}</td>`
+        + `<td class="num">${u.ratk}-${u.rdef}-${u.rmov}</td>`
+        + `<td>${PROFILE[t]}</td>`;
+      ub.appendChild(row);
+    }
+
+    // -- Ligne des odds -----------------------------------------------------
+    $('odds-line').textContent = ODDS.join('   ·   ') + '   (défavorable ← → favorable à l\'attaquant)';
+
+    // -- Table CRT ----------------------------------------------------------
+    const cb = $('crt-table').querySelector('tbody');
+    for (const odds of ODDS) {
+      const row = document.createElement('tr');
+      const cells = CRT[odds].map((r) => `<td class="r-${r}">${r}</td>`).join('');
+      row.innerHTML = `<td class="odds">${odds}</td>${cells}`;
+      cb.appendChild(row);
+    }
+    $('crt-legend').innerHTML = Object.entries(RESULT_FR)
+      .map(([k, v]) => `<span class="r-${k}"><b>${k}</b> ${v}</span>`).join('');
+  </script>
+</body>
+</html>
