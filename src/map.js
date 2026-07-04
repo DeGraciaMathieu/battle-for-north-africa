@@ -44,9 +44,12 @@ export function generateMap(seed = 1) {
     }
   }
 
-  // 2) Cours d'eau : tracé (une cellule par pas) selon un style tiré au sort.
-  //    Un « ruban » qui serpente autour d'un axe, éventuellement en diagonale
-  //    ou avec une fourche. Le tracé principal `path` sert à poser les ponts.
+  // 2) Hydrographie. Selon la seed, deux régimes très différents :
+  //    — une grande transversale bord-à-bord (ligne de front + ponts goulots) ;
+  //    — un réseau fragmenté : quelques lacs, des rivières courtes qui en
+  //      naissent, et une ou deux rivières indépendantes.
+  //    Dans les deux cas, `path` (clés axiales) porte les ponts et garantit,
+  //    avec l'étape 7, la jouabilité.
   const meander = (v, center, lo, hi, wig) => {
     if (rng() >= wig) return clamp(v, lo, hi);
     const pullDown = v > center ? 0.65 : v < center ? 0.35 : 0.5; // rappel vers l'axe
@@ -85,12 +88,63 @@ export function generateMap(seed = 1) {
     return cells;
   };
 
-  const style = rint(0, 3);
-  const path = style === 1 ? buildHorizontal() : style === 2 ? buildDiagonal() : buildVertical();
-  const waterCells = style === 3 ? path.concat(buildBranch(path)) : path;
-  for (const [c, rw] of waterCells) {
-    const { q, r } = offsetToAxial(c, rw);
-    terrain.set(key(q, r), 'sea');
+  // Amas d'eau compact (lac) : agrégation de voisins depuis un centre.
+  const growBlob = (center, size) => {
+    const cells = [], frontier = [center], seen = new Set();
+    while (frontier.length && cells.length < size) {
+      const cell = frontier.splice(Math.floor(rng() * frontier.length), 1)[0];
+      const k = key(cell.q, cell.r);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      if (!terrain.has(k)) continue;                          // hors carte
+      cells.push(k);
+      for (const [dq, dr] of DIRS) frontier.push({ q: cell.q + dq, r: cell.r + dr });
+    }
+    return cells;
+  };
+  // Rivière courte : marche depuis `start` dans une direction, en méandrant,
+  // jusqu'à `len` pas ou la sortie de carte. Renvoie les clés axiales franchies.
+  const growRiver = (start, len) => {
+    const cells = [];
+    let d = rint(0, 5), q = start.q, r = start.r;
+    for (let i = 0; i < len; i++) {
+      if (rng() < 0.3) d = (d + (rng() < 0.5 ? 1 : 5)) % 6;   // dévie d'un cran
+      q += DIRS[d][0]; r += DIRS[d][1];
+      const k = key(q, r);
+      if (!terrain.has(k)) break;                             // sort de la carte
+      cells.push(k);
+    }
+    return cells;
+  };
+
+  let path;
+  if (rng() < 0.5) {
+    // Régime transversal : un ruban qui serpente d'un bord à l'autre.
+    const style = rint(0, 3);
+    const trace = style === 1 ? buildHorizontal() : style === 2 ? buildDiagonal() : buildVertical();
+    const water = style === 3 ? trace.concat(buildBranch(trace)) : trace;
+    for (const [c, rw] of water) { const { q, r } = offsetToAxial(c, rw); terrain.set(key(q, r), 'sea'); }
+    path = trace.map(([c, rw]) => { const { q, r } = offsetToAxial(c, rw); return key(q, r); });
+  } else {
+    // Régime fragmenté : quelques lacs, des rivières qui en naissent, et une ou
+    // deux rivières indépendantes. La plus longue rivière portera les ponts.
+    const rivers = [];
+    for (let i = 0, nLakes = rint(2, 3); i < nLakes; i++) {
+      const lake = growBlob(offsetToAxial(rint(3, COLS - 4), rint(3, ROWS - 4)), rint(3, 7));
+      for (const k of lake) terrain.set(k, 'sea');
+      if (lake.length && rng() < 0.7) {                       // une rivière issue du lac
+        const [sq, sr] = lake[Math.floor(rng() * lake.length)].split(',').map(Number);
+        const river = growRiver({ q: sq, r: sr }, rint(4, 9));
+        for (const k of river) terrain.set(k, 'sea');
+        rivers.push(river);
+      }
+    }
+    for (let i = 0, nExtra = rint(1, 2); i < nExtra; i++) {   // rivières indépendantes
+      const river = growRiver(offsetToAxial(rint(2, COLS - 3), rint(2, ROWS - 3)), rint(5, 10));
+      for (const k of river) terrain.set(k, 'sea');
+      rivers.push(river);
+    }
+    path = rivers.sort((a, b) => b.length - a.length)[0] ?? [];
   }
 
   // 3) Relief et étangs en amas : chaque amas croît depuis un centre par
@@ -131,10 +185,9 @@ export function generateMap(seed = 1) {
 
   // 5) Ponts sur le cours d'eau principal, répartis le long du tracé.
   const nBridges = rint(2, 3);
-  for (let i = 1; i <= nBridges; i++) {
-    const [c, rw] = path[Math.floor((path.length * i) / (nBridges + 1))];
-    const { q, r } = offsetToAxial(c, rw);
-    terrain.set(key(q, r), 'town');
+  for (let i = 1; path.length && i <= nBridges; i++) {
+    const bk = path[Math.floor((path.length * i) / (nBridges + 1))];
+    if (terrain.get(bk) === 'sea') terrain.set(bk, 'town');
   }
 
   // 6) Bases (elles priment sur tout) puis peuplements de terre, espacés et à
