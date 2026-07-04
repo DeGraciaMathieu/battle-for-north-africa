@@ -18,8 +18,8 @@ const PIXI = window.PIXI;
   try {
     // Seed de carte : reprise depuis l'URL (?seed=) si valide, sinon aléatoire.
     // Poussée dans l'URL pour pouvoir repartager la carte courante.
-    const urlSeed = Number(new URLSearchParams(location.search).get('seed'));
-    const seed = Number.isInteger(urlSeed) && urlSeed >= 0 ? urlSeed : Math.floor(Math.random() * 0xffffffff);
+    const seedParam = new URLSearchParams(location.search).get('seed');
+    const seed = seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : Math.floor(Math.random() * 0xffffffff);
     history.replaceState(null, '', `?seed=${seed}`);
     document.getElementById('seedVal').textContent = seed;
     const state = createGame(Math.random, seed);
@@ -779,6 +779,7 @@ const PIXI = window.PIXI;
       $('banner').style.display = 'flex';
     });
     $('bannerBtn').onclick = () => { location.href = location.pathname; }; // nouvelle carte
+    $('bannerHome').onclick = () => { location.href = 'index.html'; };     // retour à l'accueil
     $('btnConfirmMove').onclick = confirmMove;
     $('btnSelectMove').onclick = selectPendingUnit;
     $('btnCancelMove').onclick = () => { clearPending(); refresh(); };

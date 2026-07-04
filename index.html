@@ -2,179 +2,57 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Wargame hexagonal — socle</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Battle for North Africa</title>
 <style>
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; overflow: hidden;
-    background: #14110c; font-family: "Courier New", ui-monospace, monospace; color: #d9cca0; }
-  #stage-canvas { position: absolute; inset: 0; z-index: 0; touch-action: none; }
-  #vignette { position: absolute; inset: 0; z-index: 1; pointer-events: none;
-    box-shadow: inset 0 0 220px 40px rgba(0,0,0,.55); }
-  .panel { position: absolute; z-index: 10; background: rgba(26,24,18,.9);
-    border: 1px solid #5a5238; border-radius: 4px; padding: 10px 12px;
-    font-size: 12px; line-height: 1.45; box-shadow: 0 6px 20px rgba(0,0,0,.45); letter-spacing: .3px; }
-  .panel h1 { margin: 0 0 5px; font-size: 12px; color: #e8b95a; letter-spacing: 1.4px; text-transform: uppercase; }
-  .sub { color: #9a9070; font-size: 11px; }
-  b { color: #efe4bc; }
-  #hud { top: 12px; left: 12px; width: 320px; }
-  #turnbar { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
-  .badge { padding:2px 8px; border-radius:3px; font-weight:700; letter-spacing:.5px; font-size:11px; }
-  .badge.axis { background:#33415c; color:#dfe7f2; border:1px solid #4a6b9a; }
-  .badge.ally { background:#5a2f2b; color:#f2dedb; border:1px solid #a8544a; }
-  .badge.phase { background:#2c281c; color:#e8b95a; border:1px solid #5a5238; }
-  #hint { margin-top:4px; min-height:30px; }
-  #btnPhase { margin-top:8px; width:100%; padding:8px; cursor:pointer; font-family:inherit; font-weight:700;
-    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; letter-spacing:.6px; }
-  #btnPhase:hover { background:#4a4029; }
-  #inspector { top: 12px; right: 12px; width: 210px; }
-  #inspector .empty { color:#8a8064; font-style: italic; }
-  .kv { display:flex; justify-content:space-between; gap:8px; }
-  .kv span:last-child { color:#efe4bc; }
-  #objbar { margin-top:6px; padding-top:6px; border-top:1px solid #48412c; }
-  #log { bottom: 12px; left: 12px; width: 320px; max-height: 168px; overflow:hidden; }
-  #log .line { font-size:11px; padding:1px 0; color:#c8bd97; }
-  #log .line b { color:#e8b95a; }
-  #legend { bottom: 12px; right: 60px; font-size:11px; }
-  .swatch { display:inline-block; width:10px; height:10px; border:1px solid #2a2418; vertical-align:-1px; margin-right:5px; border-radius:2px; }
-  #controls { position:absolute; z-index:10; bottom:12px; right:12px; display:flex; flex-direction:column; gap:6px; }
-  #controls button { width:38px; height:38px; font-size:18px; cursor:pointer; background:rgba(26,24,18,.9);
-    color:#d9cca0; border:1px solid #5a5238; border-radius:4px; font-family:inherit; }
-  #controls button:hover { background:#2c281c; color:#e8b95a; }
-  #controls button.small { font-size:10px; letter-spacing:.5px; }
-  #controls button.on { background:#4a4029; color:#e8b95a; border-color:#8a7838; }
-  #banner { position:absolute; z-index:30; inset:0; display:none; align-items:center; justify-content:center; }
-  #banner .box { background:rgba(20,17,12,.94); border:2px solid #e8b95a; border-radius:6px; padding:26px 34px; text-align:center; }
-  #banner h2 { margin:0 0 6px; color:#e8b95a; letter-spacing:2px; }
-  #banner button { margin-top:14px; padding:8px 16px; cursor:pointer; font-family:inherit; font-weight:700;
-    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; }
-  #moveConfirm { z-index:20; display:none; flex-direction:column; gap:5px; padding:7px 8px; transform:translate(-50%,-125%); }
-  #moveConfirm button { cursor:pointer; font-family:inherit; font-weight:700; font-size:11px; white-space:nowrap;
-    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; padding:5px 9px; letter-spacing:.4px; }
-  #moveConfirm button:hover { background:#4a4029; }
-  #moveConfirm #btnCancelMove { background:transparent; border-color:#48412c; color:#9a9070; font-weight:400; padding:3px 6px; }
-  #combatModal { position:absolute; z-index:28; inset:0; display:none; align-items:center; justify-content:center; }
-  #combatModal .box { background:rgba(20,17,12,.96); border:2px solid #6d5f38; border-radius:6px; padding:20px 30px; width:480px; max-width:92%; }
-  #combatModal h2 { margin:0 0 10px; color:#e8b95a; letter-spacing:1.5px; text-align:center; font-size:15px; }
-  #combatModal .res { text-align:center; font-size:15px; font-weight:700; margin:12px 0 4px; padding:8px; border-radius:4px; }
-  #combatModal button { margin-top:12px; width:100%; padding:9px; cursor:pointer; font-family:inherit; font-weight:700;
-    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; letter-spacing:.6px; }
-  #combatModal button:hover { background:#4a4029; }
-  #combatModal #combatBtns { display:none; gap:8px; margin-top:12px; }
-  #combatModal #combatBtns button { margin-top:0; width:auto; flex:1; }
-  #combatModal #btnRefuseCombat { background:transparent; border-color:#5a5238; color:#c8bd97; }
-  #combatModal table.crt { width:100%; border-collapse:collapse; margin-top:4px; font-size:10px; }
-  #combatModal table.crt th, #combatModal table.crt td { border:1px solid #3a3323; padding:3px 0; text-align:center; }
-  #combatModal table.crt th { color:#8a8064; font-weight:700; background:#221f16; }
-  #combatModal table.crt th.colon { background:#33301f; color:#efe4bc; }
-  /* Carte de chaleur du point de vue de l'attaquant */
-  #combatModal table.crt td { opacity:.45; }               /* colonnes non actives atténuées */
-  #combatModal table.crt td.colon { opacity:1; font-weight:700; }
-  #combatModal table.crt td.r-DE { background:rgba(111,154,92,.5); color:#eaf5e0; }
-  #combatModal table.crt td.r-DR { background:rgba(111,154,92,.24); color:#cfe6bf; }
-  #combatModal table.crt td.r-EX { background:rgba(232,185,90,.24); color:#f0d9a0; }
-  #combatModal table.crt td.r-AR { background:rgba(179,58,42,.24); color:#e6b3a6; }
-  #combatModal table.crt td.r-AE { background:rgba(179,58,42,.5); color:#f3c9bd; }
-  #combatModal table.crt td.hit { outline:2px solid #e8b95a; outline-offset:-2px; }
-  #combatModal table.crt td.roll { outline:2px solid #fffbe6; outline-offset:-2px; }
-  #combatModal .duel { display:flex; align-items:stretch; gap:8px; margin-bottom:8px; }
-  #combatModal .duel .side { flex:1; text-align:center; background:#221f16; border:1px solid #3a3323; border-top-width:3px; border-radius:5px; padding:7px 6px; }
-  #combatModal .duel .side.atk { border-top-color:#c98a4a; }
-  #combatModal .duel .side.def { border-top-color:#5b7a86; }
-  #combatModal .duel .lab { font-size:10px; letter-spacing:1px; text-transform:uppercase; color:#8a8064; }
-  #combatModal .duel .big { font-size:30px; font-weight:700; color:#efe4bc; line-height:1.15; }
-  #combatModal .duel .vs { align-self:center; font-size:11px; color:#8a8064; }
-  #combatModal .chips { display:flex; flex-wrap:wrap; gap:3px; justify-content:center; margin-top:4px; }
-  #combatModal .chip { font-size:10px; background:#33301f; border:1px solid #4a4029; border-radius:10px; padding:1px 7px; color:#d9cca0; }
-  #combatModal .chip b { color:#efe4bc; }
-  #combatModal .chip .rd { color:#d16a55; }
-  #combatModal .dn { display:block; font-size:10px; color:#e08a2a; margin-top:3px; }
-  #combatModal .flow { display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:12px; padding:6px 9px; background:#1c1a12; border-radius:4px; }
-  #combatModal .flow b { color:#efe4bc; }
-  #combatModal .flow .finalcol { color:#e8b95a; font-size:15px; }
-  #combatModal #combatEffects { margin-top:2px; }
-  #combatModal .fx { font-size:12px; color:#d9cca0; padding:2px 0; animation:fxIn .2s ease-out; }
-  @keyframes fxIn { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:none; } }
-  #hexTip { z-index:25; display:none; pointer-events:none; max-width:240px; }
-  #err { position:absolute; inset:0; z-index:50; display:none; padding:24px; color:#e88; background:#160f0f; white-space:pre-wrap; }
+  html, body { margin: 0; height: 100%; background: #14110c;
+    font-family: "Courier New", ui-monospace, monospace; color: #d9cca0; }
+  body { display: flex; align-items: center; justify-content: center; padding: 20px;
+    box-shadow: inset 0 0 220px 60px rgba(0,0,0,.6); }
+  .card { width: 440px; max-width: 100%; background: rgba(26,24,18,.92);
+    border: 1px solid #5a5238; border-radius: 6px; padding: 30px 34px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+  h1 { margin: 0; color: #e8b95a; letter-spacing: 2px; text-transform: uppercase; font-size: 22px; }
+  .tag { color: #9a9070; font-size: 12px; margin: 4px 0 22px; letter-spacing: .5px; }
+  label { display: block; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #9a9070; margin-bottom: 6px; }
+  .row { display: flex; gap: 8px; }
+  input { flex: 1; min-width: 0; padding: 10px 12px; font-family: inherit; font-size: 14px;
+    background: #1c1a12; color: #efe4bc; border: 1px solid #6d5f38; border-radius: 4px; }
+  input::placeholder { color: #6f6750; }
+  input:focus { outline: none; border-color: #e8b95a; }
+  button { cursor: pointer; font-family: inherit; font-weight: 700; letter-spacing: .6px;
+    background: #3a3323; color: #e8b95a; border: 1px solid #6d5f38; border-radius: 4px; }
+  button:hover { background: #4a4029; }
+  #gen { padding: 0 14px; white-space: nowrap; font-size: 12px; }
+  .hint { color: #8a8064; font-size: 11px; line-height: 1.5; margin: 10px 0 20px; }
+  #play { width: 100%; padding: 12px; font-size: 15px; letter-spacing: 1px; }
 </style>
 </head>
 <body>
-<div id="err"></div>
-<div id="vignette"></div>
+  <div class="card">
+    <h1>Battle for North Africa</h1>
+    <div class="tag">Wargame hexagonal · Bleu vs Rouge</div>
 
-<div id="hud" class="panel">
-  <div id="turnbar">
-    <span class="sub">Tour</span><b id="turnNum">1</b>
-    <span id="badgeSide" class="badge axis">BLEU</span>
-    <span id="badgePhase" class="badge phase">MOUVEMENT</span>
+    <label for="seed">Seed de carte</label>
+    <div class="row">
+      <input id="seed" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="aléatoire si vide" />
+      <button id="gen" type="button">🎲 Générer</button>
+    </div>
+    <p class="hint">Une même seed reproduit exactement la même carte (rivière, relief, villes, villages).
+      Laisse le champ vide pour une carte aléatoire.</p>
+
+    <button id="play" type="button">Jouer ▸</button>
   </div>
-  <div class="sub">Carte <b id="seedVal">—</b></div>
-  <div id="hint" class="sub"></div>
-  <button id="btnPhase">Terminer la phase ▸</button>
-</div>
 
-<div id="inspector" class="panel">
-  <h1>Poste de commandement</h1>
-  <div id="inspBody"><span class="empty">Aucune sélection.</span></div>
-  <div id="objbar"></div>
-</div>
-
-<div id="log" class="panel"><h1>Journal</h1><div id="logBody"></div></div>
-
-<div id="legend" class="panel">
-  <div><span class="swatch" style="background:#93b957"></span>Plaine · PM 1</div>
-  <div><span class="swatch" style="background:#9a9078"></span>Coteau · PM 3 · +déf</div>
-  <div><span class="swatch" style="background:#468236"></span>Bois · PM 2 · +déf</div>
-  <div><span class="swatch" style="background:#c2ab7a"></span>Route · PM ½ · −1 déf (exposée)</div>
-  <div><span class="swatch" style="background:#336d94"></span>Rivière · infranchissable</div>
-  <div><span class="swatch" style="background:#77aec2"></span>Berge · PM 1</div>
-  <div><span class="swatch" style="background:#baa971"></span>Ville/pont · objectif · +déf · ravito 6</div>
-  <div><span class="swatch" style="background:#a8977a"></span>Village · relais de ravito 4 · +déf</div>
-  <div><span class="swatch" style="background:#5c7649"></span>Camp de base · ravitaillement 8</div>
-  <div style="margin-top:5px;padding-top:5px;border-top:1px solid #48412c">
-    <span class="swatch" style="background:#e8c85a"></span>Portée : hexes atteignables (unité sélectionnée)</div>
-  <div><span class="swatch" style="background:#d23b2b"></span>Arrêt forcé : entrée en ZOC ennemie</div>
-  <div><span class="swatch" style="background:#cc4433"></span>Zone de contrôle ennemie (contour)</div>
-  <div><span class="swatch" style="background:#8fb0d8"></span>Ravitaillement du camp actif · halo blanc = source · bouton RAV</div>
-  <div style="margin-top:5px;padding-top:5px;border-top:1px solid #48412c">
-    <span class="swatch" style="background:#b33a2a"></span>Pion réduit (verso, facteurs moindres)</div>
-  <div><span class="swatch" style="background:#e08a2a"></span>Hors ravitaillement · déf & mvt ÷2</div>
-</div>
-
-<div id="controls">
-  <button id="btnIn">+</button>
-  <button id="btnOut">−</button>
-  <button class="small" id="btnReset">FIT</button>
-  <button class="small" id="btnSupply">RAV</button>
-  <button class="small" id="btnLegend">LÉG</button>
-</div>
-
-<div id="banner"><div class="box"><h2 id="bannerTitle"></h2><div id="bannerSub" class="sub"></div>
-  <button id="bannerBtn">Rejouer</button></div></div>
-
-<div id="moveConfirm" class="panel">
-  <button id="btnConfirmMove">Déplacer ici ▸</button>
-  <button id="btnSelectMove">Sélectionner cette unité</button>
-  <button id="btnCancelMove">Annuler</button>
-</div>
-
-<div id="combatModal"><div class="box">
-  <h2>Résolution du combat</h2>
-  <div id="combatBody"></div>
-  <div id="combatTable"></div>
-  <div id="combatRes" class="res"></div>
-  <div id="combatEffects"></div>
-  <div id="combatBtns">
-    <button id="btnRollCombat">Lancer les dés ▸</button>
-    <button id="btnRefuseCombat">Refuser le combat</button>
-  </div>
-  <button id="combatBtn">Continuer ▸</button>
-</div></div>
-
-<div id="hexTip" class="panel"></div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.13.2/pixi.min.js"></script>
-<script type="module" src="./render/app.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    $('gen').onclick = () => { $('seed').value = String(Math.floor(Math.random() * 0xffffffff)); };
+    $('play').onclick = () => {
+      const raw = $('seed').value.trim();
+      location.href = /^\d+$/.test(raw) ? 'game.html?seed=' + raw : 'game.html'; // vide/invalide → aléatoire
+    };
+    $('seed').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('play').click(); });
+  </script>
 </body>
 </html>
