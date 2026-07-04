@@ -469,8 +469,8 @@ const PIXI = window.PIXI;
           ptr.dragUnit = sel.unit;
           dragOverKey = null;
           refresh();                                   // reconstruit les pions
-          const c = counters.get(ptr.dragUnit.id);     // le pion saisi passe devant et se soulève
-          if (c) { unitLayer.setChildIndex(c, unitLayer.children.length - 1); c.scale.set(1.15); draw(); }
+          const c = counters.get(ptr.dragUnit.id);     // le pion saisi passe devant, se soulève et s'incline
+          if (c) { unitLayer.setChildIndex(c, unitLayer.children.length - 1); c.scale.set(1.15); c.rotation = 0.14; draw(); }
         }
       }
     });
