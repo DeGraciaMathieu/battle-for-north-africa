@@ -12,15 +12,16 @@ import { updateSupply } from './supply.js';
 import { key } from './geometry.js';
 
 // Crée une partie prête à jouer. `rng` est injectable (déterminisme des tests) ;
-// `seed` fixe la carte générée (aléatoire côté rendu, fixe dans les tests).
-export function createGame(rng = Math.random, seed) {
+// `seed` fixe la carte générée ; `composition` (optionnelle) fixe les armées
+// (éditeur point-buy) — sinon le roster fixe par défaut est utilisé.
+export function createGame(rng = Math.random, seed, composition) {
   const { terrain, hexes, objectives } = generateMap(seed);
   const state = {
     terrain,
     hexes,
     objectives,
     objControl: new Map(),        // key -> 'axis' | 'ally' (dernier occupant)
-    units: createUnits(),
+    units: createUnits(composition),
     G: { turn: 1, player: 'axis', phase: 'move', over: false },
     bus: createBus(),
     rng,

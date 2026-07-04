@@ -6,53 +6,130 @@
 <title>Battle for North Africa</title>
 <style>
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: #14110c;
+  html, body { margin: 0; min-height: 100%; background: #14110c;
     font-family: "Courier New", ui-monospace, monospace; color: #d9cca0; }
-  body { display: flex; align-items: center; justify-content: center; padding: 20px;
-    box-shadow: inset 0 0 220px 60px rgba(0,0,0,.6); }
-  .card { width: 440px; max-width: 100%; background: rgba(26,24,18,.92);
-    border: 1px solid #5a5238; border-radius: 6px; padding: 30px 34px;
-    box-shadow: 0 10px 40px rgba(0,0,0,.5); }
-  h1 { margin: 0; color: #e8b95a; letter-spacing: 2px; text-transform: uppercase; font-size: 22px; }
-  .tag { color: #9a9070; font-size: 12px; margin: 4px 0 22px; letter-spacing: .5px; }
-  label { display: block; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #9a9070; margin-bottom: 6px; }
-  .row { display: flex; gap: 8px; }
-  input { flex: 1; min-width: 0; padding: 10px 12px; font-family: inherit; font-size: 14px;
+  body { display: flex; flex-direction: column; align-items: center; padding: 24px 16px; }
+  h1 { margin: 0; color: #e8b95a; letter-spacing: 2px; text-transform: uppercase; font-size: 22px; text-align: center; }
+  .tag { color: #9a9070; font-size: 12px; margin: 4px 0 20px; letter-spacing: .5px; text-align: center; }
+  .tag b { color: #efe4bc; }
+  .armies { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 860px; }
+  .army { flex: 1; min-width: 320px; background: rgba(26,24,18,.92); border: 1px solid #5a5238; border-radius: 6px; padding: 16px 18px; }
+  .army.blue { border-top: 3px solid #4a6b9a; }
+  .army.red  { border-top: 3px solid #a8544a; }
+  .army h2 { margin: 0 0 4px; font-size: 15px; letter-spacing: 1px; }
+  .army.blue h2 { color: #8fb0d8; }
+  .army.red h2 { color: #e0968f; }
+  .budget { font-size: 12px; color: #9a9070; margin-bottom: 8px; }
+  .budget b { color: #efe4bc; }
+  .budget.over b { color: #e0603f; }
+  .unit { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid #322c1e; }
+  .unit .info { flex: 1; }
+  .unit .nm { color: #efe4bc; font-size: 13px; }
+  .unit .fx { color: #8a8064; font-size: 11px; }
+  .unit .fx .cost { color: #e8b95a; }
+  .stepper { display: flex; align-items: center; gap: 6px; }
+  .stepper button { width: 26px; height: 26px; cursor: pointer; font-size: 15px; font-weight: 700;
+    background: #3a3323; color: #e8b95a; border: 1px solid #6d5f38; border-radius: 4px; font-family: inherit; }
+  .stepper button:disabled { opacity: .3; cursor: default; }
+  .stepper button:hover:not(:disabled) { background: #4a4029; }
+  .stepper .n { min-width: 20px; text-align: center; color: #efe4bc; font-weight: 700; }
+  .foot { margin-top: 20px; width: 100%; max-width: 860px; display: flex; flex-wrap: wrap;
+    gap: 12px; align-items: center; justify-content: center; }
+  .seedrow { display: flex; gap: 8px; align-items: center; }
+  label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #9a9070; }
+  input { width: 150px; padding: 9px 11px; font-family: inherit; font-size: 14px;
     background: #1c1a12; color: #efe4bc; border: 1px solid #6d5f38; border-radius: 4px; }
-  input::placeholder { color: #6f6750; }
   input:focus { outline: none; border-color: #e8b95a; }
-  button { cursor: pointer; font-family: inherit; font-weight: 700; letter-spacing: .6px;
-    background: #3a3323; color: #e8b95a; border: 1px solid #6d5f38; border-radius: 4px; }
-  button:hover { background: #4a4029; }
-  #gen { padding: 0 14px; white-space: nowrap; font-size: 12px; }
-  .hint { color: #8a8064; font-size: 11px; line-height: 1.5; margin: 10px 0 20px; }
-  #play { width: 100%; padding: 12px; font-size: 15px; letter-spacing: 1px; }
+  input::placeholder { color: #6f6750; }
+  button.act { cursor: pointer; font-family: inherit; font-weight: 700; letter-spacing: .6px;
+    background: #3a3323; color: #e8b95a; border: 1px solid #6d5f38; border-radius: 4px; padding: 10px 14px; }
+  button.act:hover:not(:disabled) { background: #4a4029; }
+  #play { padding: 12px 28px; font-size: 15px; letter-spacing: 1px; }
+  #play:disabled { opacity: .4; cursor: default; }
+  .hint { color: #8a8064; font-size: 11px; text-align: center; width: 100%; max-width: 860px; margin-top: 10px; line-height: 1.5; }
 </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Battle for North Africa</h1>
-    <div class="tag">Wargame hexagonal · Bleu vs Rouge</div>
+  <h1>Battle for North Africa</h1>
+  <div class="tag">Composez vos armées · budget <b id="budgetTag"></b> points par camp</div>
 
-    <label for="seed">Seed de carte</label>
-    <div class="row">
-      <input id="seed" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="aléatoire si vide" />
-      <button id="gen" type="button">🎲 Générer</button>
-    </div>
-    <p class="hint">Une même seed reproduit exactement la même carte (rivière, relief, villes, villages).
-      Laisse le champ vide pour une carte aléatoire.</p>
-
-    <button id="play" type="button">Jouer ▸</button>
+  <div class="armies">
+    <div class="army blue"><h2>🔵 Bleu</h2><div class="budget" id="bud-axis"></div><div id="list-axis"></div></div>
+    <div class="army red"><h2>🔴 Rouge</h2><div class="budget" id="bud-ally"></div><div id="list-ally"></div></div>
   </div>
 
-  <script>
+  <div class="foot">
+    <div class="seedrow">
+      <label for="seed">Seed</label>
+      <input id="seed" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="aléatoire" />
+      <button class="act" id="gen" type="button" title="Seed aléatoire">🎲</button>
+    </div>
+    <button class="act" id="play" type="button">Jouer ▸</button>
+  </div>
+  <div class="hint">Une même seed reproduit exactement la même carte. Chaque camp a besoin d'au moins une unité.</div>
+
+  <script type="module">
+    import { UNIT_CATALOG, CATALOG_ORDER, ARMY_POINTS } from './src/config.js';
     const $ = (id) => document.getElementById(id);
+    const SIDES = ['axis', 'ally'];
+    const counts = {
+      axis: { armor: 3, mech: 2, arty: 1, inf: 0, moto: 0 },
+      ally: { armor: 2, mech: 0, arty: 1, inf: 5, moto: 0 },
+    };
+    $('budgetTag').textContent = ARMY_POINTS;
+
+    const spent = (side) => CATALOG_ORDER.reduce((s, t) => s + counts[side][t] * UNIT_CATALOG[t].cost, 0);
+    const total = (side) => CATALOG_ORDER.reduce((s, t) => s + counts[side][t], 0);
+
+    for (const side of SIDES) {
+      const list = $(`list-${side}`);
+      for (const t of CATALOG_ORDER) {
+        const u = UNIT_CATALOG[t];
+        const row = document.createElement('div');
+        row.className = 'unit';
+        row.innerHTML = `<div class="info"><div class="nm">${u.label}</div>`
+          + `<div class="fx">${u.atk}-${u.def}-${u.mov} · <span class="cost">${u.cost} pts</span></div></div>`
+          + `<div class="stepper"><button data-s="${side}" data-t="${t}" data-d="-1">−</button>`
+          + `<span class="n" id="n-${side}-${t}"></span>`
+          + `<button data-s="${side}" data-t="${t}" data-d="1">+</button></div>`;
+        list.appendChild(row);
+      }
+    }
+
+    function render() {
+      for (const side of SIDES) {
+        const sp = spent(side), over = sp > ARMY_POINTS;
+        $(`bud-${side}`).className = 'budget' + (over ? ' over' : '');
+        $(`bud-${side}`).innerHTML = `<b>${sp}</b> / ${ARMY_POINTS} pts · ${total(side)} unités`;
+        for (const t of CATALOG_ORDER) {
+          $(`n-${side}-${t}`).textContent = counts[side][t];
+          document.querySelector(`button[data-s="${side}"][data-t="${t}"][data-d="1"]`).disabled = sp + UNIT_CATALOG[t].cost > ARMY_POINTS;
+          document.querySelector(`button[data-s="${side}"][data-t="${t}"][data-d="-1"]`).disabled = counts[side][t] === 0;
+        }
+      }
+      $('play').disabled = SIDES.some((s) => total(s) === 0 || spent(s) > ARMY_POINTS);
+    }
+
+    document.querySelectorAll('.stepper button').forEach((btn) => {
+      btn.onclick = () => {
+        const { s, t, d } = btn.dataset;
+        counts[s][t] = Math.max(0, counts[s][t] + Number(d));
+        render();
+      };
+    });
+
     $('gen').onclick = () => { $('seed').value = String(Math.floor(Math.random() * 0xffffffff)); };
     $('play').onclick = () => {
+      const enc = (side) => CATALOG_ORDER.map((t) => counts[side][t]).join('.');
+      const q = new URLSearchParams();
       const raw = $('seed').value.trim();
-      location.href = /^\d+$/.test(raw) ? 'game.html?seed=' + raw : 'game.html'; // vide/invalide → aléatoire
+      if (/^\d+$/.test(raw)) q.set('seed', raw);
+      q.set('b', enc('axis'));
+      q.set('r', enc('ally'));
+      location.href = 'game.html?' + q.toString();
     };
-    $('seed').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('play').click(); });
+
+    render();
   </script>
 </body>
 </html>

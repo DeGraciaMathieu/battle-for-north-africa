@@ -4,7 +4,7 @@
 //  s'abonne au bus d'événements ; elle ne contient aucune règle de jeu.
 // ===========================================================================
 
-import { TERRAIN, MAX_TURNS, BASES, CRT, ODDS, DIRS } from '../src/config.js';
+import { TERRAIN, MAX_TURNS, BASES, CRT, ODDS, DIRS, CATALOG_ORDER } from '../src/config.js';
 import { key, axialToPixel, offsetToAxial, pixelToAxial, hexCorners, hexDistance, clamp } from '../src/geometry.js';
 import { eAtk, eDef, eMov, other, unitsAt, enemyAt, stackCount, isArmor, isFoot } from '../src/units.js';
 import { zocOf, computeReachable, moveUnit } from '../src/movement.js';
@@ -18,11 +18,24 @@ const PIXI = window.PIXI;
   try {
     // Seed de carte : reprise depuis l'URL (?seed=) si valide, sinon aléatoire.
     // Poussée dans l'URL pour pouvoir repartager la carte courante.
-    const seedParam = new URLSearchParams(location.search).get('seed');
+    const params = new URLSearchParams(location.search);
+    const seedParam = params.get('seed');
     const seed = seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : Math.floor(Math.random() * 0xffffffff);
-    history.replaceState(null, '', `?seed=${seed}`);
     document.getElementById('seedVal').textContent = seed;
-    const state = createGame(Math.random, seed);
+    // Composition des armées (éditeur point-buy) : b/r = comptes par type, dans
+    // l'ordre CATALOG_ORDER. Absente → roster fixe par défaut.
+    const parseArmy = (s) => {
+      const parts = (s || '').split('.').map(Number);
+      const army = {};
+      CATALOG_ORDER.forEach((t, i) => { if (parts[i] > 0) army[t] = parts[i]; });
+      return army;
+    };
+    const b = params.get('b'), r = params.get('r');
+    const composition = b && r ? { axis: parseArmy(b), ally: parseArmy(r) } : null;
+    const q = new URLSearchParams({ seed: String(seed) });
+    if (composition) { q.set('b', b); q.set('r', r); }
+    history.replaceState(null, '', `?${q.toString()}`);
+    const state = createGame(Math.random, seed, composition);
     const sideLabel = (s) => (s === 'axis' ? 'BLEU' : 'ROUGE');
     const FILL = { axis: 0x4a6b9a, ally: 0xa8544a };   // couleurs des camps (pions, camp de base)
     const SUP = { axis: 0x8fb0d8, ally: 0xe0968f };    // teinte de ravitaillement par camp
@@ -778,7 +791,11 @@ const PIXI = window.PIXI;
       $('bannerSub').textContent = reason;
       $('banner').style.display = 'flex';
     });
-    $('bannerBtn').onclick = () => { location.href = location.pathname; }; // nouvelle carte
+    $('bannerBtn').onclick = () => {                                       // nouvelle carte, mêmes armées
+      const p = new URLSearchParams(location.search);
+      p.delete('seed');
+      location.href = 'game.html' + (p.toString() ? `?${p.toString()}` : '');
+    };
     $('bannerHome').onclick = () => { location.href = 'index.html'; };     // retour à l'accueil
     $('btnConfirmMove').onclick = confirmMove;
     $('btnSelectMove').onclick = selectPendingUnit;

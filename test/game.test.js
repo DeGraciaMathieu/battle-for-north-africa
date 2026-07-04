@@ -17,6 +17,20 @@ test('la séquence IGO-UGO enchaîne les phases', () => {
   assert.deepEqual([state.G.player, state.G.phase, state.G.turn], ['axis', 'move', 2]);
 });
 
+test('une composition (point-buy) construit les armées demandées', () => {
+  const composition = {
+    axis: { armor: 3, arty: 1 },        // 4 pions côté Bleu
+    ally: { inf: 5 },                   // 5 pions côté Rouge
+  };
+  const state = createGame(() => 0, 42, composition);
+  const count = (side, type) => state.units.filter((u) => u.side === side && u.type === type).length;
+  assert.equal(state.units.filter((u) => u.side === 'axis').length, 4, 'Bleu : 4 pions');
+  assert.equal(count('axis', 'armor'), 3, 'Bleu : 3 blindés');
+  assert.equal(count('axis', 'arty'), 1, 'Bleu : 1 artillerie');
+  assert.equal(state.units.filter((u) => u.side === 'ally').length, 5, 'Rouge : 5 pions');
+  assert.equal(count('ally', 'inf'), 5, 'Rouge : 5 infanteries');
+});
+
 test('l\'anéantissement d\'un camp termine la partie', () => {
   const state = createGame(() => 0);
   let over = null;

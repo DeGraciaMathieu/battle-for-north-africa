@@ -7,7 +7,8 @@
 //  ravitaillement (hors ravito : défense et mouvement de moitié).
 // ===========================================================================
 
-import { offsetToAxial } from './geometry.js';
+import { offsetToAxial, hexDistance } from './geometry.js';
+import { UNIT_CATALOG, CATALOG_ORDER, COLS, ROWS } from './config.js';
 
 // Roster de départ : facteurs recto (pleine force) puis verso (réduit),
 // position initiale en coordonnées offset (col, row). `name` = libellé court
@@ -35,9 +36,52 @@ export const raw = [
   { side: 'ally', type: 'arty',  ech: 'X',  name: 'ART-2', fullName: 'Artillerie 2', atk: 2, def: 3, mov: 3, ratk: 1, rdef: 2, rmov: 3, col: 27, row: 6 },
 ];
 
-// Instancie les unités de jeu depuis le roster (état mutable par pion).
-export function createUnits() {
-  return raw.map((u, i) => {
+// Ancre de déploiement (coin de départ) de chaque camp.
+const DEPLOY_ANCHOR = { axis: [8, 15], ally: [COLS - 8, 4] };
+
+// N positions de déploiement pour un camp : les N hexes les plus proches de son
+// ancre (blob compact dans le coin). L'eau éventuelle est gérée par game.js.
+function deployPositions(side, n) {
+  const [ac, ar] = DEPLOY_ANCHOR[side];
+  const a = offsetToAxial(ac, ar);
+  const cand = [];
+  for (let c = 1; c < COLS - 1; c++) {
+    for (let rw = 1; rw < ROWS - 1; rw++) {
+      const { q, r } = offsetToAxial(c, rw);
+      cand.push({ col: c, row: rw, d: hexDistance(a.q, a.r, q, r) });
+    }
+  }
+  cand.sort((x, y) => x.d - y.d || x.col - y.col || x.row - y.row);
+  return cand.slice(0, n);
+}
+
+// Construit un roster depuis une composition { axis:{type:n}, ally:{type:n} }.
+function rosterFrom(composition) {
+  const specs = [];
+  for (const side of ['axis', 'ally']) {
+    const counts = composition[side] || {};
+    const total = CATALOG_ORDER.reduce((s, t) => s + (counts[t] || 0), 0);
+    const pos = deployPositions(side, total);
+    let i = 0;
+    for (const t of CATALOG_ORDER) {
+      const tpl = UNIT_CATALOG[t];
+      for (let k = 0; k < (counts[t] || 0); k++) {
+        const p = pos[i++];
+        specs.push({
+          side, type: tpl.type, ech: tpl.ech, name: `${tpl.abbr}-${k + 1}`, fullName: `${tpl.label} ${k + 1}`,
+          atk: tpl.atk, def: tpl.def, mov: tpl.mov, ratk: tpl.ratk, rdef: tpl.rdef, rmov: tpl.rmov, col: p.col, row: p.row,
+        });
+      }
+    }
+  }
+  return specs;
+}
+
+// Instancie les unités de jeu (état mutable par pion). Sans composition, on
+// utilise le roster fixe par défaut ; sinon on la construit depuis le catalogue.
+export function createUnits(composition) {
+  const list = composition ? rosterFrom(composition) : raw;
+  return list.map((u, i) => {
     const { q, r } = offsetToAxial(u.col, u.row);
     return { id: i, ...u, q, r, mpLeft: u.mov, hasFought: false, reduced: false, supplied: true };
   });
