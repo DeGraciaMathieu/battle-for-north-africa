@@ -21,7 +21,7 @@ function mulberry32(seed) {
   };
 }
 
-const LAND = new Set(['sand', 'sand2', 'oasis', 'rock']);
+const LAND = new Set(['plain', 'plain2', 'forest', 'hill']);
 
 // Construit une carte reproductible depuis `seed`. Renvoie le terrain, la liste
 // des hexes et les clés des objectifs (villes de terre).
@@ -42,7 +42,7 @@ export function generateMap(seed = 1, { fair = false } = {}) {
   for (let c = 0; c < COLS; c++) {
     for (let rw = 0; rw < ROWS; rw++) {
       const { q, r } = offsetToAxial(c, rw);
-      terrain.set(key(q, r), noise(c, rw) > 0.5 ? 'sand' : 'sand2');
+      terrain.set(key(q, r), noise(c, rw) > 0.5 ? 'plain' : 'plain2');
       hexes.push({ q, r });
     }
   }
@@ -126,7 +126,7 @@ export function generateMap(seed = 1, { fair = false } = {}) {
     const style = rint(0, 3);
     const trace = style === 1 ? buildHorizontal() : style === 2 ? buildDiagonal() : buildVertical();
     const water = style === 3 ? trace.concat(buildBranch(trace)) : trace;
-    for (const [c, rw] of water) { const { q, r } = offsetToAxial(c, rw); terrain.set(key(q, r), 'sea'); }
+    for (const [c, rw] of water) { const { q, r } = offsetToAxial(c, rw); terrain.set(key(q, r), 'river'); }
     path = trace.map(([c, rw]) => { const { q, r } = offsetToAxial(c, rw); return key(q, r); });
   } else {
     // Régime fragmenté : quelques lacs, des rivières qui en naissent, et une ou
@@ -134,29 +134,36 @@ export function generateMap(seed = 1, { fair = false } = {}) {
     const rivers = [];
     for (let i = 0, nLakes = rint(1, 2); i < nLakes; i++) {
       const lake = growBlob(offsetToAxial(rint(3, COLS - 4), rint(3, ROWS - 4)), rint(2, 4));
-      for (const k of lake) terrain.set(k, 'sea');
+      for (const k of lake) terrain.set(k, 'river');
       if (lake.length && rng() < 0.7) {                       // une rivière issue du lac
         const [sq, sr] = lake[Math.floor(rng() * lake.length)].split(',').map(Number);
         const river = growRiver({ q: sq, r: sr }, rint(4, 9));
-        for (const k of river) terrain.set(k, 'sea');
+        for (const k of river) terrain.set(k, 'river');
         rivers.push(river);
       }
     }
     for (let i = 0, nExtra = rint(1, 2); i < nExtra; i++) {   // rivières indépendantes
       const river = growRiver(offsetToAxial(rint(2, COLS - 3), rint(2, ROWS - 3)), rint(5, 10));
-      for (const k of river) terrain.set(k, 'sea');
+      for (const k of river) terrain.set(k, 'river');
       rivers.push(river);
     }
     path = rivers.sort((a, b) => b.length - a.length)[0] ?? [];
   }
 
-  // 3) Relief et étangs en amas : chaque amas croît depuis un centre par
-  //    agrégation de voisins, en ne recouvrant que la plaine. Nombre, taille et
-  //    position varient par seed → des cartes très différentes.
-  const stamp = (type, count, minSize, maxSize) => {
+  // 3) Relief et eau en amas. Deux formes complémentaires :
+  //    — BOIS et étangs croissent depuis un centre par agrégation de voisins (sur
+  //      la plaine seulement), biaisée selon un axe → amas ALLONGÉS plutôt que
+  //      ronds ; les bois naissent au bord de l'eau (`centers`) ;
+  //    — les COTEAUX forment des CHAÎNES orientées (`growRidge`) percées de
+  //      passes : ils font barrière et canalisent les manœuvres.
+  const stamp = (type, count, minSize, maxSize, { centers = null, elongate = false } = {}) => {
     for (let i = 0; i < count; i++) {
       const size = rint(minSize, maxSize);
-      const frontier = [offsetToAxial(rint(1, COLS - 2), rint(1, ROWS - 2))];
+      const center = centers && centers.length
+        ? centers[Math.floor(rng() * centers.length)]
+        : offsetToAxial(rint(1, COLS - 2), rint(1, ROWS - 2));
+      const mainDir = rint(0, 5);
+      const frontier = [center];
       const seen = new Set();
       let placed = 0;
       while (frontier.length && placed < size) {
@@ -165,25 +172,70 @@ export function generateMap(seed = 1, { fair = false } = {}) {
         if (seen.has(k)) continue;
         seen.add(k);
         const cur = terrain.get(k);
-        if (cur !== 'sand' && cur !== 'sand2') continue; // hors carte ou déjà occupé
+        if (cur !== 'plain' && cur !== 'plain2') continue; // hors carte ou déjà occupé
         terrain.set(k, type);
         placed++;
-        for (const [dq, dr] of DIRS) frontier.push({ q: cell.q + dq, r: cell.r + dr });
+        for (let di = 0; di < 6; di++) {
+          // Allongement : on suit l'axe (di et son opposé), on raréfie les côtés.
+          if (elongate && di !== mainDir && di !== (mainDir + 3) % 6 && rng() < 0.6) continue;
+          frontier.push({ q: cell.q + DIRS[di][0], r: cell.r + DIRS[di][1] });
+        }
       }
     }
   };
-  stamp('oasis', rint(4, 9), 4, 14); // bois
-  stamp('rock', rint(6, 11), 2, 5);  // coteaux
-  stamp('sea', rint(0, 2), 2, 4);    // étangs
+
+  // Chaîne de coteaux : une crête qui serpente depuis un point intérieur dans une
+  // direction dominante, épaissie latéralement, percée de 1–2 passes laissées en
+  // plaine (goulots franchissables). Ne recouvre que la plaine.
+  const setRock = (q, r) => {
+    const cur = terrain.get(key(q, r));
+    if (cur === 'plain' || cur === 'plain2') terrain.set(key(q, r), 'hill');
+  };
+  const growRidge = () => {
+    const start = offsetToAxial(rint(4, COLS - 5), rint(4, ROWS - 5));
+    const spine = [];
+    let d = rint(0, 5), q = start.q, r = start.r;
+    for (let i = 0, len = rint(9, 16); i < len; i++) {
+      if (rng() < 0.25) d = (d + (rng() < 0.5 ? 1 : 5)) % 6;  // dévie d'un cran
+      q += DIRS[d][0]; r += DIRS[d][1];
+      if (!terrain.has(key(q, r))) break;                     // sort de la carte
+      spine.push({ q, r, d });
+    }
+    if (spine.length < 4) return;
+    const gaps = new Set();
+    for (let i = 0, n = rint(1, 2); i < n; i++) gaps.add(rint(1, spine.length - 2));
+    spine.forEach((cell, i) => {
+      if (gaps.has(i)) return;                                 // passe : rien ici
+      setRock(cell.q, cell.r);
+      for (const pd of [(cell.d + 2) % 6, (cell.d + 4) % 6]) { // épaississement latéral
+        if (rng() < 0.55) setRock(cell.q + DIRS[pd][0], cell.r + DIRS[pd][1]);
+      }
+    });
+    for (const g of gaps) {                                    // garantir la trouée
+      const k = key(spine[g].q, spine[g].r);
+      if (terrain.get(k) === 'hill') terrain.set(k, 'plain');
+    }
+  };
+
+  // Bois au bord de l'eau : centres = plaines bordant une rivière ou un lac.
+  const waterside = [];
+  for (const [k, t] of terrain) {
+    if (t !== 'plain' && t !== 'plain2') continue;
+    const [q, r] = k.split(',').map(Number);
+    if (DIRS.some(([dq, dr]) => terrain.get(key(q + dq, r + dr)) === 'river')) waterside.push({ q, r });
+  }
+  stamp('forest', rint(7, 12), 5, 16, { centers: waterside, elongate: true }); // bois près de l'eau
+  for (let i = 0, n = rint(4, 5); i < n; i++) growRidge();                     // chaînes de coteaux
+  stamp('river', rint(1, 3), 2, 5, { elongate: true });                         // étangs
 
   // 4) Berges : une partie des plaines bordant l'eau devient une berge. Liseré
   //    irrégulier (tirage) plutôt que continu, pour ne pas élargir les rivières.
   for (const [k, t] of [...terrain]) {
-    if (t !== 'sea') continue;
+    if (t !== 'river') continue;
     const [q, r] = k.split(',').map(Number);
     for (const [dq, dr] of DIRS) {
       const nk = key(q + dq, r + dr);
-      if ((terrain.get(nk) === 'sand' || terrain.get(nk) === 'sand2') && rng() < 0.45) terrain.set(nk, 'coast');
+      if ((terrain.get(nk) === 'plain' || terrain.get(nk) === 'plain2') && rng() < 0.45) terrain.set(nk, 'bank');
     }
   }
 
@@ -191,7 +243,7 @@ export function generateMap(seed = 1, { fair = false } = {}) {
   const nBridges = rint(2, 3);
   for (let i = 1; path.length && i <= nBridges; i++) {
     const bk = path[Math.floor((path.length * i) / (nBridges + 1))];
-    if (terrain.get(bk) === 'sea') terrain.set(bk, 'road');
+    if (terrain.get(bk) === 'river') terrain.set(bk, 'road');
   }
 
   // 6) Bases (elles priment sur tout) puis peuplements de terre, espacés et à
@@ -247,8 +299,8 @@ export function generateMap(seed = 1, { fair = false } = {}) {
   const passable = (k) => { const t = terrain.get(k); return t && TERRAIN[t].cost !== Infinity; };
   const baseKey = (side) => { const { q, r } = offsetToAxial(...BASES[side]); return key(q, r); };
   for (let guard = 0; guard < 60; guard++) {
-    const seen = new Set([baseKey('axis')]);
-    const stackF = [baseKey('axis')];
+    const seen = new Set([baseKey('blue')]);
+    const stackF = [baseKey('blue')];
     while (stackF.length) {
       const [q, r] = stackF.pop().split(',').map(Number);
       for (const [dq, dr] of DIRS) {
@@ -256,12 +308,12 @@ export function generateMap(seed = 1, { fair = false } = {}) {
         if (!seen.has(nk) && passable(nk)) { seen.add(nk); stackF.push(nk); }
       }
     }
-    if (seen.has(baseKey('ally'))) break;
+    if (seen.has(baseKey('red'))) break;
     let crossing = null;
     for (const k of [...seen].sort()) {
       const [q, r] = k.split(',').map(Number);
       for (const [dq, dr] of DIRS) {
-        if (terrain.get(key(q + dq, r + dr)) === 'sea') { crossing = key(q + dq, r + dr); break; }
+        if (terrain.get(key(q + dq, r + dr)) === 'river') { crossing = key(q + dq, r + dr); break; }
       }
       if (crossing) break;
     }
@@ -289,7 +341,7 @@ export function generateMap(seed = 1, { fair = false } = {}) {
   //    posées (coût quasi nul) → tronçons partagés, embranchements, tracé
   //    organique. Un bruit seedé donne le méandre.
   const SETTLE = (t) => t === 'town' || t === 'village' || t === 'base';
-  const BASE_COST = { road: 0.2, sand: 1, sand2: 1, oasis: 2, rock: 3, coast: 3, sea: 6 };
+  const BASE_COST = { road: 0.2, plain: 1, plain2: 1, forest: 2, hill: 3, bank: 3, river: 6 };
   const stepCost = (q, r) => {
     const t = terrain.get(key(q, r));
     if (!t) return Infinity;                                 // hors carte
@@ -366,7 +418,7 @@ export function loadMap(data) {
   const terrain = new Map();
   const hexes = [];
   for (const [k, t] of Object.entries(data.terrain ?? {})) {
-    terrain.set(k, TERRAIN[t] ? t : 'sand');
+    terrain.set(k, TERRAIN[t] ? t : 'plain');
     const [q, r] = k.split(',').map(Number);
     hexes.push({ q, r });
   }
