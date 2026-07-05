@@ -132,8 +132,8 @@ export function generateMap(seed = 1, { fair = false } = {}) {
     // Régime fragmenté : quelques lacs, des rivières qui en naissent, et une ou
     // deux rivières indépendantes. La plus longue rivière portera les franchissements.
     const rivers = [];
-    for (let i = 0, nLakes = rint(2, 3); i < nLakes; i++) {
-      const lake = growBlob(offsetToAxial(rint(3, COLS - 4), rint(3, ROWS - 4)), rint(3, 7));
+    for (let i = 0, nLakes = rint(1, 2); i < nLakes; i++) {
+      const lake = growBlob(offsetToAxial(rint(3, COLS - 4), rint(3, ROWS - 4)), rint(2, 4));
       for (const k of lake) terrain.set(k, 'sea');
       if (lake.length && rng() < 0.7) {                       // une rivière issue du lac
         const [sq, sr] = lake[Math.floor(rng() * lake.length)].split(',').map(Number);
@@ -174,15 +174,16 @@ export function generateMap(seed = 1, { fair = false } = {}) {
   };
   stamp('oasis', rint(4, 9), 4, 14); // bois
   stamp('rock', rint(6, 11), 2, 5);  // coteaux
-  stamp('sea', rint(1, 4), 2, 6);    // étangs
+  stamp('sea', rint(0, 2), 2, 4);    // étangs
 
-  // 4) Berges : toute plaine bordant l'eau devient une berge.
+  // 4) Berges : une partie des plaines bordant l'eau devient une berge. Liseré
+  //    irrégulier (tirage) plutôt que continu, pour ne pas élargir les rivières.
   for (const [k, t] of [...terrain]) {
     if (t !== 'sea') continue;
     const [q, r] = k.split(',').map(Number);
     for (const [dq, dr] of DIRS) {
       const nk = key(q + dq, r + dr);
-      if (terrain.get(nk) === 'sand' || terrain.get(nk) === 'sand2') terrain.set(nk, 'coast');
+      if ((terrain.get(nk) === 'sand' || terrain.get(nk) === 'sand2') && rng() < 0.45) terrain.set(nk, 'coast');
     }
   }
 
