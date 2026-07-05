@@ -395,25 +395,31 @@ export function generateMap(seed = 1, { fair = false } = {}) {
     }
   }
 
-  // Plancher d'objectifs : garantir au moins 3 villes (on promeut des villages
-  // si les tirages en ont laissé trop peu).
-  let villes = [...terrain.values()].filter((t) => t === 'town').length;
-  for (const [k, t] of terrain) {
-    if (villes >= 3) break;
-    const [q, r] = k.split(',').map(Number);
-    if (t === 'village' && !townAdjacent(q, r)) { terrain.set(k, 'town'); villes++; }
+  // Objectifs de victoire : posés indépendamment du terrain (ville et objectif
+  // sont deux notions distinctes). Répartis sur la terre franchissable, hors
+  // base et espacés les uns des autres — ils peuvent tomber sur n'importe quel
+  // terrain, pas seulement une ville.
+  const objectives = [];
+  const objNear = (q, r) => objectives.some((k) => {
+    const [oq, or] = k.split(',').map(Number);
+    return (Math.abs(oq - q) + Math.abs(oq + or - q - r) + Math.abs(or - r)) / 2 < 4;
+  });
+  for (let placed = 0, tries = 0; placed < rint(4, 6) && tries < 2000; tries++) {
+    const { q, r } = offsetToAxial(rint(1, COLS - 2), rint(1, ROWS - 2));
+    const k = key(q, r);
+    if (baseKeys.has(k) || !passable(k) || objNear(q, r)) continue;
+    objectives.push(k);
+    placed++;
   }
-
-  const objectives = [...terrain.entries()]
-    .filter(([, t]) => t === 'town')
-    .map(([k]) => k);
   return { terrain, hexes, objectives };
 }
 
 // Construit une carte jouable à partir de données exportées par l'éditeur
-// (`{ terrain: { "q,r": type } }`). Mêmes sorties que `generateMap` : terrain,
-// liste des hexes et objectifs (villes). Les bases priment (positions fixées par
-// le moteur), garantissant les sources de ravitaillement de chaque camp.
+// (`{ terrain: { "q,r": type }, objectives: ["q,r", …] }`). Mêmes sorties que
+// `generateMap` : terrain, liste des hexes et objectifs. Les objectifs sont une
+// liste explicite indépendante du terrain ; à défaut (anciennes cartes), on
+// retombe sur les villes. Les bases priment (positions fixées par le moteur),
+// garantissant les sources de ravitaillement de chaque camp.
 export function loadMap(data) {
   const terrain = new Map();
   const hexes = [];
@@ -426,8 +432,8 @@ export function loadMap(data) {
     const { q, r } = offsetToAxial(c, rw);
     terrain.set(key(q, r), 'base');
   }
-  const objectives = [...terrain.entries()]
-    .filter(([, t]) => t === 'town')
-    .map(([k]) => k);
+  const objectives = Array.isArray(data.objectives)
+    ? data.objectives.filter((k) => terrain.has(k))
+    : [...terrain.entries()].filter(([, t]) => t === 'town').map(([k]) => k);
   return { terrain, hexes, objectives };
 }

@@ -66,8 +66,13 @@ function relocateOffWater(state) {
 // Le contrôle sert au ravitaillement ; la victoire (objCount) ne compte que les
 // villes (state.objectives).
 export function updateObjectives(state) {
+  // Contrôle suivi pour les peuplements (sources de ravitaillement) ET les
+  // objectifs de victoire, ces derniers pouvant être sur n'importe quel terrain.
+  const tracked = new Set(state.objectives);
   for (const [k, t] of state.terrain) {
-    if (t !== 'town' && t !== 'village') continue;
+    if (t === 'town' || t === 'village') tracked.add(k);
+  }
+  for (const k of tracked) {
     const [q, r] = k.split(',').map(Number);
     const occ = unitsAt(state.units, q, r)[0];
     if (occ) state.objControl.set(k, occ.side);
