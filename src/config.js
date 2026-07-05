@@ -28,7 +28,7 @@ export const TERRAIN = {
   sand:    { name: 'Plaine',       fill: 0x93b957, stroke: 0x67863a, cost: 1, def: 0 },
   sand2:   { name: 'Plaine',       fill: 0xaacb69, stroke: 0x67863a, cost: 1, def: 0 },
   rock:    { name: 'Coteau',       fill: 0x9a9078, stroke: 0x655d49, cost: 3, def: 2 },
-  town:    { name: 'Ville/pont',   fill: 0xbaa971, stroke: 0x7a6a3f, cost: 1, def: 2, supply: 6 },
+  town:    { name: 'Ville',        fill: 0xbaa971, stroke: 0x7a6a3f, cost: 1, def: 2, supply: 6 },
   village: { name: 'Village',      fill: 0xa8977a, stroke: 0x6e6042, cost: 1, def: 2, supply: 4 },
   urban:   { name: 'Zone urbaine', fill: 0x9a9aa0, stroke: 0x63636b, cost: 1, def: 2 },
   oasis:   { name: 'Bois',         fill: 0x468236, stroke: 0x2c5622, cost: 2, def: 1 },

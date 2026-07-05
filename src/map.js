@@ -3,7 +3,7 @@
 //  Reproductible via une seed : même seed → même carte (PRNG mulberry32).
 //  La seed choisit un style de cours d'eau (vertical / horizontal / diagonal /
 //  fourchu), sème le relief (bois, coteaux) et l'eau (étangs) en amas variés,
-//  puis garantit la jouabilité : ponts ajoutés jusqu'à relier les deux bases,
+//  puis garantit la jouabilité : routes de franchissement ajoutées jusqu'à relier les deux bases,
 //  unités tombées dans l'eau repoussées à terre (voir game.js).
 // ===========================================================================
 
@@ -24,7 +24,7 @@ function mulberry32(seed) {
 const LAND = new Set(['sand', 'sand2', 'oasis', 'rock']);
 
 // Construit une carte reproductible depuis `seed`. Renvoie le terrain, la liste
-// des hexes et les clés des objectifs (villes de terre + ponts).
+// des hexes et les clés des objectifs (villes de terre).
 export function generateMap(seed = 1) {
   const rng = mulberry32(seed);
   const rint = (lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
@@ -45,10 +45,10 @@ export function generateMap(seed = 1) {
   }
 
   // 2) Hydrographie. Selon la seed, deux régimes très différents :
-  //    — une grande transversale bord-à-bord (ligne de front + ponts goulots) ;
+  //    — une grande transversale bord-à-bord (ligne de front + franchissements goulots) ;
   //    — un réseau fragmenté : quelques lacs, des rivières courtes qui en
   //      naissent, et une ou deux rivières indépendantes.
-  //    Dans les deux cas, `path` (clés axiales) porte les ponts et garantit,
+  //    Dans les deux cas, `path` (clés axiales) porte les franchissements et garantit,
   //    avec l'étape 7, la jouabilité.
   const meander = (v, center, lo, hi, wig) => {
     if (rng() >= wig) return clamp(v, lo, hi);
@@ -127,7 +127,7 @@ export function generateMap(seed = 1) {
     path = trace.map(([c, rw]) => { const { q, r } = offsetToAxial(c, rw); return key(q, r); });
   } else {
     // Régime fragmenté : quelques lacs, des rivières qui en naissent, et une ou
-    // deux rivières indépendantes. La plus longue rivière portera les ponts.
+    // deux rivières indépendantes. La plus longue rivière portera les franchissements.
     const rivers = [];
     for (let i = 0, nLakes = rint(2, 3); i < nLakes; i++) {
       const lake = growBlob(offsetToAxial(rint(3, COLS - 4), rint(3, ROWS - 4)), rint(3, 7));
@@ -183,16 +183,16 @@ export function generateMap(seed = 1) {
     }
   }
 
-  // 5) Ponts sur le cours d'eau principal, répartis le long du tracé.
+  // 5) Franchissements (routes) sur le cours d'eau principal, répartis le long du tracé.
   const nBridges = rint(2, 3);
   for (let i = 1; path.length && i <= nBridges; i++) {
     const bk = path[Math.floor((path.length * i) / (nBridges + 1))];
-    if (terrain.get(bk) === 'sea') terrain.set(bk, 'town');
+    if (terrain.get(bk) === 'sea') terrain.set(bk, 'road');
   }
 
   // 6) Bases (elles priment sur tout) puis peuplements de terre, espacés et à
   //    l'écart des bases : chacun est une ville (objectif, portée 6) ou un
-  //    village (relais de ravito seul, portée 4). Les ponts restent des villes.
+  //    village (relais de ravito seul, portée 4). Les ponts sont des routes.
   const baseKeys = new Set();
   for (const [c, rw] of Object.values(BASES)) {
     const { q, r } = offsetToAxial(c, rw);
@@ -204,19 +204,24 @@ export function generateMap(seed = 1) {
     const [tq, tr] = k.split(',').map(Number);
     return (Math.abs(tq - q) + Math.abs(tq + tr - q - r) + Math.abs(tr - r)) / 2 < 3;
   });
+  // Deux villes ne peuvent pas être collées : vrai si un voisin direct est déjà
+  // une ville (lecture directe du terrain, indépendante de townKeys).
+  const townAdjacent = (q, r) =>
+    DIRS.some(([dq, dr]) => terrain.get(key(q + dq, r + dr)) === 'town');
   for (let placed = 0, tries = 0; placed < rint(9, 13) && tries < 1500; tries++) {
     const { q, r } = offsetToAxial(rint(1, COLS - 2), rint(1, ROWS - 2));
     const k = key(q, r);
     if (!LAND.has(terrain.get(k)) || baseKeys.has(k) || near(q, r)) continue;
     // Jamais un îlot : au moins un voisin terrestre (accès par la terre garanti).
     if (!DIRS.some(([dq, dr]) => LAND.has(terrain.get(key(q + dq, r + dr))))) continue;
-    terrain.set(k, rng() < 0.85 ? 'village' : 'town'); // grande majorité de villages sur les terres
+    // grande majorité de villages ; ville seulement si aucune ville adjacente.
+    terrain.set(k, rng() < 0.85 || townAdjacent(q, r) ? 'village' : 'town');
     townKeys.push(k);
     placed++;
   }
 
   // 7) Jouabilité : tant que les deux bases ne sont pas reliées par voie
-  //    terrestre, on transforme un hex d'eau frontalier en pont.
+  //    terrestre, on transforme un hex d'eau frontalier en route.
   const passable = (k) => { const t = terrain.get(k); return t && TERRAIN[t].cost !== Infinity; };
   const baseKey = (side) => { const { q, r } = offsetToAxial(...BASES[side]); return key(q, r); };
   for (let guard = 0; guard < 60; guard++) {
@@ -230,23 +235,23 @@ export function generateMap(seed = 1) {
       }
     }
     if (seen.has(baseKey('ally'))) break;
-    let bridge = null;
+    let crossing = null;
     for (const k of [...seen].sort()) {
       const [q, r] = k.split(',').map(Number);
       for (const [dq, dr] of DIRS) {
-        if (terrain.get(key(q + dq, r + dr)) === 'sea') { bridge = key(q + dq, r + dr); break; }
+        if (terrain.get(key(q + dq, r + dr)) === 'sea') { crossing = key(q + dq, r + dr); break; }
       }
-      if (bridge) break;
+      if (crossing) break;
     }
-    if (!bridge) break;
-    terrain.set(bridge, 'town');
+    if (!crossing) break;
+    terrain.set(crossing, 'road');
   }
 
   // 7b) Zones urbaines : périphérie bâtie autour des peuplements. Denses autour
   //     des villes, plus clairsemées autour des villages. Elles offrent la
   //     protection d'une ville mais n'apportent aucun ravitaillement.
   for (const [k, t] of [...terrain]) {
-    const density = t === 'town' ? 0.6 : t === 'village' ? 0.25 : 0;
+    const density = t === 'town' ? 0.85 : t === 'village' ? 0.5 : 0;
     if (!density) continue;
     const [q, r] = k.split(',').map(Number);
     for (const [dq, dr] of DIRS) {
@@ -321,7 +326,8 @@ export function generateMap(seed = 1) {
   let villes = [...terrain.values()].filter((t) => t === 'town').length;
   for (const [k, t] of terrain) {
     if (villes >= 3) break;
-    if (t === 'village') { terrain.set(k, 'town'); villes++; }
+    const [q, r] = k.split(',').map(Number);
+    if (t === 'village' && !townAdjacent(q, r)) { terrain.set(k, 'town'); villes++; }
   }
 
   const objectives = [...terrain.entries()]

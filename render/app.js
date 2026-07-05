@@ -144,7 +144,7 @@ const PIXI = window.PIXI;
         decoLayer.moveTo(x - 6, y - 3).quadraticCurveTo(x - 3, y - 5, x, y - 3).quadraticCurveTo(x + 3, y - 1, x + 6, y - 3).stroke({ width: 1, color: 0xaed3e2, alpha: 0.5 });
         decoLayer.moveTo(x - 6, y + 4).quadraticCurveTo(x - 3, y + 2, x, y + 4).quadraticCurveTo(x + 3, y + 6, x + 6, y + 4).stroke({ width: 1, color: 0xaed3e2, alpha: 0.5 });
       } else if (type === 'road') {
-        // route : trait vers chaque voisin carrossable (route/pont/base) → réseau.
+        // route : trait vers chaque voisin carrossable (route/ville/base) → réseau.
         let linked = false;
         for (const [dq, dr] of DIRS) {
           const nt = state.terrain.get(key(q + dq, r + dr));
