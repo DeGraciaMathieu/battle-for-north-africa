@@ -4,7 +4,7 @@
 //  s'abonne au bus d'événements ; elle ne contient aucune règle de jeu.
 // ===========================================================================
 
-import { TERRAIN, MAX_TURNS, BASES, CRT, ODDS, DIRS, CATALOG_ORDER, SIZE, SQRT3 } from '../src/config.js';
+import { TERRAIN, MAX_TURNS, BASES, CRT, ODDS, DIRS, CATALOG_ORDER, SIZE, SQRT3, ARTY_RANGE } from '../src/config.js';
 import { key, axialToPixel, offsetToAxial, pixelToAxial, hexCorners, hexDistance, clamp } from '../src/geometry.js';
 import { eAtk, eDef, eMov, other, unitsAt, enemyAt, stackCount, isArmor, isFoot } from '../src/units.js';
 import { zocOf, computeReachable, moveUnit } from '../src/movement.js';
@@ -302,6 +302,7 @@ const PIXI = window.PIXI;
       startAnim();
     }
     const fxQueue = [];                            // positions collectées pendant resolveCombat, jouées à la fermeture de la modale
+    let artyPreview = [];                          // appui d'artillerie du combat en aperçu { from, to } → flèches sur la carte
 
     // voisin axial d → arête correspondante de l'hexe flat-top (partagé plus bas).
     const DIR_TO_EDGE = [0, 5, 4, 3, 2, 1];
@@ -506,6 +507,7 @@ const PIXI = window.PIXI;
     function clearSel() {
       sel = null;
       attackers.clear();
+      artyPreview = [];
       clearPending();
     }
 
@@ -534,6 +536,25 @@ const PIXI = window.PIXI;
         }
       }
       overlay.stroke({ width, color, alpha });
+    };
+    // Flèche courbe (bézier quadratique) d'une pièce d'artillerie vers la cible :
+    // indicateur, pendant l'aperçu du combat, que cette pièce appuie l'attaque.
+    const drawArtyArrow = (from, to) => {
+      const a0 = axialToPixel(from.q, from.r), a1 = axialToPixel(to.q, to.r);
+      const dx = a1.x - a0.x, dy = a1.y - a0.y, len = Math.hypot(dx, dy) || 1;
+      const off = Math.min(70, len * 0.32);            // décalage perpendiculaire → arc
+      const cx = (a0.x + a1.x) / 2 - (dy / len) * off, cy = (a0.y + a1.y) / 2 + (dx / len) * off;
+      const bez = (s) => { const u = 1 - s; return [u * u * a0.x + 2 * u * s * cx + s * s * a1.x, u * u * a0.y + 2 * u * s * cy + s * s * a1.y]; };
+      const col = 0xffcf6a, N = 24, end = 0.86;         // s'arrête avant le centre pour ne pas masquer la cible
+      const p0 = bez(0);
+      overlay.moveTo(p0[0], p0[1]);
+      for (let i = 1; i <= N; i++) { const q = bez((i / N) * end); overlay.lineTo(q[0], q[1]); }
+      overlay.stroke({ width: 3, color: col, alpha: 0.9 });
+      const hp = bez(end), hb = bez(end - 0.06), ang = Math.atan2(hp[1] - hb[1], hp[0] - hb[0]), ah = 11;
+      overlay.moveTo(hp[0], hp[1]).lineTo(hp[0] - ah * Math.cos(ang - 0.42), hp[1] - ah * Math.sin(ang - 0.42))
+        .moveTo(hp[0], hp[1]).lineTo(hp[0] - ah * Math.cos(ang + 0.42), hp[1] - ah * Math.sin(ang + 0.42))
+        .stroke({ width: 3, color: col, alpha: 0.9 });
+      overlay.circle(a0.x, a0.y, 4).fill({ color: col, alpha: 0.95 }); // point de départ (la pièce)
     };
 
     // Trace la ligne de ravitaillement de chaque unité du camp actif jusqu'à sa
@@ -604,6 +625,7 @@ const PIXI = window.PIXI;
           const u = state.units.find((x) => x.id === id);
           if (u) drawHexOutline(key(u.q, u.r), 0x6f9a5c, 3, 0.95);
         }
+        for (const { from, to } of artyPreview) drawArtyArrow(from, to); // appui d'artillerie du combat en aperçu
       }
     }
 
@@ -662,6 +684,32 @@ const PIXI = window.PIXI;
       $('moveConfirm').style.display = 'flex';
       positionMoveTooltip();
     }
+    // Attaquants retenus pour une cible en (q,r) : sélection explicite adjacente
+    // et libre, sinon tous les amis adjacents libres. Partagé par le clic et le
+    // survol (aperçu de l'appui d'artillerie).
+    function attackersFor(q, r) {
+      let atkUnits = [...attackers].map((id) => byId(id)).filter(Boolean)
+        .filter((u) => hexDistance(u.q, u.r, q, r) === 1 && !u.hasFought);
+      if (!atkUnits.length) {
+        atkUnits = state.units.filter((u) => u.side === state.G.player && !u.hasFought && hexDistance(u.q, u.r, q, r) === 1);
+      }
+      return atkUnits;
+    }
+    // Survol d'une cible ennemie en phase de combat → flèches des artilleries qui
+    // appuieraient l'attaque (indication avant de cliquer). `q === null` : efface.
+    function setArtyHover(q, r) {
+      let next = [];
+      if (!state.G.over && state.G.phase === 'combat' && myTurn() && q !== null) {
+        const stack = unitsAt(state.units, q, r), top = stack[stack.length - 1];
+        if (top && top.side !== state.G.player) {
+          const atk = attackersFor(q, r);
+          if (atk.length) next = combatPlan(state, atk, top).artyFrom.map((from) => ({ from, to: { q, r } }));
+        }
+      }
+      const same = next.length === artyPreview.length
+        && next.every((n, i) => n.from.q === artyPreview[i].from.q && n.from.r === artyPreview[i].from.r);
+      if (!same) { artyPreview = next; drawOverlay(); draw(); }
+    }
     function handleCombat(q, r) {
       const stack = unitsAt(state.units, q, r);
       if (!stack.length) {
@@ -670,11 +718,7 @@ const PIXI = window.PIXI;
       }
       const top = stack[stack.length - 1];
       if (top.side !== state.G.player) {                    // clic ennemi → résoudre
-        let atkUnits = [...attackers].map((id) => state.units.find((u) => u.id === id)).filter(Boolean)
-          .filter((u) => hexDistance(u.q, u.r, q, r) === 1 && !u.hasFought);
-        if (!atkUnits.length) {                              // sinon : tous les amis adjacents libres
-          atkUnits = state.units.filter((u) => u.side === state.G.player && !u.hasFought && hexDistance(u.q, u.r, q, r) === 1);
-        }
+        const atkUnits = attackersFor(q, r);
         if (!atkUnits.length) {
           log('Aucun attaquant adjacent.');
           return;
@@ -742,14 +786,15 @@ const PIXI = window.PIXI;
       el.style.top = top + 'px';
     }
     function handleHover(e) {
-      if (state.G.over || (ptr && ptr.moved)) { hoverKey = null; hideHexTooltip(); return; }
+      if (state.G.over || (ptr && ptr.moved)) { hoverKey = null; hideHexTooltip(); setArtyHover(null); return; }
       const p = world.toLocal(e.global);
       const { q, r } = pixelToAxial(p.x, p.y);
       const k = key(q, r);
       hoverPos = { x: e.global.x, y: e.global.y };
-      if (!state.terrain.has(k)) { hoverKey = null; hideHexTooltip(); return; }
+      if (!state.terrain.has(k)) { hoverKey = null; hideHexTooltip(); setArtyHover(null); return; }
       if (k === hoverKey) return;              // même hexe : laisser le minuteur courir
       hoverKey = k;
+      setArtyHover(q, r);                      // aperçu de l'appui d'artillerie sur la cible survolée
       hideHexTooltip();
       hoverTimer = setTimeout(() => showHexTooltip(k), HOVER_DELAY);
     }
@@ -896,7 +941,7 @@ const PIXI = window.PIXI;
       const camp = 'du camp ' + sideLabel(state.G.player);
       $('hint').innerHTML = state.G.phase === 'move'
         ? `Clique une unité ${camp} pour voir ses déplacements, puis un hexagone surligné. Entrer dans une ZOC ennemie (rouge) stoppe l'unité.`
-        : "Clique tes unités adjacentes à l'ennemi pour désigner les attaquants (vert), puis l'unité ennemie à assaillir (rouge). Blindé + infanterie et artillerie à portée (≤3 hex) décalent la table en ta faveur.";
+        : `Clique tes unités adjacentes à l'ennemi pour désigner les attaquants (vert), puis l'unité ennemie à assaillir (rouge). Blindé + infanterie et artillerie à portée (≤${ARTY_RANGE} hex) décalent la table en ta faveur.`;
       $('btnPhase').textContent = state.G.phase === 'move' ? 'Passer au combat ▸'
         : state.G.player === 'axis' ? 'Fin de tour Bleu → Rouge ▸' : `Fin du tour ${state.G.turn} ▸`;
 
@@ -1063,6 +1108,7 @@ const PIXI = window.PIXI;
       if (!pendingCombat) return;
       const { atkUnits, defender } = pendingCombat;
       pendingCombat = null;
+      artyPreview = [];                                     // le combat s'engage : plus d'aperçu
       $('combatBtns').style.display = 'none';
       netSend({ t: 'combat', atk: atkUnits.map((u) => u.id), def: defender.id });
       fxQueue.length = 0;
@@ -1073,7 +1119,10 @@ const PIXI = window.PIXI;
     };
     $('btnRefuseCombat').onclick = () => {
       pendingCombat = null;
+      artyPreview = [];
       $('combatModal').style.display = 'none';
+      drawOverlay();
+      draw();
       log('Combat refusé.');
     };
 

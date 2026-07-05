@@ -78,12 +78,12 @@ export function combatPlan(state, attackers, defender) {
   // Appui d'artillerie : pièces amies ravitaillées, à portée, HORS pile → +1 (max +2).
   const side = attackers[0].side;
   const inPile = new Set(attackers.map((a) => a.id));
-  let arty = 0;
+  const artyFrom = [];                                     // positions des pièces qui appuient (pour le rendu)
   for (const u of state.units) {
     if (u.side === side && u.type === 'arty' && !inPile.has(u.id) && u.supplied
-        && hexDistance(u.q, u.r, defender.q, defender.r) <= ARTY_RANGE) arty++;
+        && hexDistance(u.q, u.r, defender.q, defender.r) <= ARTY_RANGE) artyFrom.push({ q: u.q, r: u.r });
   }
-  arty = Math.min(arty, 2);
+  const arty = Math.min(artyFrom.length, 2);              // le bonus plafonne à +2
   const def = eDef(defender);
   const idx = clamp(oddsIndex(atk, def) + combined + arty - terr, 0, 7);
   return {
@@ -96,6 +96,7 @@ export function combatPlan(state, attackers, defender) {
     defSupplied: defender.supplied,
     baseCol: ODDS[oddsIndex(atk, def)],                     // colonne avant décalages
     combined, arty, terr,
+    artyFrom, target: { q: defender.q, r: defender.r },     // appui d'artillerie → tir courbe (rendu)
     idx, col: ODDS[idx],                                    // colonne finale
   };
 }
