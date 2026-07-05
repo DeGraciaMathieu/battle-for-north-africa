@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Battle for North Africa — Éditeur de carte</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden;
+    background: #14110c; font-family: "Courier New", ui-monospace, monospace; color: #d9cca0; }
+  #app { display: flex; height: 100%; }
+
+  /* Barre latérale */
+  #side { width: 230px; flex: 0 0 230px; background: #1a1812; border-right: 1px solid #5a5238;
+    padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+  h1 { margin: 0; font-size: 13px; color: #e8b95a; letter-spacing: 1.4px; text-transform: uppercase; }
+  .hint { color: #8a8064; font-size: 11px; line-height: 1.5; }
+  .sect { color: #9a9070; font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    border-top: 1px solid #48412c; padding-top: 8px; margin-top: 2px; }
+
+  #palette { display: flex; flex-direction: column; gap: 4px; }
+  .swatch-btn { display: flex; align-items: center; gap: 8px; text-align: left; cursor: pointer;
+    font-family: inherit; font-size: 12px; color: #d9cca0; background: #221f16;
+    border: 1px solid #3a3323; border-radius: 4px; padding: 6px 8px; }
+  .swatch-btn:hover { background: #2c281c; }
+  .swatch-btn.on { background: #3a3323; border-color: #8a7838; color: #efe4bc; }
+  .sw { width: 14px; height: 14px; border: 1px solid #2a2418; border-radius: 3px; flex: 0 0 14px; }
+
+  .tools { display: flex; flex-direction: column; gap: 6px; }
+  .tools button { cursor: pointer; font-family: inherit; font-weight: 700; font-size: 12px;
+    background: #3a3323; color: #e8b95a; border: 1px solid #6d5f38; border-radius: 4px;
+    padding: 8px; letter-spacing: .5px; }
+  .tools button:hover { background: #4a4029; }
+
+  /* Zone de dessin */
+  #main { flex: 1; position: relative; }
+  #c { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+  #tip { position: absolute; bottom: 10px; left: 12px; font-size: 12px; color: #efe4bc;
+    background: rgba(26,24,18,.9); border: 1px solid #5a5238; border-radius: 4px;
+    padding: 5px 9px; pointer-events: none; min-height: 14px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="side">
+    <h1>Éditeur de carte</h1>
+    <div class="hint">Clic gauche : peindre · glisser : peindre en continu · molette : zoom · shift/clic-droit + glisser : déplacer la vue.</div>
+
+    <div class="sect">Pinceau</div>
+    <div id="palette"></div>
+
+    <div class="sect">Vue</div>
+    <div class="tools">
+      <button id="btnFit">Recadrer</button>
+    </div>
+
+    <div class="sect">Carte</div>
+    <div class="tools">
+      <button id="btnSeed">Charger une seed…</button>
+      <button id="btnClear">Tout effacer</button>
+      <button id="btnImport">Importer un JSON…</button>
+      <button id="btnExport">Exporter en JSON</button>
+    </div>
+  </aside>
+
+  <main id="main">
+    <canvas id="c"></canvas>
+    <div id="tip"></div>
+  </main>
+</div>
+
+<input type="file" id="fileInput" accept="application/json,.json" style="display:none">
+<script type="module" src="./editor/editor.js"></script>
+</body>
+</html>
