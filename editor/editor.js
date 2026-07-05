@@ -17,10 +17,11 @@ const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 // ---- État de l'éditeur. ----------------------------------------------------
 const terrain = new Map();          // "q,r" -> type de terrain
 const hexes = [];                   // { q, r } de tous les hexes de la grille
+const plain = () => (Math.random() < 0.5 ? 'sand' : 'sand2'); // nuance de plaine au hasard
 for (let c = 0; c < COLS; c++) {
   for (let rw = 0; rw < ROWS; rw++) {
     const { q, r } = offsetToAxial(c, rw);
-    terrain.set(key(q, r), 'sand');
+    terrain.set(key(q, r), plain());
     hexes.push({ q, r });
   }
 }
@@ -168,7 +169,7 @@ document.getElementById('btnFit').addEventListener('click', fit);
 
 document.getElementById('btnClear').addEventListener('click', () => {
   if (!confirm('Tout effacer et repartir d’une plaine vierge ?')) return;
-  for (const k of terrain.keys()) terrain.set(k, 'sand');
+  for (const k of terrain.keys()) terrain.set(k, plain());
   draw();
 });
 
