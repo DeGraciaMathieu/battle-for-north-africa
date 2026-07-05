@@ -77,8 +77,14 @@
       <button class="act" id="gen" type="button" title="Seed aléatoire">🎲</button>
     </div>
     <button class="act" id="play" type="button">Jouer ▸</button>
+    <button class="act" id="host" type="button" title="Créer une partie en ligne (tu joues Bleu)">🌐 En ligne ▸</button>
+    <div class="seedrow">
+      <input id="joinCode" type="text" maxlength="6" placeholder="CODE" style="width:96px;text-transform:uppercase;letter-spacing:2px" />
+      <button class="act" id="join" type="button">Rejoindre ▸</button>
+    </div>
   </div>
   <div class="hint">Une même seed reproduit exactement la même carte. Chaque camp a besoin d'au moins une unité.<br>
+    <b>En ligne</b> : « 🌐 En ligne » crée la partie et te donne un code à partager (tu joues Bleu) ; ton adversaire colle le code puis « Rejoindre » (il joue Rouge).<br>
     Nouveau ? <a href="regles.html" style="color:#e8b95a;">Lisez les règles du jeu ▸</a></div>
 
   <script type="module">
@@ -121,6 +127,7 @@
         }
       }
       $('play').disabled = SIDES.some((s) => total(s) === 0 || spent(s) > ARMY_POINTS);
+      $('host').disabled = $('play').disabled;
     }
 
     document.querySelectorAll('.stepper button').forEach((btn) => {
@@ -151,7 +158,8 @@
     };
 
     $('gen').onclick = () => { $('seed').value = String(Math.floor(Math.random() * 0xffffffff)); };
-    $('play').onclick = () => {
+    // Construit la query de partie (carte + armées) commune au solo et à l'hôte.
+    function buildQuery() {
       const enc = (side) => CATALOG_ORDER.map((t) => counts[side][t]).join('.');
       const q = new URLSearchParams();
       const map = $('map').value;
@@ -163,7 +171,15 @@
       }
       q.set('b', enc('axis'));
       q.set('r', enc('ally'));
-      location.href = 'game?' + q.toString(); // URL propre : évite la redirection de serve qui perd la query
+      return q;
+    }
+    // URL propre : évite la redirection de serve qui perd la query.
+    $('play').onclick = () => { location.href = 'game?' + buildQuery().toString(); };
+    $('host').onclick = () => { const q = buildQuery(); q.set('net', 'host'); location.href = 'game?' + q.toString(); };
+    $('join').onclick = () => {
+      const c = $('joinCode').value.trim().toUpperCase();
+      if (c.length < 4) { $('joinCode').focus(); return; }
+      location.href = 'game?net=guest&code=' + encodeURIComponent(c);
     };
 
     render();

@@ -12,6 +12,7 @@ import { resolveCombat, combatPlan } from '../src/combat.js';
 import { updateSupply, supplyRoutes, supplySources } from '../src/supply.js';
 import { createGame, updateObjectives, objCount, endPhase } from '../src/game.js';
 import { loadMap } from '../src/map.js';
+import { mulberry32, makeCode, createHost, joinHost } from './net.js';
 
 const PIXI = window.PIXI;
 
@@ -20,36 +21,147 @@ const PIXI = window.PIXI;
     // Seed de carte : reprise depuis l'URL (?seed=) si valide, sinon aléatoire.
     // Poussée dans l'URL pour pouvoir repartager la carte courante.
     const params = new URLSearchParams(location.search);
-    const seedParam = params.get('seed');
-    const seed = seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : Math.floor(Math.random() * 0xffffffff);
-    // Mode de génération : 'fair' répartit les peuplements sur un maillage régulier.
-    const fair = params.get('gen') === 'fair';
-    // Carte nommée (dossier maps/) : prioritaire sur la seed si le fichier charge.
-    const mapParam = params.get('map');
-    let mapData = null;
-    if (mapParam && /^[\w-]+$/.test(mapParam)) {
-      try {
-        const res = await fetch(new URL(`../maps/${mapParam}.json`, import.meta.url));
-        if (res.ok) mapData = loadMap(await res.json());
-      } catch { mapData = null; }
-    }
-    document.getElementById('seedVal').textContent = mapData ? mapParam : seed;
+    const netRole = params.get('net');                 // 'host' | 'guest' | null (solo)
+    const isOnline = netRole === 'host' || netRole === 'guest';
+    const sideLabel = (s) => (s === 'axis' ? 'BLEU' : 'ROUGE');
+
     // Armées de l'éditeur (accueil) : b/r = comptes par type (ordre CATALOG_ORDER).
     // Absentes (accès direct) → roster par défaut.
     const parseArmy = (s) => {
-      const parts = s.split('.').map(Number);
+      const parts = String(s).split('.').map(Number);
       const army = {};
       CATALOG_ORDER.forEach((t, i) => { if (parts[i] > 0) army[t] = parts[i]; });
       return army;
     };
-    const b = params.get('b'), r = params.get('r');
-    const composition = b && r ? { axis: parseArmy(b), ally: parseArmy(r) } : undefined;
-    const q = new URLSearchParams();
-    if (mapData) q.set('map', mapParam); else { q.set('seed', String(seed)); if (fair) q.set('gen', 'fair'); }
-    if (composition) { q.set('b', b); q.set('r', r); }
-    history.replaceState(null, '', `?${q.toString()}`);
-    const state = createGame(Math.random, seed, composition, mapData ?? undefined, fair ? { fair: true } : undefined);
-    const sideLabel = (s) => (s === 'axis' ? 'BLEU' : 'ROUGE');
+    // Carte nommée (dossier maps/) : prioritaire sur la seed si le fichier charge.
+    async function loadMapData(mp) {
+      if (mp && /^[\w-]+$/.test(mp)) {
+        try {
+          const res = await fetch(new URL(`../maps/${mp}.json`, import.meta.url));
+          if (res.ok) return loadMap(await res.json());
+        } catch { /* carte introuvable : repli sur la seed */ }
+      }
+      return null;
+    }
+
+    // -- Lobby réseau : mise en relation P2P avant le début de partie ----------
+    const gid = (x) => document.getElementById(x);
+    function showLobby(role, code) {
+      const box = gid('lobbyBox');
+      if (role === 'host') {
+        const link = `${location.origin}${location.pathname.replace(/[^/]*$/, 'game')}?net=guest&code=${code}`;
+        box.innerHTML =
+          '<h2>Partie en ligne — 🔵 Bleu</h2>'
+          + '<div class="sub">Transmets ce code à ton adversaire :</div>'
+          + `<div id="lobbyCode">${code}</div>`
+          + '<button id="lobbyCopy" class="lobbybtn">Copier le lien d\'invitation</button>'
+          + '<div id="lobbyStatus" class="sub">Initialisation…</div>'
+          + '<button id="lobbyHome" class="lobbybtn ghost">Annuler</button>';
+        gid('lobbyCopy').onclick = () => {
+          navigator.clipboard?.writeText(link);
+          gid('lobbyCopy').textContent = 'Lien copié ✓';
+        };
+      } else {
+        box.innerHTML =
+          '<h2>Partie en ligne — 🔴 Rouge</h2>'
+          + `<div class="sub">Connexion au code <b>${code}</b></div>`
+          + '<div id="lobbyStatus" class="sub">Connexion…</div>'
+          + '<button id="lobbyHome" class="lobbybtn ghost">Annuler</button>';
+      }
+      gid('lobbyHome').onclick = () => { location.href = '/'; };
+      gid('lobby').style.display = 'flex';
+    }
+    const setLobbyStatus = (t) => { const el = gid('lobbyStatus'); if (el) el.textContent = t; };
+    const hideLobby = () => { gid('lobby').style.display = 'none'; };
+    function lobbyError(title, msg) {
+      gid('lobbyBox').innerHTML = `<h2>${title}</h2><div class="sub">${msg}</div>`
+        + '<button id="lobbyHome" class="lobbybtn">Retour à l\'accueil</button>';
+      gid('lobbyHome').onclick = () => { location.href = '/'; };
+      gid('lobby').style.display = 'flex';
+    }
+
+    // -- Résolution de la partie selon le rôle réseau -------------------------
+    // Host/solo lisent l'URL ; le guest reçoit tout le descriptif de l'hôte, de
+    // sorte que les deux clients construisent un état STRICTEMENT identique.
+    let seed, fair, mapParam, mapData, composition, rng, rngSeed;
+    let localSide = null, net = null, started = false, netLost = false;
+    const netQueue = [];                  // messages de jeu reçus avant la fin de l'init (différés)
+    let onGameMsg = null;
+    const onPeerLost = () => {
+      if (!started) { lobbyError('Connexion interrompue', 'La liaison avec l\'adversaire a échoué.'); return; }
+      if (!state.G.over) { netLost = true; lobbyError('Connexion perdue', 'Ton adversaire a quitté la partie.'); }
+    };
+
+    if (netRole === 'guest') {
+      localSide = 'ally';
+      const code = (params.get('code') || '').toUpperCase();
+      const desc = await new Promise((resolve, reject) => {
+        showLobby('guest', code);
+        net = joinHost(code, {
+          onConnect: () => { setLobbyStatus('Connecté — réception de la partie…'); net.send({ t: 'hello' }); },
+          onData: (m) => { if (onGameMsg) onGameMsg(m); else if (m.t === 'desc') resolve(m); else netQueue.push(m); },
+          onClose: onPeerLost,
+          onError: () => reject(new Error('Connexion impossible : code invalide ou hôte absent.')),
+        });
+      });
+      seed = desc.seed; fair = desc.fair; mapParam = desc.mapParam || null; rngSeed = desc.rngSeed;
+      composition = desc.b && desc.r ? { axis: parseArmy(desc.b), ally: parseArmy(desc.r) } : undefined;
+      mapData = await loadMapData(mapParam);
+      rng = mulberry32(rngSeed);
+      hideLobby();
+    } else {
+      const seedParam = params.get('seed');
+      seed = seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : Math.floor(Math.random() * 0xffffffff);
+      fair = params.get('gen') === 'fair';
+      mapParam = params.get('map');
+      mapData = await loadMapData(mapParam);
+      const b = params.get('b'), r = params.get('r');
+      composition = b && r ? { axis: parseArmy(b), ally: parseArmy(r) } : undefined;
+      if (netRole === 'host') {
+        localSide = 'axis';
+        rngSeed = Math.floor(Math.random() * 0xffffffff);
+        rng = mulberry32(rngSeed);
+        const code = makeCode();
+        await new Promise((resolve, reject) => {
+          showLobby('host', code);
+          net = createHost(code, {
+            onReady: () => setLobbyStatus('En attente de connexion…'),
+            onConnect: () => setLobbyStatus('Adversaire connecté — synchronisation…'),
+            onData: (m) => {
+              if (onGameMsg) return onGameMsg(m);
+              if (m.t === 'hello') { net.send({ t: 'desc', seed, fair, mapParam: mapParam || null, b, r, rngSeed }); resolve(); }
+              else netQueue.push(m);
+            },
+            onClose: onPeerLost,
+            onError: () => reject(new Error('Impossible de créer la partie en ligne.')),
+          });
+        });
+        hideLobby();
+      } else {
+        rng = Math.random;               // solo : aléa navigateur classique
+      }
+    }
+
+    document.getElementById('seedVal').textContent = mapData ? mapParam : seed;
+    if (!isOnline) {
+      const q = new URLSearchParams();
+      if (mapData) q.set('map', mapParam); else { q.set('seed', String(seed)); if (fair) q.set('gen', 'fair'); }
+      if (composition) { q.set('b', params.get('b')); q.set('r', params.get('r')); }
+      history.replaceState(null, '', `?${q.toString()}`);
+    }
+    const state = createGame(rng, seed, composition, mapData ?? undefined, fair ? { fair: true } : undefined);
+    started = true;
+
+    // Verrou de tour : hors ligne on joue les deux camps ; en ligne on n'agit que
+    // pendant le tour de son propre camp (et tant que la liaison tient).
+    const myTurn = () => !isOnline || (!netLost && state.G.player === localSide);
+    const netSend = (m) => { if (net) net.send(m); };
+    const byId = (id) => state.units.find((u) => u.id === id);
+    if (isOnline) {
+      const nb = gid('netbar');
+      nb.style.display = '';
+      nb.innerHTML = `🌐 En ligne — tu joues <b>${sideLabel(localSide)}</b>`;
+    }
     const FILL = { axis: 0x4a6b9a, ally: 0xa8544a };   // couleurs des camps (pions, camp de base)
     const SUP = { axis: 0x8fb0d8, ally: 0xe0968f };    // teinte de ravitaillement par camp
 
@@ -397,7 +509,7 @@ const PIXI = window.PIXI;
     }
 
     function handleClick(p) {
-      if (state.G.over) return;
+      if (state.G.over || !myTurn()) return;
       const { q, r } = pixelToAxial(p.x, p.y);
       const k = key(q, r);
       if (!state.terrain.has(k)) {
@@ -422,7 +534,9 @@ const PIXI = window.PIXI;
     }
     function confirmMove() {
       if (!sel || !pending) return;
-      moveUnit(sel.unit, pending.key, sel.dist, sel.eZOC);
+      const id = sel.unit.id, to = pending.key;
+      moveUnit(sel.unit, to, sel.dist, sel.eZOC);
+      netSend({ t: 'move', id, to });
       sel = sel.unit.mpLeft > 0 ? { unit: sel.unit, ...computeReachable(state, sel.unit) } : null;
       clearPending();
       refresh();
@@ -550,7 +664,7 @@ const PIXI = window.PIXI;
       hideHexTooltip();
       ptr = { sx: e.global.x, sy: e.global.y, wx: world.x, wy: world.y, moved: false };
       // Saisir une unité amie déplaçable → glisser-déposer (au lieu de paner).
-      if (!state.G.over && state.G.phase === 'move') {
+      if (!state.G.over && state.G.phase === 'move' && myTurn()) {
         const p = world.toLocal(e.global);
         const { q, r } = pixelToAxial(p.x, p.y);
         const own = state.terrain.has(key(q, r))
@@ -592,7 +706,9 @@ const PIXI = window.PIXI;
         const { q, r } = pixelToAxial(p.x, p.y);
         const k = key(q, r);
         if (sel && sel.reachable.has(k)) {
+          const id = sel.unit.id;
           moveUnit(sel.unit, k, sel.dist, sel.eZOC);
+          netSend({ t: 'move', id, to: k });
           sel = sel.unit.mpLeft > 0 ? { unit: sel.unit, ...computeReachable(state, sel.unit) } : null;
         }
         dragOverKey = null;
@@ -648,7 +764,11 @@ const PIXI = window.PIXI;
       btnLegend.classList.toggle('on', showLegend);
       legend.style.display = showLegend ? '' : 'none';
     };
-    document.getElementById('btnPhase').onclick = () => endPhase(state);
+    document.getElementById('btnPhase').onclick = () => {
+      if (!myTurn()) return;
+      netSend({ t: 'phase' });
+      endPhase(state);
+    };
 
     // =========================================================================
     //  HUD (DOM) & boucle de rafraîchissement
@@ -707,6 +827,12 @@ const PIXI = window.PIXI;
       $('objbar').innerHTML = `<div class="kv"><span>Objectifs</span>`
         + `<span><b>${objCount(state, 'axis')}</b> ${sideLabel('axis')} · <b>${objCount(state, 'ally')}</b> ${sideLabel('ally')} · ${state.objectives.length} au total</span></div>`
         + `<div class="sub">Le camp contrôlant le plus d'objectifs au tour ${MAX_TURNS} l'emporte.</div>`;
+      if (isOnline) {
+        const mine = myTurn();
+        $('btnPhase').disabled = !mine;
+        if (netLost) $('hint').textContent = 'Connexion perdue.';
+        else if (!mine) $('hint').innerHTML = `⏳ Tour de l'adversaire — <b>${sideLabel(state.G.player)}</b>. Patiente…`;
+      }
       draw();
     }
 
@@ -765,7 +891,7 @@ const PIXI = window.PIXI;
     };
 
     // Aperçu AVANT le dé : stats, colonne, issues possibles, et décision.
-    function showCombatPreview(atkUnits, defender) {
+    function showCombatPreview(atkUnits, defender, spectator = false) {
       if (state.G.over) return;
       clearCombatTimers();
       const p = combatPlan(state, atkUnits, defender);
@@ -778,7 +904,8 @@ const PIXI = window.PIXI;
       $('combatRes').style.background = 'transparent';
       $('combatEffects').innerHTML = '';
       $('combatBtn').style.display = 'none';
-      $('combatBtns').style.display = 'flex';
+      $('combatBtns').style.display = spectator ? 'none' : 'flex';   // spectateur : pas de décision, on regarde le dé
+      if (spectator) pendingCombat = null;
       $('combatModal').style.display = 'flex';
     }
 
@@ -831,6 +958,7 @@ const PIXI = window.PIXI;
       const { atkUnits, defender } = pendingCombat;
       pendingCombat = null;
       $('combatBtns').style.display = 'none';
+      netSend({ t: 'combat', atk: atkUnits.map((u) => u.id), def: defender.id });
       resolveCombat(state, atkUnits, defender);             // → combatResolved → runRoll (anime la colonne)
       attackers.clear();
       refresh();
@@ -868,9 +996,42 @@ const PIXI = window.PIXI;
     $('btnSelectMove').onclick = selectPendingUnit;
     $('btnCancelMove').onclick = () => { clearPending(); refresh(); };
 
+    // Rejoue le combat de l'adversaire pour que le spectateur voie le même dé :
+    // le RNG semé garantit un résultat identique côté distant.
+    function remoteCombat(atkUnits, defender) {
+      showCombatPreview(atkUnits, defender, true);
+      resolveCombat(state, atkUnits, defender);           // → combatResolved → runRoll (anime la colonne)
+      attackers.clear();
+      refresh();
+      if (state.G.over) $('combatModal').style.display = 'none';
+    }
+    // Applique une action distante en rejouant EXACTEMENT le même code de règle
+    // que l'auteur (déplacement recalculé, dé reproduit) : aucun état n'est
+    // transmis, seulement l'intention.
+    if (isOnline) {
+      onGameMsg = (m) => {
+        if (netLost) return;
+        if (m.t === 'move') {
+          const u = byId(m.id);
+          if (u) { const { dist, eZOC } = computeReachable(state, u); moveUnit(u, m.to, dist, eZOC); }
+          clearSel();
+          refresh();
+        } else if (m.t === 'combat') {
+          const atk = m.atk.map(byId).filter(Boolean);
+          const def = byId(m.def);
+          if (atk.length && def) remoteCombat(atk, def);
+        } else if (m.t === 'phase') {
+          endPhase(state);                                 // phaseChanged → clearSel + refresh (bus)
+        }
+      };
+      netQueue.splice(0).forEach(onGameMsg);               // vide les messages arrivés pendant l'init
+    }
+
     fitView();
     refresh();
-    log('Partie prête — tour 1, phase de mouvement du camp Bleu.');
+    log(isOnline
+      ? `Partie en ligne prête — tu joues ${sideLabel(localSide)}. ${localSide === 'axis' ? 'À toi de jouer.' : "Au tour de l'adversaire."}`
+      : 'Partie prête — tour 1, phase de mouvement du camp Bleu.');
   } catch (err) {
     const el = document.getElementById('err');
     el.style.display = 'block';

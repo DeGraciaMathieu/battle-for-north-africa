@@ -96,6 +96,21 @@
   #combatModal .fx { font-size:12px; color:#d9cca0; padding:2px 0; animation:fxIn .2s ease-out; }
   @keyframes fxIn { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:none; } }
   #hexTip { z-index:25; display:none; pointer-events:none; max-width:240px; }
+  #btnPhase:disabled { opacity:.4; cursor:default; }
+  #netbar { margin:2px 0 4px; }
+  #netbar b { color:#e8b95a; }
+  #lobby { position:absolute; z-index:40; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(10,8,5,.72); }
+  #lobbyBox { background:rgba(20,17,12,.96); border:2px solid #e8b95a; border-radius:6px;
+    padding:26px 34px; text-align:center; max-width:92%; }
+  #lobbyBox h2 { margin:0 0 10px; color:#e8b95a; letter-spacing:1.5px; font-size:16px; }
+  #lobbyCode { font-size:34px; font-weight:700; letter-spacing:8px; color:#efe4bc; margin:12px 0;
+    padding:8px 12px; background:#1c1a12; border:1px dashed #6d5f38; border-radius:5px; }
+  #lobbyStatus { margin-top:10px; }
+  .lobbybtn { margin-top:12px; display:block; width:100%; padding:9px 14px; cursor:pointer; font-family:inherit;
+    font-weight:700; letter-spacing:.5px; background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; }
+  .lobbybtn:hover { background:#4a4029; }
+  .lobbybtn.ghost { background:transparent; border-color:#5a5238; color:#9a9070; font-weight:400; }
   #err { position:absolute; inset:0; z-index:50; display:none; padding:24px; color:#e88; background:#160f0f; white-space:pre-wrap; }
 </style>
 </head>
@@ -109,6 +124,7 @@
     <span id="badgeSide" class="badge axis">BLEU</span>
     <span id="badgePhase" class="badge phase">MOUVEMENT</span>
   </div>
+  <div id="netbar" class="sub" style="display:none"></div>
   <div class="sub">Carte <b id="seedVal">—</b></div>
   <div id="hint" class="sub"></div>
   <button id="btnPhase">Terminer la phase ▸</button>
@@ -175,7 +191,10 @@
 
 <div id="hexTip" class="panel"></div>
 
+<div id="lobby"><div id="lobbyBox"></div></div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.13.2/pixi.min.js"></script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script type="module" src="./render/app.js"></script>
 </body>
 </html>
