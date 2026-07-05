@@ -92,6 +92,12 @@ const PIXI = window.PIXI;
       } else if (type === 'village') {
         // village : marqueur plus petit qu'une ville.
         decoLayer.rect(x - 4, y - 4, 8, 8).fill(0x4a3c22).stroke({ width: 1.2, color: 0xd8c48a });
+      } else if (type === 'urban') {
+        // zone urbaine : semis de petits bâtiments (bâti plus dense qu'un village).
+        decoLayer.rect(x - 7, y - 6, 5, 5).fill(0x40414a).stroke({ width: 1, color: 0xc7c7cf });
+        decoLayer.rect(x - 1, y - 7, 5, 5).fill(0x40414a).stroke({ width: 1, color: 0xc7c7cf });
+        decoLayer.rect(x + 3, y + 1, 5, 5).fill(0x40414a).stroke({ width: 1, color: 0xc7c7cf });
+        decoLayer.rect(x - 4, y + 2, 5, 5).fill(0x40414a).stroke({ width: 1, color: 0xc7c7cf });
       } else if (type === 'oasis') {
         // bois : petit bosquet de touffes plutôt qu'un seul rond.
         decoLayer.circle(x - 4, y + 2, 4.5).fill(0x2f4a25).stroke({ width: 1, color: 0x7fb45f });
