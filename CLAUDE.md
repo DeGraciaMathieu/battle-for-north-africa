@@ -60,6 +60,7 @@ Voir le skill `architecture` pour la carte module → rôle et « où placer du 
 - `combat-crt` — table de combat, résolution, recul/avance.
 - `ravitaillement` — propagation du ravitaillement (flood-fill).
 - `sequence-jeu` — séquence IGO-UGO, objectifs, victoire.
+- `online` — mode 2 joueurs en ligne : lockstep, transport P2P (`net.js`), verrou de tour.
 - `testing` — commande de test, philosophie, mapping fichier → périmètre.
 - `feature` — workflow d'implémentation d'une fonctionnalité.
 - `prd` — rédaction d'un document de spécification (sans implémentation).

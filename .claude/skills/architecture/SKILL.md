@@ -21,7 +21,8 @@ Deux couches strictement séparées : `src/` (règles, testables) et `render/` (
 | `src/supply.js` | `supplySources`, `suppliedHexes`, `updateSupply` (flood-fill) | config, geometry, units, movement |
 | `src/combat.js` | `oddsIndex`, `resolveCombat`, `hitUnit`, `retreatOrDie` | config, geometry, units, movement |
 | `src/game.js` | `createGame`, `endPhase`, objectifs, `checkElimination/TurnEnd`, `endGame` | tous les `src/` ci-dessus |
-| `render/app.js` | PixiJS + HUD DOM + sélection/interaction ; s'abonne au bus | tout `src/` |
+| `render/app.js` | PixiJS + HUD DOM + sélection/interaction ; s'abonne au bus ; orchestre le mode en ligne | tout `src/`, `render/net.js` |
+| `render/net.js` | Transport P2P (PeerJS/WebRTC) + `mulberry32` pour le lockstep ; aucune règle, aucun état (voir skill `online`) | — |
 | `index.html` | Bootstrap : charge PixiJS (CDN) puis `render/app.js` en module | — |
 
 ## L'objet `state`
