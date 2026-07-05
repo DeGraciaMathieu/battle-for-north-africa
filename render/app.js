@@ -146,17 +146,32 @@ const PIXI = window.PIXI;
         decoLayer.moveTo(x - 6, y - 3).quadraticCurveTo(x - 3, y - 5, x, y - 3).quadraticCurveTo(x + 3, y - 1, x + 6, y - 3).stroke({ width: 1, color: 0xaed3e2, alpha: 0.5 });
         decoLayer.moveTo(x - 6, y + 4).quadraticCurveTo(x - 3, y + 2, x, y + 4).quadraticCurveTo(x + 3, y + 6, x + 6, y + 4).stroke({ width: 1, color: 0xaed3e2, alpha: 0.5 });
       } else if (type === 'road') {
-        // route : trait vers chaque voisin carrossable (route/ville/base) → réseau.
-        let linked = false;
+        // route : ruban reliant les voisins carrossables (route/ville/base). Tracé
+        // en courbes passant par le centre → rendu organique plutôt qu'en segments droits.
+        const mids = [];
         for (const [dq, dr] of DIRS) {
           const nt = state.terrain.get(key(q + dq, r + dr));
           if (nt === 'road' || nt === 'town' || nt === 'base') {
             const np = axialToPixel(q + dq, r + dr);
-            decoLayer.moveTo(x, y).lineTo((x + np.x) / 2, (y + np.y) / 2).stroke({ width: 3, color: 0x8a7550 });
-            linked = true;
+            mids.push({ x: (x + np.x) / 2, y: (y + np.y) / 2 });
           }
         }
-        if (!linked) decoLayer.circle(x, y, 2.5).fill(0x8a7550);
+        const RSTROKE = { width: 3, color: 0x8a7550 };
+        const n = Math.sin(q * 127.1 + r * 311.7) * 43758.5453;
+        const wig = (n - Math.floor(n) - 0.5) * 5;              // gigue déterministe par hex (±2.5px)
+        if (mids.length === 0) {
+          decoLayer.circle(x, y, 2.5).fill(0x8a7550);
+        } else if (mids.length === 2) {
+          // traversée : une seule courbe d'un bord à l'autre, incurvée via le centre.
+          const [a, b] = mids;
+          decoLayer.moveTo(a.x, a.y).quadraticCurveTo(x + wig, y - wig, b.x, b.y).stroke(RSTROKE);
+        } else {
+          // extrémité ou carrefour : une courbe du centre vers chaque bord relié.
+          for (const m of mids) {
+            const cx = (x + m.x) / 2 - (m.y - y) * 0.25, cy = (y + m.y) / 2 + (m.x - x) * 0.25;
+            decoLayer.moveTo(x, y).quadraticCurveTo(cx, cy, m.x, m.y).stroke(RSTROKE);
+          }
+        }
       }
       // Rivage : arête entre eau et terre soulignée d'écume.
       if (type === 'sea') {
