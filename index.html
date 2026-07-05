@@ -12,6 +12,7 @@
   h1 { margin: 0; color: #e8b95a; letter-spacing: 2px; text-transform: uppercase; font-size: 22px; text-align: center; }
   .tag { color: #9a9070; font-size: 12px; margin: 4px 0 20px; letter-spacing: .5px; text-align: center; }
   .tag b { color: #efe4bc; }
+
   .armies { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 860px; }
   .army { flex: 1; min-width: 320px; background: rgba(26,24,18,.92); border: 1px solid #5a5238; border-radius: 6px; padding: 16px 18px; }
   .army.blue { border-top: 3px solid #4a6b9a; }
@@ -33,21 +34,56 @@
   .stepper button:disabled { opacity: .3; cursor: default; }
   .stepper button:hover:not(:disabled) { background: #4a4029; }
   .stepper .n { min-width: 20px; text-align: center; color: #efe4bc; font-weight: 700; }
-  .foot { margin-top: 20px; width: 100%; max-width: 860px; display: flex; flex-wrap: wrap;
-    gap: 12px; align-items: center; justify-content: center; }
-  .seedrow { display: flex; gap: 8px; align-items: center; }
+
+  /* Réglages de carte : bande compacte et discrète (secondaire) */
+  .settings { margin-top: 18px; width: 100%; max-width: 860px; display: flex; flex-wrap: wrap;
+    gap: 10px 18px; align-items: center; justify-content: center;
+    background: rgba(26,24,18,.5); border: 1px solid #3a3628; border-radius: 6px; padding: 11px 16px; }
+  .field { display: flex; gap: 8px; align-items: center; }
   label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #9a9070; }
-  input, select { width: 150px; padding: 9px 11px; font-family: inherit; font-size: 14px;
+  select, input { padding: 7px 10px; font-family: inherit; font-size: 13px;
     background: #1c1a12; color: #efe4bc; border: 1px solid #6d5f38; border-radius: 4px; }
-  input:focus, select:focus { outline: none; border-color: #e8b95a; }
-  input:disabled { opacity: .4; }
+  select { min-width: 130px; }
+  #seed { width: 120px; }
+  select:focus, input:focus { outline: none; border-color: #e8b95a; }
+  select:disabled, input:disabled { opacity: .4; }
   input::placeholder { color: #6f6750; }
-  button.act { cursor: pointer; font-family: inherit; font-weight: 700; letter-spacing: .6px;
-    background: #3a3323; color: #e8b95a; border: 1px solid #6d5f38; border-radius: 4px; padding: 10px 14px; }
-  button.act:hover:not(:disabled) { background: #4a4029; }
-  #play { padding: 12px 28px; font-size: 15px; letter-spacing: 1px; }
-  #play:disabled { opacity: .4; cursor: default; }
-  .hint { color: #8a8064; font-size: 11px; text-align: center; width: 100%; max-width: 860px; margin-top: 10px; line-height: 1.5; }
+  .iconbtn { width: 34px; height: 34px; padding: 0; cursor: pointer; font-family: inherit; font-size: 15px;
+    background: #3a3323; color: #e8b95a; border: 1px solid #6d5f38; border-radius: 4px; }
+  .iconbtn:hover:not(:disabled) { background: #4a4029; }
+  .iconbtn:disabled { opacity: .4; cursor: default; }
+
+  /* Modes de jeu : 3 cartes, l'IA en action primaire */
+  .modes { margin-top: 18px; display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 860px; }
+  .mode { flex: 1; min-width: 170px; max-width: 250px; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    cursor: pointer; font-family: inherit; padding: 15px 16px; border-radius: 8px; transition: .12s;
+    background: #26241a; color: #d9cca0; border: 1px solid #5a5238; }
+  .mode:hover:not(:disabled) { border-color: #e8b95a; background: #2f2c1f; transform: translateY(-1px); }
+  .mode:disabled { opacity: .4; cursor: default; }
+  .mode .ico { font-size: 24px; line-height: 1; }
+  .mode .lbl { font-weight: 700; font-size: 15px; letter-spacing: .5px; color: #efe4bc; }
+  .mode .desc { font-size: 11px; color: #9a9070; }
+  .mode.primary { background: #e8b95a; border-color: #e8b95a; color: #221c10; }
+  .mode.primary .lbl { color: #221c10; }
+  .mode.primary .desc { color: #6a551f; }
+  .mode.primary:hover:not(:disabled) { background: #f0c76a; border-color: #f0c76a; }
+
+  /* Rejoindre : flux distinct (l'invité n'utilise pas le setup ci-dessus) */
+  .join { margin-top: 16px; width: 100%; max-width: 860px; display: flex; gap: 8px; align-items: center;
+    justify-content: center; border-top: 1px solid #322c1e; padding-top: 14px; }
+  .join span { font-size: 12px; color: #8a8064; }
+  .join input { width: 110px; text-transform: uppercase; letter-spacing: 2px; text-align: center; }
+  .join button { padding: 8px 14px; cursor: pointer; font-family: inherit; font-weight: 700; letter-spacing: .5px;
+    background: #3a3323; color: #e8b95a; border: 1px solid #6d5f38; border-radius: 4px; }
+  .join button:hover { background: #4a4029; }
+
+  .footer { margin-top: 18px; font-size: 11px; color: #8a8064; text-align: center; line-height: 1.6;
+    display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .rules { display: inline-flex; align-items: center; gap: 7px; text-decoration: none; font-size: 13px; font-weight: 700;
+    letter-spacing: .5px; color: #e8b95a; background: rgba(232,185,90,.08); border: 1px solid #6d5f38;
+    border-radius: 20px; padding: 9px 18px; transition: .12s; }
+  .rules:hover { background: rgba(232,185,90,.18); border-color: #e8b95a; }
+  .rules .ico { font-size: 15px; }
 </style>
 </head>
 <body>
@@ -59,35 +95,35 @@
     <div class="army red"><h2>🔴 Rouge</h2><div class="budget" id="bud-ally"></div><div id="list-ally"></div></div>
   </div>
 
-  <div class="foot">
-    <div class="seedrow">
-      <label for="map">Carte</label>
-      <select id="map"><option value="">Aléatoire (seed)</option></select>
-    </div>
-    <div class="seedrow">
-      <label for="genMode">Génération</label>
-      <select id="genMode">
-        <option value="random">Aléatoire</option>
-        <option value="fair">Équitable (équidistante)</option>
-      </select>
-    </div>
-    <div class="seedrow">
-      <label for="seed">Seed</label>
+  <div class="settings">
+    <div class="field"><label for="map">Carte</label>
+      <select id="map"><option value="">Aléatoire (seed)</option></select></div>
+    <div class="field"><label for="genMode">Génération</label>
+      <select id="genMode"><option value="random">Aléatoire</option><option value="fair">Équitable</option></select></div>
+    <div class="field"><label for="seed">Seed</label>
       <input id="seed" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="aléatoire" />
-      <button class="act" id="gen" type="button" title="Seed aléatoire">🎲</button>
-    </div>
-    <button class="act" id="play" type="button">Jouer ▸</button>
-    <button class="act" id="ai" type="button" title="Jouer contre l'IA (tu joues Bleu)">🤖 Contre l'IA ▸</button>
-    <button class="act" id="host" type="button" title="Créer une partie en ligne (tu joues Bleu)">🌐 En ligne ▸</button>
-    <div class="seedrow">
-      <input id="joinCode" type="text" maxlength="6" placeholder="CODE" style="width:96px;text-transform:uppercase;letter-spacing:2px" />
-      <button class="act" id="join" type="button">Rejoindre ▸</button>
-    </div>
+      <button class="iconbtn" id="gen" type="button" title="Seed aléatoire">🎲</button></div>
   </div>
-  <div class="hint">Une même seed reproduit exactement la même carte. Chaque camp a besoin d'au moins une unité.<br>
-    <b>Contre l'IA</b> : « 🤖 Contre l'IA » lance une partie solo où tu joues Bleu et l'IA joue Rouge.<br>
-    <b>En ligne</b> : « 🌐 En ligne » crée la partie et te donne un code à partager (tu joues Bleu) ; ton adversaire colle le code puis « Rejoindre » (il joue Rouge).<br>
-    Nouveau ? <a href="regles.html" style="color:#e8b95a;">Lisez les règles du jeu ▸</a></div>
+
+  <div class="modes">
+    <button class="mode primary" id="ai" type="button">
+      <span class="ico">🤖</span><span class="lbl">Contre l'IA</span><span class="desc">Solo · tu joues Bleu</span></button>
+    <button class="mode" id="play" type="button">
+      <span class="ico">👥</span><span class="lbl">À deux</span><span class="desc">Même écran</span></button>
+    <button class="mode" id="host" type="button">
+      <span class="ico">🌐</span><span class="lbl">En ligne</span><span class="desc">Crée un code à partager</span></button>
+  </div>
+
+  <div class="join">
+    <span>Invité à une partie ?</span>
+    <input id="joinCode" type="text" maxlength="6" placeholder="CODE" />
+    <button id="join" type="button">Rejoindre ▸</button>
+  </div>
+
+  <div class="footer">
+    <a class="rules" href="regles.html"><span class="ico">📖</span> Lire les règles du jeu ▸</a>
+    <span>Une même seed reproduit exactement la même carte.</span>
+  </div>
 
   <script type="module">
     import { UNIT_CATALOG, CATALOG_ORDER, ARMY_POINTS } from './src/config.js';
@@ -128,9 +164,10 @@
           document.querySelector(`button[data-s="${side}"][data-t="${t}"][data-d="-1"]`).disabled = counts[side][t] === 0;
         }
       }
-      $('play').disabled = SIDES.some((s) => total(s) === 0 || spent(s) > ARMY_POINTS);
-      $('host').disabled = $('play').disabled;
-      $('ai').disabled = $('play').disabled;
+      const invalid = SIDES.some((s) => total(s) === 0 || spent(s) > ARMY_POINTS);
+      $('play').disabled = invalid;
+      $('host').disabled = invalid;
+      $('ai').disabled = invalid;
     }
 
     document.querySelectorAll('.stepper button').forEach((btn) => {
