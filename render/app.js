@@ -4,7 +4,7 @@
 //  s'abonne au bus d'événements ; elle ne contient aucune règle de jeu.
 // ===========================================================================
 
-import { TERRAIN, MAX_TURNS, BASES, CRT, ODDS, DIRS, CATALOG_ORDER } from '../src/config.js';
+import { TERRAIN, MAX_TURNS, BASES, CRT, ODDS, DIRS, CATALOG_ORDER, SIZE, SQRT3 } from '../src/config.js';
 import { key, axialToPixel, offsetToAxial, pixelToAxial, hexCorners, hexDistance, clamp } from '../src/geometry.js';
 import { eAtk, eDef, eMov, other, unitsAt, enemyAt, stackCount, isArmor, isFoot } from '../src/units.js';
 import { zocOf, computeReachable, moveUnit } from '../src/movement.js';
@@ -27,7 +27,7 @@ const PIXI = window.PIXI;
     let mapData = null;
     if (mapParam && /^[\w-]+$/.test(mapParam)) {
       try {
-        const res = await fetch(`maps/${mapParam}.json`);
+        const res = await fetch(new URL(`../maps/${mapParam}.json`, import.meta.url));
         if (res.ok) mapData = loadMap(await res.json());
       } catch { mapData = null; }
     }
@@ -61,6 +61,17 @@ const PIXI = window.PIXI;
     });
     app.canvas.id = 'stage-canvas';
     document.body.prepend(app.canvas);
+
+    // Tuiles de terrain (dossier assets/). Un terrain sans texture (route) reste
+    // tracé en vectoriel. Les pions, eux, restent entièrement vectoriels.
+    // URL résolue depuis ce module (import.meta) : robuste à l'URL propre /game
+    // et à un déploiement en sous-dossier.
+    const asset = (f) => new URL(`../assets/${f}`, import.meta.url).href;
+    const TERRAIN_TILES = ['sand', 'sand2', 'coast', 'sea'];
+    const terrainTex = {};
+    await Promise.all(
+      TERRAIN_TILES.map(async (t) => { terrainTex[t] = await PIXI.Assets.load(asset(`terrain-${t}.png`)); }),
+    );
     // Rendu à la demande : jeu au tour par tour, rien n'anime → on coupe la
     // boucle 60 fps et on ne redessine que quand l'état OU la vue change.
     app.ticker.stop();
@@ -73,9 +84,9 @@ const PIXI = window.PIXI;
     });
 
     const world = new PIXI.Container();
-    const mapLayer = new PIXI.Graphics(), decoLayer = new PIXI.Graphics(),
+    const tileLayer = new PIXI.Container(), mapLayer = new PIXI.Graphics(), decoLayer = new PIXI.Graphics(),
       overlay = new PIXI.Graphics(), unitLayer = new PIXI.Container();
-    world.addChild(mapLayer, decoLayer, overlay, unitLayer);
+    world.addChild(tileLayer, mapLayer, decoLayer, overlay, unitLayer);
     app.stage.addChild(world);
 
     // voisin axial d → arête correspondante de l'hexe flat-top (partagé plus bas).
@@ -87,9 +98,19 @@ const PIXI = window.PIXI;
     };
     for (const { q, r } of state.hexes) {
       const { x, y } = axialToPixel(q, r);
-      const t = TERRAIN[state.terrain.get(key(q, r))];
+      const type = state.terrain.get(key(q, r));
       const c = hexCorners(x, y);
-      mapLayer.poly(c).fill(t.fill).stroke({ width: 1, color: t.stroke, alpha: 0.4 });
+      const tex = terrainTex[type];
+      if (tex) {                                        // tuile texturée : sprite flat-top
+        const sp = new PIXI.Sprite(tex);
+        sp.anchor.set(0.5);
+        sp.position.set(x, y);
+        sp.width = SIZE * 2; sp.height = SIZE * SQRT3;
+        tileLayer.addChild(sp);
+      } else {                                          // terrain sans tuile (relief, peuplements, route) : aplat vectoriel
+        const t = TERRAIN[type];
+        mapLayer.poly(c).fill(t.fill).stroke({ width: 1, color: t.stroke, alpha: 0.4 });
+      }
       // Relief : arêtes hautes éclairées, arêtes basses ombrées → profondeur.
       // Biseau discret pour ne pas concurrencer les contours de zone.
       for (const e of UPPER_EDGES) strokeEdge(mapLayer, c, e, 0xffffff, 0.05, 1.5);
