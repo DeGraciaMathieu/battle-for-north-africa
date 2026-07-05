@@ -11,6 +11,7 @@ import { zocOf, computeReachable, moveUnit } from '../src/movement.js';
 import { resolveCombat, combatPlan } from '../src/combat.js';
 import { updateSupply, supplyRoutes, supplySources } from '../src/supply.js';
 import { createGame, updateObjectives, objCount, endPhase } from '../src/game.js';
+import { loadMap } from '../src/map.js';
 
 const PIXI = window.PIXI;
 
@@ -21,7 +22,16 @@ const PIXI = window.PIXI;
     const params = new URLSearchParams(location.search);
     const seedParam = params.get('seed');
     const seed = seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : Math.floor(Math.random() * 0xffffffff);
-    document.getElementById('seedVal').textContent = seed;
+    // Carte nommée (dossier maps/) : prioritaire sur la seed si le fichier charge.
+    const mapParam = params.get('map');
+    let mapData = null;
+    if (mapParam && /^[\w-]+$/.test(mapParam)) {
+      try {
+        const res = await fetch(`maps/${mapParam}.json`);
+        if (res.ok) mapData = loadMap(await res.json());
+      } catch { mapData = null; }
+    }
+    document.getElementById('seedVal').textContent = mapData ? mapParam : seed;
     // Armées de l'éditeur (accueil) : b/r = comptes par type (ordre CATALOG_ORDER).
     // Absentes (accès direct) → roster par défaut.
     const parseArmy = (s) => {
@@ -32,10 +42,11 @@ const PIXI = window.PIXI;
     };
     const b = params.get('b'), r = params.get('r');
     const composition = b && r ? { axis: parseArmy(b), ally: parseArmy(r) } : undefined;
-    const q = new URLSearchParams({ seed: String(seed) });
+    const q = new URLSearchParams();
+    if (mapData) q.set('map', mapParam); else q.set('seed', String(seed));
     if (composition) { q.set('b', b); q.set('r', r); }
     history.replaceState(null, '', `?${q.toString()}`);
-    const state = createGame(Math.random, seed, composition);
+    const state = createGame(Math.random, seed, composition, mapData ?? undefined);
     const sideLabel = (s) => (s === 'axis' ? 'BLEU' : 'ROUGE');
     const FILL = { axis: 0x4a6b9a, ally: 0xa8544a };   // couleurs des camps (pions, camp de base)
     const SUP = { axis: 0x8fb0d8, ally: 0xe0968f };    // teinte de ravitaillement par camp
@@ -801,6 +812,7 @@ const PIXI = window.PIXI;
     $('bannerBtn').onclick = () => {                                       // nouvelle carte, mêmes armées
       const p = new URLSearchParams(location.search);
       p.delete('seed');
+      p.delete('map');                                                     // carte aléatoire fraîche
       location.href = 'game' + (p.toString() ? `?${p.toString()}` : '');   // URL propre (garde la query)
     };
     $('bannerHome').onclick = () => { location.href = '/'; };              // retour à l'accueil

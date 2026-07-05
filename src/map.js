@@ -329,3 +329,25 @@ export function generateMap(seed = 1) {
     .map(([k]) => k);
   return { terrain, hexes, objectives };
 }
+
+// Construit une carte jouable à partir de données exportées par l'éditeur
+// (`{ terrain: { "q,r": type } }`). Mêmes sorties que `generateMap` : terrain,
+// liste des hexes et objectifs (villes). Les bases priment (positions fixées par
+// le moteur), garantissant les sources de ravitaillement de chaque camp.
+export function loadMap(data) {
+  const terrain = new Map();
+  const hexes = [];
+  for (const [k, t] of Object.entries(data.terrain ?? {})) {
+    terrain.set(k, TERRAIN[t] ? t : 'sand');
+    const [q, r] = k.split(',').map(Number);
+    hexes.push({ q, r });
+  }
+  for (const [c, rw] of Object.values(BASES)) {
+    const { q, r } = offsetToAxial(c, rw);
+    terrain.set(key(q, r), 'base');
+  }
+  const objectives = [...terrain.entries()]
+    .filter(([, t]) => t === 'town')
+    .map(([k]) => k);
+  return { terrain, hexes, objectives };
+}

@@ -37,9 +37,10 @@
     gap: 12px; align-items: center; justify-content: center; }
   .seedrow { display: flex; gap: 8px; align-items: center; }
   label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #9a9070; }
-  input { width: 150px; padding: 9px 11px; font-family: inherit; font-size: 14px;
+  input, select { width: 150px; padding: 9px 11px; font-family: inherit; font-size: 14px;
     background: #1c1a12; color: #efe4bc; border: 1px solid #6d5f38; border-radius: 4px; }
-  input:focus { outline: none; border-color: #e8b95a; }
+  input:focus, select:focus { outline: none; border-color: #e8b95a; }
+  input:disabled { opacity: .4; }
   input::placeholder { color: #6f6750; }
   button.act { cursor: pointer; font-family: inherit; font-weight: 700; letter-spacing: .6px;
     background: #3a3323; color: #e8b95a; border: 1px solid #6d5f38; border-radius: 4px; padding: 10px 14px; }
@@ -59,6 +60,10 @@
   </div>
 
   <div class="foot">
+    <div class="seedrow">
+      <label for="map">Carte</label>
+      <select id="map"><option value="">Aléatoire (seed)</option></select>
+    </div>
     <div class="seedrow">
       <label for="seed">Seed</label>
       <input id="seed" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="aléatoire" />
@@ -119,12 +124,32 @@
       };
     });
 
+    // Cartes du dossier maps/ (manifeste). Choisir une carte fixe désactive la seed.
+    fetch('maps/index.json')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((maps) => {
+        for (const m of maps) {
+          const opt = document.createElement('option');
+          opt.value = m.file;
+          opt.textContent = m.name;
+          $('map').appendChild(opt);
+        }
+      })
+      .catch(() => {});
+    $('map').onchange = () => {
+      const fixed = !!$('map').value;
+      $('seed').disabled = fixed;
+      $('gen').disabled = fixed;
+    };
+
     $('gen').onclick = () => { $('seed').value = String(Math.floor(Math.random() * 0xffffffff)); };
     $('play').onclick = () => {
       const enc = (side) => CATALOG_ORDER.map((t) => counts[side][t]).join('.');
       const q = new URLSearchParams();
+      const map = $('map').value;
       const raw = $('seed').value.trim();
-      if (/^\d+$/.test(raw)) q.set('seed', raw);
+      if (map) q.set('map', map);
+      else if (/^\d+$/.test(raw)) q.set('seed', raw);
       q.set('b', enc('axis'));
       q.set('r', enc('ally'));
       location.href = 'game?' + q.toString(); // URL propre : évite la redirection de serve qui perd la query
