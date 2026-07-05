@@ -14,8 +14,8 @@ export const ARTY_RANGE = 5;     // portée d'appui de l'artillerie (en hex)
 export const SUPPLY_RANGE = 8;   // longueur max d'une route de ravitaillement (hexes)
 
 // Camp de base : hexe source du ravitaillement de chaque camp (col, row offset).
-// Bleu (axis, joueur 1) démarre en bas-gauche, Rouge (ally) en haut-droite.
-export const BASES = { axis: [1, ROWS - 3], ally: [COLS - 2, 2] };
+// Bleu (blue, joueur 1) démarre en bas-gauche, Rouge (red) en haut-droite.
+export const BASES = { blue: [1, ROWS - 3], red: [COLS - 2, 2] };
 
 // Voisinage axial (6 directions).
 export const DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
@@ -23,15 +23,15 @@ export const DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
 // Terrain : couleur (fill/stroke), coût de mouvement (PM) et décalage défensif
 // (nombre de colonnes retirées à l'attaquant sur la CRT).
 export const TERRAIN = {
-  sea:     { name: 'Rivière',      fill: 0x336d94, stroke: 0x1f4c6e, cost: Infinity, def: 0 },
-  coast:   { name: 'Berge',        fill: 0x77aec2, stroke: 0x437a92, cost: 2, def: 0 },
-  sand:    { name: 'Plaine',       fill: 0x93b957, stroke: 0x67863a, cost: 1, def: 0 },
-  sand2:   { name: 'Plaine',       fill: 0xaacb69, stroke: 0x67863a, cost: 1, def: 0 },
-  rock:    { name: 'Coteau',       fill: 0x9a9078, stroke: 0x655d49, cost: 3, def: 2 },
+  river:   { name: 'Rivière',      fill: 0x336d94, stroke: 0x1f4c6e, cost: Infinity, def: 0 },
+  bank:    { name: 'Berge',        fill: 0x77aec2, stroke: 0x437a92, cost: 2, def: 0 },
+  plain:   { name: 'Plaine',       fill: 0x93b957, stroke: 0x67863a, cost: 1, def: 0 },
+  plain2:  { name: 'Plaine',       fill: 0xaacb69, stroke: 0x67863a, cost: 1, def: 0 },
+  hill:    { name: 'Coteau',       fill: 0x9a9078, stroke: 0x655d49, cost: 3, def: 2 },
   town:    { name: 'Ville',        fill: 0xbaa971, stroke: 0x7a6a3f, cost: 1, def: 2, supply: 6 },
   village: { name: 'Village',      fill: 0xa8977a, stroke: 0x6e6042, cost: 1, def: 2, supply: 4 },
   urban:   { name: 'Zone urbaine', fill: 0x9a9aa0, stroke: 0x63636b, cost: 1, def: 2 },
-  oasis:   { name: 'Bois',         fill: 0x468236, stroke: 0x2c5622, cost: 2, def: 1 },
+  forest:  { name: 'Bois',         fill: 0x468236, stroke: 0x2c5622, cost: 2, def: 1 },
   road:    { name: 'Route',        fill: 0xc2ab7a, stroke: 0x8a7550, cost: 0.5, def: -1 },
   base:    { name: 'Camp de base', fill: 0x5c7649, stroke: 0x33422a, cost: 1, def: 0, supply: SUPPLY_RANGE },
 };

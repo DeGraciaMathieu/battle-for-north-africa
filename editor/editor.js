@@ -11,13 +11,13 @@ import { key, axialToPixel, offsetToAxial, pixelToAxial, hexCorners } from '../s
 import { generateMap } from '../src/map.js';
 
 // ---- Palette : ordre d'affichage des terrains peignables. -----------------
-const PALETTE = ['sand', 'sand2', 'road', 'coast', 'sea', 'oasis', 'rock', 'village', 'town', 'urban', 'base'];
+const PALETTE = ['plain', 'plain2', 'road', 'bank', 'river', 'forest', 'hill', 'village', 'town', 'urban', 'base'];
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 
 // ---- État de l'éditeur. ----------------------------------------------------
 const terrain = new Map();          // "q,r" -> type de terrain
 const hexes = [];                   // { q, r } de tous les hexes de la grille
-const plain = () => (Math.random() < 0.5 ? 'sand' : 'sand2'); // nuance de plaine au hasard
+const plain = () => (Math.random() < 0.5 ? 'plain' : 'plain2'); // nuance de plaine au hasard
 for (let c = 0; c < COLS; c++) {
   for (let rw = 0; rw < ROWS; rw++) {
     const { q, r } = offsetToAxial(c, rw);
@@ -26,7 +26,7 @@ for (let c = 0; c < COLS; c++) {
   }
 }
 
-let brush = 'rock';                 // terrain actif du pinceau
+let brush = 'hill';                 // terrain actif du pinceau
 let scale = 1, panX = 0, panY = 0;  // transformation vue
 let hover = null;                   // clé de l'hex survolé
 let painting = false;               // clic gauche maintenu
@@ -177,7 +177,7 @@ document.getElementById('btnSeed').addEventListener('click', () => {
   const s = prompt('Seed de départ (nombre) :', '1');
   if (s === null) return;
   const gen = generateMap(Number(s) || 1);
-  for (const k of terrain.keys()) terrain.set(k, gen.terrain.get(k) || 'sand');
+  for (const k of terrain.keys()) terrain.set(k, gen.terrain.get(k) || 'plain');
   draw();
 });
 
@@ -199,7 +199,7 @@ fileInput.addEventListener('change', async () => {
   try {
     const data = JSON.parse(await file.text());
     const src = data.terrain || {};
-    for (const k of terrain.keys()) terrain.set(k, TERRAIN[src[k]] ? src[k] : 'sand');
+    for (const k of terrain.keys()) terrain.set(k, TERRAIN[src[k]] ? src[k] : 'plain');
     draw();
   } catch {
     alert('Fichier illisible : JSON invalide.');

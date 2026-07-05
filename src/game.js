@@ -22,15 +22,15 @@ export function createGame(rng = Math.random, seed, composition, map, mapOptions
     terrain,
     hexes,
     objectives,
-    objControl: new Map(),        // key -> 'axis' | 'ally' (dernier occupant)
+    objControl: new Map(),        // key -> 'blue' | 'red' (dernier occupant)
     units: createUnits(composition),
-    G: { turn: 1, player: 'axis', phase: 'move', over: false },
+    G: { turn: 1, player: 'blue', phase: 'move', over: false },
     bus: createBus(),
     rng,
   };
   relocateOffWater(state);
   updateObjectives(state);
-  startMove(state, 'axis');
+  startMove(state, 'blue');
   // Après chaque combat, vérifier l'anéantissement d'un camp.
   state.bus.on('combatResolved', () => checkElimination(state));
   return state;
@@ -95,32 +95,32 @@ export function endPhase(state) {
   const { G } = state;
   if (G.phase === 'move') {
     G.phase = 'combat';
-  } else if (G.player === 'axis') {
-    G.player = 'ally';
+  } else if (G.player === 'blue') {
+    G.player = 'red';
     G.phase = 'move';
-    startMove(state, 'ally');
+    startMove(state, 'red');
   } else {
-    G.player = 'axis';
+    G.player = 'blue';
     G.phase = 'move';
     G.turn++;
-    startMove(state, 'axis');
+    startMove(state, 'blue');
     checkTurnEnd(state);
   }
   state.bus.emit('phaseChanged');
 }
 
 export function checkElimination(state) {
-  const a = state.units.some((u) => u.side === 'axis');
-  const b = state.units.some((u) => u.side === 'ally');
-  if (!a) endGame(state, 'ally', 'Force Bleue anéantie');
-  else if (!b) endGame(state, 'axis', 'Force Rouge anéantie');
+  const a = state.units.some((u) => u.side === 'blue');
+  const b = state.units.some((u) => u.side === 'red');
+  if (!a) endGame(state, 'red', 'Force Bleue anéantie');
+  else if (!b) endGame(state, 'blue', 'Force Rouge anéantie');
 }
 
 export function checkTurnEnd(state) {
   if (state.G.turn > MAX_TURNS) {
-    const a = objCount(state, 'axis');
-    const b = objCount(state, 'ally');
-    endGame(state, a >= b ? 'axis' : 'ally', `Fin du tour ${MAX_TURNS} — objectifs ${a}–${b}`);
+    const a = objCount(state, 'blue');
+    const b = objCount(state, 'red');
+    endGame(state, a >= b ? 'blue' : 'red', `Fin du tour ${MAX_TURNS} — objectifs ${a}–${b}`);
   }
 }
 

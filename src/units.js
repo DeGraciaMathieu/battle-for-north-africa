@@ -13,8 +13,8 @@ import { UNIT_CATALOG, CATALOG_ORDER, COLS, ROWS, BASES } from './config.js';
 // Roster par défaut (sans éditeur d'armée) : 10 pions par camp, exprimés en
 // composition sur le catalogue. Bleu blindé/mobile, Rouge infanterie/défensif.
 const DEFAULT_COMPOSITION = {
-  axis: { armor: 4, mech: 4, arty: 2 },
-  ally: { armor: 3, inf: 5, arty: 2 },
+  blue: { armor: 4, mech: 4, arty: 2 },
+  red: { armor: 3, inf: 5, arty: 2 },
 };
 
 // Rayon de déploiement autour du camp de base (en hexes).
@@ -38,10 +38,10 @@ function deployPositions(side, n) {
   return Array.from({ length: n }, (_, i) => cand[i % cand.length]);
 }
 
-// Construit un roster depuis une composition { axis:{type:n}, ally:{type:n} }.
+// Construit un roster depuis une composition { blue:{type:n}, red:{type:n} }.
 function rosterFrom(composition) {
   const specs = [];
-  for (const side of ['axis', 'ally']) {
+  for (const side of ['blue', 'red']) {
     const counts = composition[side] || {};
     const total = CATALOG_ORDER.reduce((s, t) => s + (counts[t] || 0), 0);
     const pos = deployPositions(side, total);
@@ -81,7 +81,7 @@ export const eMov = (u) => {
 };
 
 // -- Helpers de camp / d'occupation (opèrent sur une liste d'unités) --------
-export const other = (s) => (s === 'axis' ? 'ally' : 'axis');
+export const other = (s) => (s === 'blue' ? 'red' : 'blue');
 export const unitsAt = (units, q, r) => units.filter((u) => u.q === q && u.r === r);
 export const enemyAt = (units, q, r, side) =>
   units.some((u) => u.q === q && u.r === r && u.side !== side);

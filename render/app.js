@@ -24,10 +24,10 @@ const PIXI = window.PIXI;
     const params = new URLSearchParams(location.search);
     const netRole = params.get('net');                 // 'host' | 'guest' | null (solo)
     const isOnline = netRole === 'host' || netRole === 'guest';
-    const aiParam = params.get('ai');                  // 'axis' | 'ally' : camp joué par l'IA (solo uniquement)
-    const aiSide = !isOnline && (aiParam === 'axis' || aiParam === 'ally') ? aiParam : null;
+    const aiParam = params.get('ai');                  // 'blue' | 'red' : camp joué par l'IA (solo uniquement)
+    const aiSide = !isOnline && (aiParam === 'blue' || aiParam === 'red') ? aiParam : null;
     const isAI = aiSide !== null;
-    const sideLabel = (s) => (s === 'axis' ? 'BLEU' : 'ROUGE');
+    const sideLabel = (s) => (s === 'blue' ? 'BLEU' : 'ROUGE');
 
     // Armées de l'éditeur (accueil) : b/r = comptes par type (ordre CATALOG_ORDER).
     // Absentes (accès direct) → roster par défaut.
@@ -97,7 +97,7 @@ const PIXI = window.PIXI;
     };
 
     if (netRole === 'guest') {
-      localSide = 'ally';
+      localSide = 'red';
       const code = (params.get('code') || '').toUpperCase();
       const desc = await new Promise((resolve, reject) => {
         showLobby('guest', code);
@@ -109,7 +109,7 @@ const PIXI = window.PIXI;
         });
       });
       seed = desc.seed; fair = desc.fair; mapParam = desc.mapParam || null; rngSeed = desc.rngSeed;
-      composition = desc.b && desc.r ? { axis: parseArmy(desc.b), ally: parseArmy(desc.r) } : undefined;
+      composition = desc.b && desc.r ? { blue: parseArmy(desc.b), red: parseArmy(desc.r) } : undefined;
       mapData = await loadMapData(mapParam);
       rng = mulberry32(rngSeed);
       hideLobby();
@@ -120,9 +120,9 @@ const PIXI = window.PIXI;
       mapParam = params.get('map');
       mapData = await loadMapData(mapParam);
       const b = params.get('b'), r = params.get('r');
-      composition = b && r ? { axis: parseArmy(b), ally: parseArmy(r) } : undefined;
+      composition = b && r ? { blue: parseArmy(b), red: parseArmy(r) } : undefined;
       if (netRole === 'host') {
-        localSide = 'axis';
+        localSide = 'blue';
         rngSeed = Math.floor(Math.random() * 0xffffffff);
         rng = mulberry32(rngSeed);
         const code = makeCode();
@@ -171,8 +171,8 @@ const PIXI = window.PIXI;
         ? `🌐 En ligne — tu joues <b>${sideLabel(localSide)}</b>`
         : `🤖 Contre l'IA — tu joues <b>${sideLabel(other(aiSide))}</b>`;
     }
-    const FILL = { axis: 0x4a6b9a, ally: 0xa8544a };   // couleurs des camps (pions, camp de base)
-    const SUP = { axis: 0x8fb0d8, ally: 0xe0968f };    // teinte de ravitaillement par camp
+    const FILL = { blue: 0x4a6b9a, red: 0xa8544a };   // couleurs des camps (pions, camp de base)
+    const SUP = { blue: 0x8fb0d8, red: 0xe0968f };    // teinte de ravitaillement par camp
 
     // =========================================================================
     //  Rendu Pixi
@@ -190,9 +190,9 @@ const PIXI = window.PIXI;
     // URL résolue depuis ce module (import.meta) : robuste à l'URL propre /game
     // et à un déploiement en sous-dossier.
     const asset = (f) => new URL(`../assets/${f}`, import.meta.url).href;
-    const TERRAIN_TILES = ['sand', 'sand2', 'coast', 'sea'];
+    const TERRAIN_TILES = ['plain', 'plain2', 'bank', 'river'];
     const terrainTex = {};
-    // Variantes de forêt (type 'oasis') : purement visuelles, pour varier les
+    // Variantes de forêt (type 'forest') : purement visuelles, pour varier les
     // environnements. Une variante est choisie par hex de façon déterministe.
     const FOREST_TILES = ['foret-deep', 'foret-dense', 'foret-grove'];
     const FOREST_WEIGHTS = [1, 3, 2];              // deep raréfié au profit de dense
@@ -324,7 +324,7 @@ const PIXI = window.PIXI;
       const { x, y } = axialToPixel(q, r);
       const type = state.terrain.get(key(q, r));
       const c = hexCorners(x, y);
-      const tex = type === 'oasis' ? forestTex[forestPick(q, r)] : terrainTex[type];
+      const tex = type === 'forest' ? forestTex[forestPick(q, r)] : terrainTex[type];
       if (tex) {                                        // tuile texturée : sprite flat-top
         const sp = new PIXI.Sprite(tex);
         sp.anchor.set(0.5);
@@ -351,11 +351,11 @@ const PIXI = window.PIXI;
         decoLayer.rect(x - 1, y - 7, 5, 5).fill(0x40414a).stroke({ width: 1, color: 0xc7c7cf });
         decoLayer.rect(x + 3, y + 1, 5, 5).fill(0x40414a).stroke({ width: 1, color: 0xc7c7cf });
         decoLayer.rect(x - 4, y + 2, 5, 5).fill(0x40414a).stroke({ width: 1, color: 0xc7c7cf });
-      } else if (type === 'rock') {
+      } else if (type === 'hill') {
         // coteau : deux bosses.
         decoLayer.poly([x - 9, y + 4, x - 3, y - 5, x + 3, y + 4]).fill(0x7c7360).stroke({ width: 1, color: 0xc7bfa6 });
         decoLayer.poly([x + 1, y + 5, x + 6, y - 3, x + 10, y + 5]).fill(0x8b8168).stroke({ width: 1, color: 0xc7bfa6 });
-      } else if (type === 'sea') {
+      } else if (type === 'river') {
         // rivière : rides.
         decoLayer.moveTo(x - 6, y - 3).quadraticCurveTo(x - 3, y - 5, x, y - 3).quadraticCurveTo(x + 3, y - 1, x + 6, y - 3).stroke({ width: 1, color: 0xaed3e2, alpha: 0.5 });
         decoLayer.moveTo(x - 6, y + 4).quadraticCurveTo(x - 3, y + 2, x, y + 4).quadraticCurveTo(x + 3, y + 6, x + 6, y + 4).stroke({ width: 1, color: 0xaed3e2, alpha: 0.5 });
@@ -388,16 +388,16 @@ const PIXI = window.PIXI;
         }
       }
       // Rivage : arête entre eau et terre soulignée d'écume.
-      if (type === 'sea') {
+      if (type === 'river') {
         const c = hexCorners(x, y);
         for (let d = 0; d < 6; d++) {
           const nt = state.terrain.get(key(q + DIRS[d][0], r + DIRS[d][1]));
-          if (nt && nt !== 'sea') strokeEdge(decoLayer, c, DIR_TO_EDGE[d], 0xcde7ef, 0.6, 1.5);
+          if (nt && nt !== 'river') strokeEdge(decoLayer, c, DIR_TO_EDGE[d], 0xcde7ef, 0.6, 1.5);
         }
       }
     }
     // Camps de base : encadré + fanion à la couleur du camp.
-    for (const s of ['axis', 'ally']) {
+    for (const s of ['blue', 'red']) {
       const [c, rw] = BASES[s];
       const { q, r } = offsetToAxial(c, rw);
       const { x, y } = axialToPixel(q, r);
@@ -601,7 +601,7 @@ const PIXI = window.PIXI;
     // contrôle. Les villes viennent de state.objectives.
     const villageKeys = [...state.terrain].filter(([, t]) => t === 'village').map(([k]) => k);
     // Drapeau de contrôle : couleurs vives de camp, gris atténué si neutre.
-    const FLAG_COL = { axis: 0x3f7fe0, ally: 0xe0483a, neutral: 0xb8ad86 };
+    const FLAG_COL = { blue: 0x3f7fe0, red: 0xe0483a, neutral: 0xb8ad86 };
     // Drapeau planté sur un peuplement (mât + banderole) dans la couleur du camp
     // tenant. `town` = plus grand (objectif de victoire) ; neutre = translucide.
     // Ville = grand drapeau rectangulaire à échancrure sur un mât haut (objectif) ;
@@ -981,7 +981,7 @@ const PIXI = window.PIXI;
         ? `Clique une unité ${camp} pour voir ses déplacements, puis un hexagone surligné. Entrer dans une ZOC ennemie (rouge) stoppe l'unité.`
         : `Clique tes unités adjacentes à l'ennemi pour désigner les attaquants (vert), puis l'unité ennemie à assaillir (rouge). Blindé + infanterie et artillerie à portée (≤${ARTY_RANGE} hex) décalent la table en ta faveur.`;
       $('btnPhase').textContent = state.G.phase === 'move' ? 'Passer au combat ▸'
-        : state.G.player === 'axis' ? 'Fin de tour Bleu → Rouge ▸' : `Fin du tour ${state.G.turn} ▸`;
+        : state.G.player === 'blue' ? 'Fin de tour Bleu → Rouge ▸' : `Fin du tour ${state.G.turn} ▸`;
 
       let html = '';
       if (state.G.phase === 'move' && sel) {
@@ -1007,7 +1007,7 @@ const PIXI = window.PIXI;
       $('inspBody').innerHTML = html;
 
       $('objbar').innerHTML = `<div class="kv"><span>Objectifs</span>`
-        + `<span><b>${objCount(state, 'axis')}</b> ${sideLabel('axis')} · <b>${objCount(state, 'ally')}</b> ${sideLabel('ally')} · ${state.objectives.length} au total</span></div>`
+        + `<span><b>${objCount(state, 'blue')}</b> ${sideLabel('blue')} · <b>${objCount(state, 'red')}</b> ${sideLabel('red')} · ${state.objectives.length} au total</span></div>`
         + `<div class="sub">Le camp contrôlant le plus d'objectifs au tour ${MAX_TURNS} l'emporte.</div>`;
       if (isOnline) {
         const mine = myTurn();
@@ -1278,7 +1278,7 @@ const PIXI = window.PIXI;
     fitView();
     refresh();
     log(isOnline
-      ? `Partie en ligne prête — tu joues ${sideLabel(localSide)}. ${localSide === 'axis' ? 'À toi de jouer.' : "Au tour de l'adversaire."}`
+      ? `Partie en ligne prête — tu joues ${sideLabel(localSide)}. ${localSide === 'blue' ? 'À toi de jouer.' : "Au tour de l'adversaire."}`
       : isAI
         ? `Partie contre l'IA — tu joues ${sideLabel(other(aiSide))}. À toi de jouer.`
         : 'Partie prête — tour 1, phase de mouvement du camp Bleu.');
