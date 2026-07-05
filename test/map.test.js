@@ -52,6 +52,18 @@ test('quelle que soit la seed : aucun peuplement n\'est entouré d\'eau', () => 
   }
 });
 
+test('quelle que soit la seed : deux villes ne sont jamais adjacentes', () => {
+  for (const seed of SEEDS) {
+    const { terrain } = generateMap(seed);
+    for (const [k, t] of terrain) {
+      if (t !== 'town') continue;
+      const [q, r] = k.split(',').map(Number);
+      const collee = DIRS.some(([dq, dr]) => terrain.get(key(q + dq, r + dr)) === 'town');
+      assert.ok(!collee, `seed ${seed} : ville ${k} collée à une autre ville`);
+    }
+  }
+});
+
 test('quelle que soit la seed : aucune unité ne démarre sur un hex infranchissable', () => {
   for (const seed of SEEDS) {
     const state = createGame(() => 0, seed);
