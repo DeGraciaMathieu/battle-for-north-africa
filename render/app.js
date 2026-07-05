@@ -71,9 +71,22 @@ const PIXI = window.PIXI;
     const asset = (f) => new URL(`../assets/${f}`, import.meta.url).href;
     const TERRAIN_TILES = ['sand', 'sand2', 'coast', 'sea'];
     const terrainTex = {};
-    await Promise.all(
-      TERRAIN_TILES.map(async (t) => { terrainTex[t] = await PIXI.Assets.load(asset(`terrain-${t}.png`)); }),
-    );
+    // Variantes de forêt (type 'oasis') : purement visuelles, pour varier les
+    // environnements. Une variante est choisie par hex de façon déterministe.
+    const FOREST_TILES = ['foret-deep', 'foret-dense', 'foret-grove'];
+    const FOREST_WEIGHTS = [1, 3, 2];              // deep raréfié au profit de dense
+    const FOREST_TOTAL = FOREST_WEIGHTS.reduce((a, b) => a + b, 0);
+    const forestTex = [];
+    await Promise.all([
+      ...TERRAIN_TILES.map(async (t) => { terrainTex[t] = await PIXI.Assets.load(asset(`terrain-${t}.png`)); }),
+      ...FOREST_TILES.map(async (f, i) => { forestTex[i] = await PIXI.Assets.load(asset(`terrain-${f}.png`)); }),
+    ]);
+    const forestPick = (q, r) => {
+      const n = Math.sin(q * 91.7 + r * 47.3) * 43758.5453;
+      let t = (n - Math.floor(n)) * FOREST_TOTAL;
+      for (let i = 0; i < FOREST_WEIGHTS.length; i++) if ((t -= FOREST_WEIGHTS[i]) < 0) return i;
+      return FOREST_WEIGHTS.length - 1;
+    };
     // Rendu à la demande : jeu au tour par tour, rien n'anime → on coupe la
     // boucle 60 fps et on ne redessine que quand l'état OU la vue change.
     app.ticker.stop();
@@ -102,7 +115,7 @@ const PIXI = window.PIXI;
       const { x, y } = axialToPixel(q, r);
       const type = state.terrain.get(key(q, r));
       const c = hexCorners(x, y);
-      const tex = terrainTex[type];
+      const tex = type === 'oasis' ? forestTex[forestPick(q, r)] : terrainTex[type];
       if (tex) {                                        // tuile texturée : sprite flat-top
         const sp = new PIXI.Sprite(tex);
         sp.anchor.set(0.5);
@@ -132,11 +145,6 @@ const PIXI = window.PIXI;
         decoLayer.rect(x - 1, y - 7, 5, 5).fill(0x40414a).stroke({ width: 1, color: 0xc7c7cf });
         decoLayer.rect(x + 3, y + 1, 5, 5).fill(0x40414a).stroke({ width: 1, color: 0xc7c7cf });
         decoLayer.rect(x - 4, y + 2, 5, 5).fill(0x40414a).stroke({ width: 1, color: 0xc7c7cf });
-      } else if (type === 'oasis') {
-        // bois : petit bosquet de touffes plutôt qu'un seul rond.
-        decoLayer.circle(x - 4, y + 2, 4.5).fill(0x2f4a25).stroke({ width: 1, color: 0x7fb45f });
-        decoLayer.circle(x + 4, y + 2, 4.5).fill(0x2f4a25).stroke({ width: 1, color: 0x7fb45f });
-        decoLayer.circle(x, y - 3, 5).fill(0x365a2c).stroke({ width: 1, color: 0xa8d488 });
       } else if (type === 'rock') {
         // coteau : deux bosses.
         decoLayer.poly([x - 9, y + 4, x - 3, y - 5, x + 3, y + 4]).fill(0x7c7360).stroke({ width: 1, color: 0xc7bfa6 });
