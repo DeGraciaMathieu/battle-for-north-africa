@@ -449,6 +449,11 @@ const PIXI = window.PIXI;
       const side = state.G.player;
       const { supplied, parent } = supplyRoutes(state, side);
       const color = SUP[side];
+      // Grise la zone hors ravitaillement pour faire ressortir la zone tenue.
+      for (const { q, r } of state.hexes) {
+        const k = key(q, r);
+        if (!supplied.has(k)) fillHex(k, 0x000000, 0.32);
+      }
       // Atténué quand on planifie un déplacement, pour laisser la portée dominer.
       const fillA = state.G.phase === 'move' && sel ? 0.06 : 0.16;
       for (const k of supplied) fillHex(k, color, fillA);  // teinte de la zone ravitaillée
