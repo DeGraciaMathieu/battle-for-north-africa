@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { generateMap } from '../src/map.js';
 import { createGame } from '../src/game.js';
 import { BASES, DIRS, TERRAIN } from '../src/config.js';
-import { offsetToAxial, key } from '../src/geometry.js';
+import { offsetToAxial, key, hexDistance } from '../src/geometry.js';
 
 const SEEDS = [0, 1, 7, 42, 2024, 999999];
 const serialize = (m) => JSON.stringify([...m.entries()].sort());
@@ -60,6 +60,22 @@ test('quelle que soit la seed : deux villes ne sont jamais adjacentes', () => {
       const [q, r] = k.split(',').map(Number);
       const collee = DIRS.some(([dq, dr]) => terrain.get(key(q + dq, r + dr)) === 'town');
       assert.ok(!collee, `seed ${seed} : ville ${k} collée à une autre ville`);
+    }
+  }
+});
+
+test('en mode équitable : les peuplements sont espacés d\'au moins 3 hexes', () => {
+  for (const seed of SEEDS) {
+    const { terrain } = generateMap(seed, { fair: true });
+    const settlements = [...terrain.entries()]
+      .filter(([, t]) => t === 'town' || t === 'village')
+      .map(([k]) => k.split(',').map(Number));
+    assert.ok(settlements.length > 0, `seed ${seed} : aucun peuplement équitable`);
+    for (let i = 0; i < settlements.length; i++) {
+      for (let j = i + 1; j < settlements.length; j++) {
+        const [aq, ar] = settlements[i], [bq, br] = settlements[j];
+        assert.ok(hexDistance(aq, ar, bq, br) >= 3, `seed ${seed} : peuplements ${i}/${j} trop proches`);
+      }
     }
   }
 });
