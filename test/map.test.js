@@ -22,7 +22,7 @@ test('quelle que soit la seed : au moins 4 objectifs et les deux bases sont reli
     const { terrain, objectives } = generateMap(seed);
     assert.ok(objectives.length >= 3, `seed ${seed} : ${objectives.length} objectifs (villes)`);
 
-    const a = offsetToAxial(...BASES.axis), b = offsetToAxial(...BASES.ally);
+    const a = offsetToAxial(...BASES.blue), b = offsetToAxial(...BASES.red);
     const seen = new Set([key(a.q, a.r)]);
     const stack = [[a.q, a.r]];
     while (stack.length) {
@@ -37,7 +37,7 @@ test('quelle que soit la seed : au moins 4 objectifs et les deux bases sont reli
 });
 
 test('quelle que soit la seed : aucun peuplement n\'est entouré d\'eau', () => {
-  const WATER = new Set(['sea', 'coast']);
+  const WATER = new Set(['river', 'bank']);
   for (const seed of SEEDS) {
     const { terrain } = generateMap(seed);
     for (const [k, t] of terrain) {

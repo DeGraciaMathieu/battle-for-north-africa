@@ -35,10 +35,10 @@ function twinGame(seed) {
   const coords = [];
   for (let q = -2; q <= 3; q++) for (let r = -2; r <= 3; r++) coords.push([q, r]);
   const units = [
-    makeUnit({ id: 0, side: 'axis', type: 'armor', q: 0, r: 0 }),
-    makeUnit({ id: 1, side: 'axis', type: 'inf', q: 0, r: 1, atk: 4, def: 4, ratk: 2, rdef: 2 }),
-    makeUnit({ id: 2, side: 'ally', type: 'inf', q: 1, r: 0, atk: 4, def: 5, ratk: 2, rdef: 3 }),
-    makeUnit({ id: 3, side: 'ally', type: 'inf', q: 1, r: 1, atk: 4, def: 5, ratk: 2, rdef: 3 }),
+    makeUnit({ id: 0, side: 'blue', type: 'armor', q: 0, r: 0 }),
+    makeUnit({ id: 1, side: 'blue', type: 'inf', q: 0, r: 1, atk: 4, def: 4, ratk: 2, rdef: 2 }),
+    makeUnit({ id: 2, side: 'red', type: 'inf', q: 1, r: 0, atk: 4, def: 5, ratk: 2, rdef: 3 }),
+    makeUnit({ id: 3, side: 'red', type: 'inf', q: 1, r: 1, atk: 4, def: 5, ratk: 2, rdef: 3 }),
   ];
   return makeState({ terrain: fillTerrain(coords), units, rng: mulberry32(seed) });
 }
@@ -60,8 +60,8 @@ test('deux parties jumelles restent synchronisées après une série de combats'
   for (let i = 0; i < 10; i++) {
     let both = true;
     for (const [s, dice] of [[A, diceA], [B, null]]) {
-      const atk = s.units.find((u) => u.side === 'axis');
-      const def = s.units.find((u) => u.side === 'ally');
+      const atk = s.units.find((u) => u.side === 'blue');
+      const def = s.units.find((u) => u.side === 'red');
       if (!atk || !def) { both = false; break; }
       atk.q = 0; atk.r = 0; atk.hasFought = false;
       def.q = 1; def.r = 0; def.hasFought = false;
