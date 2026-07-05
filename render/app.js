@@ -212,9 +212,62 @@ const PIXI = window.PIXI;
 
     const world = new PIXI.Container();
     const tileLayer = new PIXI.Container(), mapLayer = new PIXI.Graphics(), decoLayer = new PIXI.Graphics(),
-      overlay = new PIXI.Graphics(), unitLayer = new PIXI.Container();
-    world.addChild(tileLayer, mapLayer, decoLayer, overlay, unitLayer);
+      overlay = new PIXI.Graphics(), unitLayer = new PIXI.Container(), fxLayer = new PIXI.Graphics();
+    world.addChild(tileLayer, mapLayer, decoLayer, overlay, unitLayer, fxLayer); // fx au-dessus des pions
     app.stage.addChild(world);
+
+    // -- Effets de combat : impact (unité réduite) / explosion (unité éliminée).
+    // Le rendu est à la demande (ticker arrêté) ; on ne rallume la boucle que le
+    // temps qu'un effet vive, puis on la recoupe. Chaque touche déclenche 3 foyers
+    // décalés sur les bords de la tuile, chacun virant du jaune au rouge + une
+    // onde de choc.
+    let fx = [];                                   // foyers actifs { x, y, kind, t, delay, dur }
+    // Interpolation de couleur (jaune → rouge) selon la progression du foyer.
+    const lerpColor = (a, b, t) => {
+      const r = Math.round(((a >> 16) & 255) + (((b >> 16) & 255) - ((a >> 16) & 255)) * t);
+      const g = Math.round(((a >> 8) & 255) + (((b >> 8) & 255) - ((a >> 8) & 255)) * t);
+      const bl = Math.round((a & 255) + ((b & 255) - (a & 255)) * t);
+      return (r << 16) | (g << 8) | bl;
+    };
+    function drawFx() {
+      fxLayer.clear();
+      for (const e of fx) {
+        if (e.t < e.delay) continue;               // foyer pas encore éclos (décalage)
+        const p = Math.min(1, (e.t - e.delay) / e.dur); // progression 0→1
+        const a = 1 - p;
+        const kill = e.kind === 'kill';
+        const R = 3 + p * (kill ? SIZE * 0.55 : SIZE * 0.42);
+        const col = lerpColor(0xffe23a, 0xd21f14, p); // jaune → rouge
+        fxLayer.circle(e.x, e.y, R * 1.4).fill({ color: col, alpha: 0.2 * a });   // halo
+        fxLayer.circle(e.x, e.y, R).fill({ color: col, alpha: 0.85 * a });        // boule de feu
+        for (let i = 0; i < 7; i++) {                                             // éclats
+          const ang = (i / 7) * Math.PI * 2 + p * 1.5;
+          const c = Math.cos(ang), s = Math.sin(ang);
+          fxLayer.moveTo(e.x + c * R * 0.4, e.y + s * R * 0.4)
+            .lineTo(e.x + c * R * 1.5, e.y + s * R * 1.5)
+            .stroke({ width: 2, color: col, alpha: 0.8 * a });
+        }
+        if (p < 0.35) fxLayer.circle(e.x, e.y, 4 + p * 8).fill({ color: 0xfff6cf, alpha: (0.35 - p) / 0.35 }); // flash blanc initial
+        const sw = p * (kill ? SIZE : SIZE * 0.75);  // onde de choc : anneau fin plus rapide, s'estompe
+        fxLayer.circle(e.x, e.y, sw).stroke({ width: 2 * a, color: 0xffd9a0, alpha: 0.6 * a });
+      }
+    }
+    const fxTick = (ticker) => {
+      for (const e of fx) e.t += ticker.deltaMS;
+      fx = fx.filter((e) => e.t < e.delay + e.dur);
+      drawFx();
+      if (!fx.length) { app.ticker.remove(fxTick); app.ticker.stop(); fxLayer.clear(); draw(); }
+    };
+    function spawnFx(q, r, kind) {
+      const { x, y } = axialToPixel(q, r);
+      const rad = SIZE * 0.5;                       // distance des foyers depuis le centre
+      const dur = kind === 'kill' ? 520 : 420;
+      [-Math.PI / 2, Math.PI / 6, (5 * Math.PI) / 6].forEach((ang, i) => { // 3 foyers à 120°
+        fx.push({ x: x + Math.cos(ang) * rad, y: y + Math.sin(ang) * rad, kind, t: 0, delay: i * 90, dur });
+      });
+      if (!app.ticker.started) { app.ticker.add(fxTick); app.ticker.start(); }
+    }
+    const fxQueue = [];                            // positions collectées pendant resolveCombat, jouées à la fermeture de la modale
 
     // voisin axial d → arête correspondante de l'hexe flat-top (partagé plus bas).
     const DIR_TO_EDGE = [0, 5, 4, 3, 2, 1];
@@ -957,13 +1010,18 @@ const PIXI = window.PIXI;
       at(() => { $('combatBtn').style.display = 'block'; $('combatBtn').style.visibility = 'visible'; },
         300 * (p.effects.length + 1));
     }
-    $('combatBtn').onclick = () => { clearCombatTimers(); $('combatModal').style.display = 'none'; };
+    $('combatBtn').onclick = () => {
+      clearCombatTimers();
+      $('combatModal').style.display = 'none';
+      fxQueue.splice(0).forEach(({ q, r, kind }) => spawnFx(q, r, kind)); // explosions/impacts une fois la modale fermée
+    };
     $('btnRollCombat').onclick = () => {
       if (!pendingCombat) return;
       const { atkUnits, defender } = pendingCombat;
       pendingCombat = null;
       $('combatBtns').style.display = 'none';
       netSend({ t: 'combat', atk: atkUnits.map((u) => u.id), def: defender.id });
+      fxQueue.length = 0;
       resolveCombat(state, atkUnits, defender);             // → combatResolved → runRoll (anime la colonne)
       attackers.clear();
       refresh();
@@ -977,6 +1035,10 @@ const PIXI = window.PIXI;
 
     // -- Abonnements au bus : le rendu réagit aux événements des règles -------
     state.bus.on('log', log);
+    // Effets de combat : on mémorise la position touchée ; l'animation est jouée
+    // à la révélation du dé (revealAfterRoll), synchronisée avec le résultat.
+    state.bus.on('unitReduced', (u) => fxQueue.push({ q: u.q, r: u.r, kind: 'hit' }));
+    state.bus.on('unitRemoved', (u) => fxQueue.push({ q: u.q, r: u.r, kind: 'kill' }));
     state.bus.on('combatResolved', runRoll);
     state.bus.on('phaseChanged', () => {
       clearSel();
@@ -1005,6 +1067,7 @@ const PIXI = window.PIXI;
     // le RNG semé garantit un résultat identique côté distant.
     function remoteCombat(atkUnits, defender) {
       showCombatPreview(atkUnits, defender, true);
+      fxQueue.length = 0;
       resolveCombat(state, atkUnits, defender);           // → combatResolved → runRoll (anime la colonne)
       attackers.clear();
       refresh();
