@@ -22,6 +22,8 @@ const PIXI = window.PIXI;
     const params = new URLSearchParams(location.search);
     const seedParam = params.get('seed');
     const seed = seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : Math.floor(Math.random() * 0xffffffff);
+    // Mode de génération : 'fair' répartit les peuplements sur un maillage régulier.
+    const fair = params.get('gen') === 'fair';
     // Carte nommée (dossier maps/) : prioritaire sur la seed si le fichier charge.
     const mapParam = params.get('map');
     let mapData = null;
@@ -43,10 +45,10 @@ const PIXI = window.PIXI;
     const b = params.get('b'), r = params.get('r');
     const composition = b && r ? { axis: parseArmy(b), ally: parseArmy(r) } : undefined;
     const q = new URLSearchParams();
-    if (mapData) q.set('map', mapParam); else q.set('seed', String(seed));
+    if (mapData) q.set('map', mapParam); else { q.set('seed', String(seed)); if (fair) q.set('gen', 'fair'); }
     if (composition) { q.set('b', b); q.set('r', r); }
     history.replaceState(null, '', `?${q.toString()}`);
-    const state = createGame(Math.random, seed, composition, mapData ?? undefined);
+    const state = createGame(Math.random, seed, composition, mapData ?? undefined, fair ? { fair: true } : undefined);
     const sideLabel = (s) => (s === 'axis' ? 'BLEU' : 'ROUGE');
     const FILL = { axis: 0x4a6b9a, ally: 0xa8544a };   // couleurs des camps (pions, camp de base)
     const SUP = { axis: 0x8fb0d8, ally: 0xe0968f };    // teinte de ravitaillement par camp

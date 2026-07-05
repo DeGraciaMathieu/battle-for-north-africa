@@ -16,8 +16,8 @@ import { key } from './geometry.js';
 // (éditeur point-buy) — sinon le roster fixe par défaut est utilisé. `map`
 // (optionnelle) fournit une carte déjà construite (chargée depuis un fichier) et
 // prime alors sur la génération par seed.
-export function createGame(rng = Math.random, seed, composition, map) {
-  const { terrain, hexes, objectives } = map ?? generateMap(seed);
+export function createGame(rng = Math.random, seed, composition, map, mapOptions) {
+  const { terrain, hexes, objectives } = map ?? generateMap(seed, mapOptions);
   const state = {
     terrain,
     hexes,

@@ -25,7 +25,10 @@ const LAND = new Set(['sand', 'sand2', 'oasis', 'rock']);
 
 // Construit une carte reproductible depuis `seed`. Renvoie le terrain, la liste
 // des hexes et les clés des objectifs (villes de terre).
-export function generateMap(seed = 1) {
+// `fair` : place les peuplements sur un maillage régulier (équidistants) au lieu
+// d'un tirage aléatoire ; le reste du terrain (rivière, reliefs, urbain, routes)
+// demeure aléatoire.
+export function generateMap(seed = 1, { fair = false } = {}) {
   const rng = mulberry32(seed);
   const rint = (lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
   const terrain = new Map();
@@ -208,16 +211,34 @@ export function generateMap(seed = 1) {
   // une ville (lecture directe du terrain, indépendante de townKeys).
   const townAdjacent = (q, r) =>
     DIRS.some(([dq, dr]) => terrain.get(key(q + dq, r + dr)) === 'town');
-  for (let placed = 0, tries = 0; placed < rint(9, 13) && tries < 1500; tries++) {
-    const { q, r } = offsetToAxial(rint(1, COLS - 2), rint(1, ROWS - 2));
+  // Un peuplement doit tenir sur une terre libre, hors base et à l'écart des
+  // autres, avec au moins un voisin terrestre (jamais un îlot).
+  const canSettle = (q, r) => {
     const k = key(q, r);
-    if (!LAND.has(terrain.get(k)) || baseKeys.has(k) || near(q, r)) continue;
-    // Jamais un îlot : au moins un voisin terrestre (accès par la terre garanti).
-    if (!DIRS.some(([dq, dr]) => LAND.has(terrain.get(key(q + dq, r + dr))))) continue;
-    // grande majorité de villages ; ville seulement si aucune ville adjacente.
-    terrain.set(k, rng() < 0.85 || townAdjacent(q, r) ? 'village' : 'town');
-    townKeys.push(k);
-    placed++;
+    if (!LAND.has(terrain.get(k)) || baseKeys.has(k) || near(q, r)) return false;
+    return DIRS.some(([dq, dr]) => LAND.has(terrain.get(key(q + dq, r + dr))));
+  };
+  if (fair) {
+    // Maillage régulier : peuplements équidistants sur l'intérieur jouable.
+    // Décalage triangulaire une ligne sur deux ; une case sur trois est une ville.
+    for (let ri = 0, rw = 3; rw <= ROWS - 3; rw += 4, ri++) {
+      const shift = ri % 2 ? 3 : 0;
+      for (let c = 3 + shift; c <= COLS - 3; c += 6) {
+        const { q, r } = offsetToAxial(c, rw);
+        if (!canSettle(q, r)) continue;
+        terrain.set(key(q, r), townKeys.length % 3 === 0 && !townAdjacent(q, r) ? 'town' : 'village');
+        townKeys.push(key(q, r));
+      }
+    }
+  } else {
+    for (let placed = 0, tries = 0; placed < rint(9, 13) && tries < 1500; tries++) {
+      const { q, r } = offsetToAxial(rint(1, COLS - 2), rint(1, ROWS - 2));
+      if (!canSettle(q, r)) continue;
+      // grande majorité de villages ; ville seulement si aucune ville adjacente.
+      terrain.set(key(q, r), rng() < 0.85 || townAdjacent(q, r) ? 'village' : 'town');
+      townKeys.push(key(q, r));
+      placed++;
+    }
   }
 
   // 7) Jouabilité : tant que les deux bases ne sont pas reliées par voie

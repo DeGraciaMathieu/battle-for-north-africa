@@ -65,6 +65,13 @@
       <select id="map"><option value="">Aléatoire (seed)</option></select>
     </div>
     <div class="seedrow">
+      <label for="genMode">Génération</label>
+      <select id="genMode">
+        <option value="random">Aléatoire</option>
+        <option value="fair">Équitable (équidistante)</option>
+      </select>
+    </div>
+    <div class="seedrow">
       <label for="seed">Seed</label>
       <input id="seed" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="aléatoire" />
       <button class="act" id="gen" type="button" title="Seed aléatoire">🎲</button>
@@ -140,6 +147,7 @@
       const fixed = !!$('map').value;
       $('seed').disabled = fixed;
       $('gen').disabled = fixed;
+      $('genMode').disabled = fixed;
     };
 
     $('gen').onclick = () => { $('seed').value = String(Math.floor(Math.random() * 0xffffffff)); };
@@ -149,7 +157,10 @@
       const map = $('map').value;
       const raw = $('seed').value.trim();
       if (map) q.set('map', map);
-      else if (/^\d+$/.test(raw)) q.set('seed', raw);
+      else {
+        if (/^\d+$/.test(raw)) q.set('seed', raw);
+        if ($('genMode').value === 'fair') q.set('gen', 'fair');
+      }
       q.set('b', enc('axis'));
       q.set('r', enc('ally'));
       location.href = 'game?' + q.toString(); // URL propre : évite la redirection de serve qui perd la query
