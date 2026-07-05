@@ -32,7 +32,7 @@ Créé par `createGame(rng)` (`src/game.js`). Toutes les règles le reçoivent e
 
 ```
 { terrain: Map, hexes: [], objectives: [key],
-  objControl: Map<key, 'axis'|'ally'>, units: [], 
+  objControl: Map<key, 'blue'|'red'>, units: [], 
   G: { turn, player, phase, over }, bus, rng }
 ```
 

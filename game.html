@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Battle for North Africa — Partie</title>
+<title>Battle for Montélimar — Partie</title>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden;
@@ -20,8 +20,8 @@
   #hud { top: 12px; left: 12px; width: 320px; }
   #turnbar { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
   .badge { padding:2px 8px; border-radius:3px; font-weight:700; letter-spacing:.5px; font-size:11px; }
-  .badge.axis { background:#33415c; color:#dfe7f2; border:1px solid #4a6b9a; }
-  .badge.ally { background:#5a2f2b; color:#f2dedb; border:1px solid #a8544a; }
+  .badge.blue { background:#33415c; color:#dfe7f2; border:1px solid #4a6b9a; }
+  .badge.red { background:#5a2f2b; color:#f2dedb; border:1px solid #a8544a; }
   .badge.phase { background:#2c281c; color:#e8b95a; border:1px solid #5a5238; }
   #hint { margin-top:4px; min-height:30px; }
   #btnPhase { margin-top:8px; width:100%; padding:8px; cursor:pointer; font-family:inherit; font-weight:700;
@@ -121,7 +121,7 @@
 <div id="hud" class="panel">
   <div id="turnbar">
     <span class="sub">Tour</span><b id="turnNum">1</b>
-    <span id="badgeSide" class="badge axis">BLEU</span>
+    <span id="badgeSide" class="badge blue">BLEU</span>
     <span id="badgePhase" class="badge phase">MOUVEMENT</span>
   </div>
   <div id="netbar" class="sub" style="display:none"></div>

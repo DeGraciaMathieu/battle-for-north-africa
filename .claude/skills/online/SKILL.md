@@ -22,7 +22,7 @@ Les deux clients construisent un état **strictement identique** (même `seed`, 
 | Code d'invitation | `makeCode()` — 6 caractères non ambigus ; `Math.random` OK ici (hors règles) |
 | Transport hôte | `createHost(code, handlers)` — réserve l'ID `bfna-<code>` sur le broker, une seule connexion |
 | Transport invité | `joinHost(code, handlers)` — rejoint l'hôte |
-| Rôles | `?net=host` (joue **Bleu**/`axis`) / `?net=guest&code=…` (joue **Rouge**/`ally`) / absent = solo |
+| Rôles | `?net=host` (joue **Bleu**/`blue`) / `?net=guest&code=…` (joue **Rouge**/`red`) / absent = solo |
 | Descriptif de partie | hôte → guest : `{ t:'desc', seed, fair, mapParam, b, r, rngSeed }` (le guest en dérive un état identique) |
 | Verrou de tour | `myTurn()` (`app.js`) — en ligne, on n'agit que si `state.G.player === localSide` et liaison intacte |
 | Émission d'intention | `netSend({ … })` après chaque action locale (move / combat / phase) |

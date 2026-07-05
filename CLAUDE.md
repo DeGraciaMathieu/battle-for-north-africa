@@ -1,6 +1,6 @@
-# Battle for North Africa
+# Battle for Montélimar
 
-Wargame hexagonal opérationnel : combat au tour par tour sur une carte hexagonale, opposant deux camps neutres, **Bleu** et **Rouge** (codés en interne `axis` / `ally`).
+Wargame hexagonal opérationnel : combat au tour par tour sur une carte hexagonale, opposant deux camps neutres, **Bleu** et **Rouge** (codés en interne `blue` / `red`).
 
 ## Stack
 

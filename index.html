@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Battle for North Africa</title>
+<title>Battle for Montélimar</title>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; background: #14110c;
@@ -87,12 +87,12 @@
 </style>
 </head>
 <body>
-  <h1>Battle for North Africa</h1>
+  <h1>Battle for Montélimar</h1>
   <div class="tag">Composez vos armées · budget <b id="budgetTag"></b> points par camp</div>
 
   <div class="armies">
-    <div class="army blue"><h2>🔵 Bleu</h2><div class="budget" id="bud-axis"></div><div id="list-axis"></div></div>
-    <div class="army red"><h2>🔴 Rouge</h2><div class="budget" id="bud-ally"></div><div id="list-ally"></div></div>
+    <div class="army blue"><h2>🔵 Bleu</h2><div class="budget" id="bud-blue"></div><div id="list-blue"></div></div>
+    <div class="army red"><h2>🔴 Rouge</h2><div class="budget" id="bud-red"></div><div id="list-red"></div></div>
   </div>
 
   <div class="settings">
@@ -128,10 +128,10 @@
   <script type="module">
     import { UNIT_CATALOG, CATALOG_ORDER, ARMY_POINTS } from './src/config.js';
     const $ = (id) => document.getElementById(id);
-    const SIDES = ['axis', 'ally'];
+    const SIDES = ['blue', 'red'];
     const counts = {
-      axis: { armor: 3, mech: 2, arty: 1, inf: 0 },
-      ally: { armor: 2, mech: 0, arty: 1, inf: 5 },
+      blue: { armor: 3, mech: 2, arty: 1, inf: 0 },
+      red: { armor: 2, mech: 0, arty: 1, inf: 5 },
     };
     $('budgetTag').textContent = ARMY_POINTS;
 
@@ -209,13 +209,13 @@
         if (/^\d+$/.test(raw)) q.set('seed', raw);
         if ($('genMode').value === 'fair') q.set('gen', 'fair');
       }
-      q.set('b', enc('axis'));
-      q.set('r', enc('ally'));
+      q.set('b', enc('blue'));
+      q.set('r', enc('red'));
       return q;
     }
     // URL propre : évite la redirection de serve qui perd la query.
     $('play').onclick = () => { location.href = 'game?' + buildQuery().toString(); };
-    $('ai').onclick = () => { const q = buildQuery(); q.set('ai', 'ally'); location.href = 'game?' + q.toString(); }; // IA = Rouge, humain = Bleu
+    $('ai').onclick = () => { const q = buildQuery(); q.set('ai', 'red'); location.href = 'game?' + q.toString(); }; // IA = Rouge, humain = Bleu
     $('host').onclick = () => { const q = buildQuery(); q.set('net', 'host'); location.href = 'game?' + q.toString(); };
     $('join').onclick = () => {
       const c = $('joinCode').value.trim().toUpperCase();

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Battle for North Africa - Règles</title>
+<title>Battle for Montélimar - Règles</title>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; background: #14110c;
@@ -56,7 +56,7 @@
 <body>
   <div class="wrap">
     <a class="back" href="index.html">◂ Retour à la composition des armées</a>
-    <h1>Battle for North Africa</h1>
+    <h1>Battle for Montélimar</h1>
     <div class="tag">Manuel de règles - wargame hexagonal opérationnel · deux camps, <b>Bleu</b> et <b>Rouge</b></div>
 
     <nav class="toc">
@@ -78,8 +78,8 @@
 
     <section id="apercu">
       <h2>1 · Vue d'ensemble</h2>
-      <p><b>Battle for North Africa</b> est un wargame au tour par tour opposant deux armées sur une carte hexagonale
-        du désert nord-africain. Chacun commande une poignée de divisions - blindés, mécanisés, infanterie, artillerie -
+      <p><b>Battle for Montélimar</b> est un wargame au tour par tour opposant deux armées sur une carte hexagonale
+        de la campagne européenne. Chacun commande une poignée de divisions - blindés, mécanisés, infanterie, artillerie -
         et cherche à contrôler les <em>villes</em> stratégiques tout en évitant que ses lignes de ravitaillement ne soient coupées.</p>
       <p>Le jeu se déroule en <b id="p-turns"></b> tours. À chaque tour, les deux camps jouent l'un après l'autre
         (système <em>IGO-UGO</em> : « je joue, tu joues »). Quand le dernier tour s'achève, on compte les villes tenues : le
@@ -197,7 +197,7 @@
       <p>Depuis chaque source, le ravitaillement se répand en perdant 1 de portée par hexe traversé. Il <b>ne peut pas</b>
         franchir :</p>
       <ul>
-        <li>la <b>mer / rivière</b> (infranchissable) ;</li>
+        <li>la <b>rivière</b> (infranchissable) ;</li>
         <li>un hexe occupé par une unité <b>ennemie</b> ;</li>
         <li>un hexe sous <b>ZOC ennemie</b> - sauf si une unité amie s'y trouve, ce qui rétablit le passage.</li>
       </ul>
@@ -245,7 +245,7 @@
       <ul>
         <li><b>DE - Défenseur éliminé</b> : le défenseur encaisse un palier (retourné, ou éliminé s'il l'était déjà).</li>
         <li><b>DR - Défenseur repoussé</b> : il recule d'un hexe, aussi loin que possible de l'attaquant. S'il ne peut
-          reculer nulle part (mer, ennemi, empilement plein, ZOC ennemie), il est éliminé.</li>
+          reculer nulle part (rivière, ennemi, empilement plein, ZOC ennemie), il est éliminé.</li>
         <li><b>EX - Échange</b> : le défenseur encaisse un palier, et les attaquants perdent des paliers à hauteur de la
           défense encaissée (les pions les plus faibles trinquent d'abord).</li>
         <li><b>AR - Attaquant repoussé</b> : chaque attaquant recule d'un hexe (ou est éliminé faute de repli).</li>
@@ -253,7 +253,7 @@
       </ul>
       <p><b>Avance après combat.</b> Si le défenseur est éliminé ou repoussé et que son hexe se retrouve <em>vide</em>,
         l'attaquant adjacent le plus puissant peut s'y installer - de quoi exploiter une percée et progresser vers un objectif.</p>
-      <div class="note"><b>Reculer, c'est mourir un peu.</b> Une unité acculée à ses propres lignes, à la mer ou à une ZOC
+      <div class="note"><b>Reculer, c'est mourir un peu.</b> Une unité acculée à ses propres lignes, à la rivière ou à une ZOC
         ennemie n'a nulle part où fuir : un simple « repoussé » l'anéantit. Gardez toujours une case de repli.</div>
     </section>
 
@@ -288,7 +288,7 @@
     $('p-arty').textContent = ARTY_RANGE;
 
     // -- Tableau des terrains ----------------------------------------------
-    const TERRAIN_ORDER = ['sand', 'road', 'oasis', 'rock', 'town', 'village', 'coast', 'sea', 'base'];
+    const TERRAIN_ORDER = ['plain', 'road', 'forest', 'hill', 'town', 'village', 'bank', 'river', 'base'];
     const seen = new Set();
     const roleOf = (t, tp) =>
       tp.cost === Infinity ? 'Infranchissable'

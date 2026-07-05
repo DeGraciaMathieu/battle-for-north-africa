@@ -26,19 +26,19 @@ Grille hexagonale en coordonnées **axiales** `(q, r)`. Fonctions de géométrie
 
 ## Terrain (`src/config.js` → `TERRAIN`)
 
-`sea` (infranchissable, « Rivière »/lac/étang), `coast` (berge, coût 2), `sand`/`sand2` (plaine, coût 1), `rock` (coteau, coût 3, +2 déf), `town` (ville/pont, objectif, +2 déf, ravito 6), `village` (relais de ravito 4, +2 déf), `oasis` (bois, coût 2, +1 déf), `road` (route, coût 0,5, −1 déf), `base` (camp de base, source de ravitaillement — posé via `BASES`, voir skill `ravitaillement`).
+`river` (infranchissable, « Rivière »/lac/étang), `bank` (berge, coût 2), `plain`/`plain2` (plaine, coût 1), `hill` (coteau, coût 3, +2 déf), `town` (ville/pont, objectif, +2 déf, ravito 6), `village` (relais de ravito 4, +2 déf), `forest` (bois, coût 2, +1 déf), `road` (route, coût 0,5, −1 déf), `base` (camp de base, source de ravitaillement — posé via `BASES`, voir skill `ravitaillement`).
 
 ## Génération (`src/map.js` → `generateMap(seed)`)
 
 Reproductible via une **graine** : `generateMap(seed)` seede un PRNG déterministe (`mulberry32`) → même seed, même carte. Étapes :
 
-1. **Fond de plaine** — toute la carte en `sand`/`sand2` (bruit sinus seedé).
+1. **Fond de plaine** — toute la carte en `plain`/`plain2` (bruit sinus seedé).
 2. **Hydrographie** — selon la seed, deux régimes :
    - *transversale* : un ruban qui serpente d'un bord à l'autre (styles vertical / horizontal / diagonal / fourchu) → ligne de front + ponts goulots ;
    - *fragmenté* : quelques **lacs** (`growBlob`), des **rivières courtes** qui en naissent + une ou deux rivières indépendantes (`growRiver`).
    Dans les deux cas, `path` (clés axiales) porte les ponts.
-3. **Relief & étangs** en amas (`stamp`) : `oasis` (bois), `rock` (coteaux), `sea` (étangs).
-4. **Berges** — toute plaine bordant l'eau → `coast`.
+3. **Relief & étangs** en amas (`stamp`) : `forest` (bois), `hill` (coteaux), `river` (étangs).
+4. **Berges** — toute plaine bordant l'eau → `bank`.
 5. **Ponts** — quelques `town` répartis le long de `path`.
 6. **Bases** (`BASES`) puis **peuplements** de terre : villes (objectif) ou villages (relais de ravito), jamais îlots.
 7. **Jouabilité** — tant que les deux bases ne sont pas reliées par voie terrestre, un hex d'eau frontalier devient pont.
