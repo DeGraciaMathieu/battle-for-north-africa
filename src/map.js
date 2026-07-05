@@ -242,6 +242,19 @@ export function generateMap(seed = 1) {
     terrain.set(bridge, 'town');
   }
 
+  // 7b) Zones urbaines : périphérie bâtie autour des peuplements. Denses autour
+  //     des villes, plus clairsemées autour des villages. Elles offrent la
+  //     protection d'une ville mais n'apportent aucun ravitaillement.
+  for (const [k, t] of [...terrain]) {
+    const density = t === 'town' ? 0.6 : t === 'village' ? 0.25 : 0;
+    if (!density) continue;
+    const [q, r] = k.split(',').map(Number);
+    for (const [dq, dr] of DIRS) {
+      const nk = key(q + dq, r + dr);
+      if (LAND.has(terrain.get(nk)) && rng() < density) terrain.set(nk, 'urban');
+    }
+  }
+
   // 8) Réseau routier : relie villes, villages et bases par un arbre couvrant
   //    minimal (arêtes reliant les nœuds les plus proches). Chaque arête est
   //    tracée par un Dijkstra pondéré : la route préfère la plaine, contourne
@@ -299,7 +312,7 @@ export function generateMap(seed = 1) {
     }
     inTree.add(best.j);
     for (const k of roadPath(nodes[best.i], nodes[best.j])) {
-      if (!SETTLE(terrain.get(k))) terrain.set(k, 'road');    // n'écrase pas les peuplements traversés
+      if (!SETTLE(terrain.get(k)) && terrain.get(k) !== 'urban') terrain.set(k, 'road'); // n'écrase ni peuplements ni zones urbaines
     }
   }
 
