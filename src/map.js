@@ -224,7 +224,7 @@ export function generateMap(seed = 1, { fair = false } = {}) {
     const [q, r] = k.split(',').map(Number);
     if (DIRS.some(([dq, dr]) => terrain.get(key(q + dq, r + dr)) === 'river')) waterside.push({ q, r });
   }
-  stamp('forest', rint(7, 12), 5, 16, { centers: waterside, elongate: true }); // bois près de l'eau
+  stamp('forest', rint(14, 24), 5, 16, { centers: waterside, elongate: true }); // bois près de l'eau
   for (let i = 0, n = rint(4, 5); i < n; i++) growRidge();                     // chaînes de coteaux
   stamp('river', rint(1, 3), 2, 5, { elongate: true });                         // étangs
 
