@@ -421,7 +421,6 @@ const PIXI = window.PIXI;
       }
       if (type === 'armor' || type === 'mech') g.ellipse(cx, cy, w * 0.33, h * 0.3).stroke(line);
       if (type === 'arty') g.circle(cx, cy, Math.min(w, h) * 0.17).fill(color);
-      if (type === 'moto') g.moveTo(x, y + h).lineTo(x + w, y).stroke(line);
     };
     // Construit le pion pour une FACE donnée (recto = reduced false, verso = true) ;
     // ne l'enregistre pas — sert au rendu courant comme à l'animation de flip.

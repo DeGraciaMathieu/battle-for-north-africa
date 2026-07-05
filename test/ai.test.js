@@ -34,7 +34,7 @@ test('tactique : l\'IA engage un combat quand la force est écrasante', () => {
 
 test('tactique : l\'IA renonce à un combat défavorable', () => {
   const units = [
-    makeUnit({ id: 1, side: 'axis', type: 'moto', q: 0, r: 0, atk: 4 }), // faible
+    makeUnit({ id: 1, side: 'axis', type: 'arty', q: 0, r: 0, atk: 2 }), // faible
     makeUnit({ id: 2, side: 'ally', type: 'armor', q: 1, r: 0, def: 7 }), // robuste
   ];
   const state = makeState({ terrain: field(), units });

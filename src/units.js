@@ -13,7 +13,7 @@ import { UNIT_CATALOG, CATALOG_ORDER, COLS, ROWS, BASES } from './config.js';
 // Roster par défaut (sans éditeur d'armée) : 10 pions par camp, exprimés en
 // composition sur le catalogue. Bleu blindé/mobile, Rouge infanterie/défensif.
 const DEFAULT_COMPOSITION = {
-  axis: { armor: 4, mech: 2, moto: 2, arty: 2 },
+  axis: { armor: 4, mech: 4, arty: 2 },
   ally: { armor: 3, inf: 5, arty: 2 },
 };
 
@@ -89,4 +89,4 @@ export const stackCount = (units, q, r, side) =>
   units.filter((u) => u.q === q && u.r === r && u.side === side).length;
 
 export const isArmor = (u) => u.type === 'armor';
-export const isFoot = (u) => u.type === 'inf' || u.type === 'mech' || u.type === 'moto';
+export const isFoot = (u) => u.type === 'inf' || u.type === 'mech';
