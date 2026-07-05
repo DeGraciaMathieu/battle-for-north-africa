@@ -251,7 +251,9 @@ const PIXI = window.PIXI;
           const c = counters.get(u.id);
           if (!c) return;
           c.position.set(x + i * 7, y - i * 7);
-          c.alpha = state.G.phase === 'combat' && u.side === state.G.player && u.hasFought ? 0.5 : 1;
+          // Unité du camp actif qui ne peut plus agir (PM épuisés / combat livré) → grisée.
+          const done = state.G.phase === 'combat' ? u.hasFought : u.mpLeft === 0;
+          c.alpha = u.side === state.G.player && done ? 0.5 : 1;
         });
       }
     }
