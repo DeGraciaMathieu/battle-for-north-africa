@@ -13,6 +13,7 @@ import { updateSupply, supplyRoutes, supplySources } from '../src/supply.js';
 import { createGame, updateObjectives, objCount, endPhase } from '../src/game.js';
 import { loadMap } from '../src/map.js';
 import { mulberry32, makeCode, createHost, joinHost } from './net.js';
+import { aiMovePhase, aiAttackPhase } from '../src/ai.js';
 
 const PIXI = window.PIXI;
 
@@ -23,6 +24,9 @@ const PIXI = window.PIXI;
     const params = new URLSearchParams(location.search);
     const netRole = params.get('net');                 // 'host' | 'guest' | null (solo)
     const isOnline = netRole === 'host' || netRole === 'guest';
+    const aiParam = params.get('ai');                  // 'axis' | 'ally' : camp joué par l'IA (solo uniquement)
+    const aiSide = !isOnline && (aiParam === 'axis' || aiParam === 'ally') ? aiParam : null;
+    const isAI = aiSide !== null;
     const sideLabel = (s) => (s === 'axis' ? 'BLEU' : 'ROUGE');
 
     // Armées de l'éditeur (accueil) : b/r = comptes par type (ordre CATALOG_ORDER).
@@ -147,20 +151,25 @@ const PIXI = window.PIXI;
       const q = new URLSearchParams();
       if (mapData) q.set('map', mapParam); else { q.set('seed', String(seed)); if (fair) q.set('gen', 'fair'); }
       if (composition) { q.set('b', params.get('b')); q.set('r', params.get('r')); }
+      if (isAI) q.set('ai', aiSide);
       history.replaceState(null, '', `?${q.toString()}`);
     }
     const state = createGame(rng, seed, composition, mapData ?? undefined, fair ? { fair: true } : undefined);
     started = true;
 
-    // Verrou de tour : hors ligne on joue les deux camps ; en ligne on n'agit que
-    // pendant le tour de son propre camp (et tant que la liaison tient).
-    const myTurn = () => !isOnline || (!netLost && state.G.player === localSide);
+    // Verrou de tour : hors ligne (sans IA) on joue les deux camps ; en ligne on
+    // n'agit que pendant son propre camp ; contre l'IA on n'agit pas quand c'est
+    // au camp de l'IA de jouer.
+    const myTurn = () => isOnline ? (!netLost && state.G.player === localSide)
+      : isAI ? state.G.player !== aiSide : true;
     const netSend = (m) => { if (net) net.send(m); };
     const byId = (id) => state.units.find((u) => u.id === id);
-    if (isOnline) {
+    if (isOnline || isAI) {
       const nb = gid('netbar');
       nb.style.display = '';
-      nb.innerHTML = `🌐 En ligne — tu joues <b>${sideLabel(localSide)}</b>`;
+      nb.innerHTML = isOnline
+        ? `🌐 En ligne — tu joues <b>${sideLabel(localSide)}</b>`
+        : `🤖 Contre l'IA — tu joues <b>${sideLabel(other(aiSide))}</b>`;
     }
     const FILL = { axis: 0x4a6b9a, ally: 0xa8544a };   // couleurs des camps (pions, camp de base)
     const SUP = { axis: 0x8fb0d8, ally: 0xe0968f };    // teinte de ravitaillement par camp
@@ -976,6 +985,10 @@ const PIXI = window.PIXI;
         $('btnPhase').disabled = !mine;
         if (netLost) $('hint').textContent = 'Connexion perdue.';
         else if (!mine) $('hint').innerHTML = `⏳ Tour de l'adversaire — <b>${sideLabel(state.G.player)}</b>. Patiente…`;
+      } else if (isAI) {
+        const mine = myTurn();
+        $('btnPhase').disabled = !mine;
+        if (!mine) $('hint').innerHTML = `🤖 Tour de l'IA — <b>${sideLabel(aiSide)}</b> réfléchit…`;
       }
       draw();
     }
@@ -1096,14 +1109,15 @@ const PIXI = window.PIXI;
       at(() => { $('combatBtn').style.display = 'block'; $('combatBtn').style.visibility = 'visible'; },
         300 * (p.effects.length + 1));
     }
-    $('combatBtn').onclick = () => {
+    function closeCombat() {
       clearCombatTimers();
       $('combatModal').style.display = 'none';
       fxQueue.splice(0).forEach(({ q, r, kind, id }) => {  // effets une fois la modale fermée
         spawnFx(q, r, kind);
         if (kind === 'hit') flipUnit(id);                  // unité réduite : on retourne sa tuile
       });
-    };
+    }
+    $('combatBtn').onclick = closeCombat;
     $('btnRollCombat').onclick = () => {
       if (!pendingCombat) return;
       const { atkUnits, defender } = pendingCombat;
@@ -1136,6 +1150,7 @@ const PIXI = window.PIXI;
     state.bus.on('phaseChanged', () => {
       clearSel();
       refresh();
+      maybeRunAI();                                        // enchaîne le tour de l'IA si c'est à elle
     });
     state.bus.on('gameOver', ({ side, reason }) => {
       clearSel();
@@ -1166,6 +1181,49 @@ const PIXI = window.PIXI;
       refresh();
       if (state.G.over) $('combatModal').style.display = 'none';
     }
+
+    // -- Pilote de l'IA (solo) : rejoue les intentions du planificateur pur
+    // (src/ai.js) via le MÊME chemin que le mode en ligne, avec des pauses pour
+    // rester lisible. Le planificateur ne mute jamais l'état ; c'est ici qu'on
+    // applique moves/combats sur l'état réel et qu'on anime.
+    const AI_MOVE_MS = 420, AI_STEP_MS = 360, AI_COMBAT_MS = 2200;
+    const wait = (ms) => new Promise((res) => setTimeout(res, ms));
+    let aiRunning = false;
+    async function runAiTurn() {
+      if (aiRunning) return;
+      aiRunning = true;
+      try {
+        for (const m of aiMovePhase(state, aiSide)) {       // phase de mouvement
+          if (state.G.over) return;
+          const u = byId(m.id);
+          if (!u) continue;
+          const { dist, eZOC } = computeReachable(state, u);
+          if (!dist[m.to]) continue;                        // destination devenue invalide
+          moveUnit(u, m.to, dist, eZOC);
+          refresh();
+          await wait(AI_MOVE_MS);
+        }
+        if (state.G.over) return;
+        endPhase(state);                                    // mouvement → combat
+        await wait(AI_STEP_MS);
+        for (const a of aiAttackPhase(state, aiSide)) {     // phase de combat
+          if (state.G.over) return;
+          const atk = a.atk.map(byId).filter(Boolean), def = byId(a.def);
+          if (!atk.length || !def) continue;
+          remoteCombat(atk, def);
+          await wait(AI_COMBAT_MS);
+          closeCombat();                                    // ferme la modale + joue explosions/flips
+          await wait(AI_STEP_MS);
+        }
+        if (state.G.over) return;
+        endPhase(state);                                    // combat → tour du joueur humain
+      } finally {
+        aiRunning = false;
+      }
+    }
+    const maybeRunAI = () => {
+      if (isAI && !state.G.over && !aiRunning && state.G.player === aiSide && state.G.phase === 'move') runAiTurn();
+    };
     // Applique une action distante en rejouant EXACTEMENT le même code de règle
     // que l'auteur (déplacement recalculé, dé reproduit) : aucun état n'est
     // transmis, seulement l'intention.
@@ -1192,7 +1250,10 @@ const PIXI = window.PIXI;
     refresh();
     log(isOnline
       ? `Partie en ligne prête — tu joues ${sideLabel(localSide)}. ${localSide === 'axis' ? 'À toi de jouer.' : "Au tour de l'adversaire."}`
-      : 'Partie prête — tour 1, phase de mouvement du camp Bleu.');
+      : isAI
+        ? `Partie contre l'IA — tu joues ${sideLabel(other(aiSide))}. À toi de jouer.`
+        : 'Partie prête — tour 1, phase de mouvement du camp Bleu.');
+    maybeRunAI();                                          // au cas où l'IA ouvre la partie
   } catch (err) {
     const el = document.getElementById('err');
     el.style.display = 'block';

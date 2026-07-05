@@ -77,6 +77,7 @@
       <button class="act" id="gen" type="button" title="Seed aléatoire">🎲</button>
     </div>
     <button class="act" id="play" type="button">Jouer ▸</button>
+    <button class="act" id="ai" type="button" title="Jouer contre l'IA (tu joues Bleu)">🤖 Contre l'IA ▸</button>
     <button class="act" id="host" type="button" title="Créer une partie en ligne (tu joues Bleu)">🌐 En ligne ▸</button>
     <div class="seedrow">
       <input id="joinCode" type="text" maxlength="6" placeholder="CODE" style="width:96px;text-transform:uppercase;letter-spacing:2px" />
@@ -84,6 +85,7 @@
     </div>
   </div>
   <div class="hint">Une même seed reproduit exactement la même carte. Chaque camp a besoin d'au moins une unité.<br>
+    <b>Contre l'IA</b> : « 🤖 Contre l'IA » lance une partie solo où tu joues Bleu et l'IA joue Rouge.<br>
     <b>En ligne</b> : « 🌐 En ligne » crée la partie et te donne un code à partager (tu joues Bleu) ; ton adversaire colle le code puis « Rejoindre » (il joue Rouge).<br>
     Nouveau ? <a href="regles.html" style="color:#e8b95a;">Lisez les règles du jeu ▸</a></div>
 
@@ -128,6 +130,7 @@
       }
       $('play').disabled = SIDES.some((s) => total(s) === 0 || spent(s) > ARMY_POINTS);
       $('host').disabled = $('play').disabled;
+      $('ai').disabled = $('play').disabled;
     }
 
     document.querySelectorAll('.stepper button').forEach((btn) => {
@@ -175,6 +178,7 @@
     }
     // URL propre : évite la redirection de serve qui perd la query.
     $('play').onclick = () => { location.href = 'game?' + buildQuery().toString(); };
+    $('ai').onclick = () => { const q = buildQuery(); q.set('ai', 'ally'); location.href = 'game?' + q.toString(); }; // IA = Rouge, humain = Bleu
     $('host').onclick = () => { const q = buildQuery(); q.set('net', 'host'); location.href = 'game?' + q.toString(); };
     $('join').onclick = () => {
       const c = $('joinCode').value.trim().toUpperCase();
