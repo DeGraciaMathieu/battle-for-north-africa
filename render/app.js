@@ -597,41 +597,60 @@ const PIXI = window.PIXI;
       }
     }
 
-    // Villages tenus (relais de ravito) : précalculés une fois pour le liseré de
-    // contrôle. Les villes viennent de state.objectives.
-    const villageKeys = [...state.terrain].filter(([, t]) => t === 'village').map(([k]) => k);
-    // Drapeau de contrôle : couleurs vives de camp, gris atténué si neutre.
+    // Peuplements tenus (villes + villages, relais de ravito) : précalculés une
+    // fois pour le liseré de contrôle. Les objectifs, notion distincte, sont
+    // dessinés à part (grand drapeau) et retirés d'ici pour éviter le doublon.
+    const objSet = new Set(state.objectives);
+    const settlementKeys = [...state.terrain]
+      .filter(([k, t]) => (t === 'town' || t === 'village') && !objSet.has(k))
+      .map(([k]) => k);
+    // Contrôle : couleurs vives de camp, gris atténué si neutre. La couleur
+    // (bleu/rouge/gris) donne le contrôle ; la forme donne la nature.
     const FLAG_COL = { blue: 0x3f7fe0, red: 0xe0483a, neutral: 0xb8ad86 };
-    // Drapeau planté sur un peuplement (mât + banderole) dans la couleur du camp
-    // tenant. `town` = plus grand (objectif de victoire) ; neutre = translucide.
-    // Ville = grand drapeau rectangulaire à échancrure sur un mât haut (objectif) ;
-    // village = petit fanion triangulaire sur un mât court (relais de ravito).
-    // La couleur (bleu/rouge/gris) donne le contrôle, la forme donne le type.
-    const drawFlag = (k, town) => {
+    // Peuplement (ville/village) : petit fanion triangulaire planté sur un mât
+    // court, dans la couleur du camp tenant (translucide si neutre) — repère de
+    // source de ravitaillement.
+    const drawFlag = (k) => {
       const [q, r] = k.split(',').map(Number);
       const { x, y } = axialToPixel(q, r);
       const ctrl = state.objControl.get(k);
       const col = ctrl ? FLAG_COL[ctrl] : FLAG_COL.neutral;
       const alpha = ctrl ? 1 : 0.55;
-      const px = x - 5, baseY = y + 9, topY = town ? y - 19 : y - 11;
-      overlay.ellipse(px, baseY, town ? 5 : 3.5, 2).fill({ color: 0x1c1810, alpha: 0.45 });   // socle au sol
-      overlay.moveTo(px, baseY).lineTo(px, topY).stroke({ width: town ? 2.4 : 1.8, color: 0x2a2418, alpha: 0.95 }); // mât
-      if (town) {
-        const w = 20, h = 13;                                                                 // fanion à échancrure
-        overlay.poly([px, topY, px + w, topY, px + w - 6, topY + h / 2, px + w, topY + h, px, topY + h])
-          .fill({ color: col, alpha }).stroke({ width: 1.4, color: 0x1c1810, alpha: 0.9 });
-      } else {
-        const w = 12, h = 9;                                                                  // petit fanion triangulaire
-        overlay.poly([px, topY, px + w, topY + h * 0.45, px, topY + h])
-          .fill({ color: col, alpha }).stroke({ width: 1.2, color: 0x1c1810, alpha: 0.9 });
+      const px = x - 5, baseY = y + 9, topY = y - 11;
+      overlay.ellipse(px, baseY, 3.5, 2).fill({ color: 0x1c1810, alpha: 0.45 });               // socle au sol
+      overlay.moveTo(px, baseY).lineTo(px, topY).stroke({ width: 1.8, color: 0x2a2418, alpha: 0.95 }); // mât
+      const w = 12, h = 9;                                                                      // petit fanion triangulaire
+      overlay.poly([px, topY, px + w, topY + h * 0.45, px, topY + h])
+        .fill({ color: col, alpha }).stroke({ width: 1.2, color: 0x1c1810, alpha: 0.9 });
+    };
+    // Objectif de victoire : étoile à 5 branches dans la couleur du camp tenant
+    // (gris translucide si neutre). Forme volontairement distincte des fanions,
+    // posée sur n'importe quel terrain.
+    const starPoly = (cx, cy, R, r) => {
+      const p = [];
+      for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI) / 5;
+        const rad = i % 2 === 0 ? R : r;
+        p.push(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad);
       }
+      return p;
+    };
+    const drawObjective = (k) => {
+      const [q, r] = k.split(',').map(Number);
+      const { x, y } = axialToPixel(q, r);
+      const ctrl = state.objControl.get(k);
+      const col = ctrl ? FLAG_COL[ctrl] : FLAG_COL.neutral;
+      const alpha = ctrl ? 1 : 0.6;
+      overlay.ellipse(x, y + 12, 8, 2.5).fill({ color: 0x1c1810, alpha: 0.4 });                // ombre au sol
+      overlay.poly(starPoly(x, y - 3, 16, 6.7))
+        .fill({ color: col, alpha }).stroke({ width: 1.8, color: 0x1c1810, alpha: 0.9 });
     };
     function drawOverlay() {
       overlay.clear();
       // Contrôle des peuplements. Rejoué à chaque refresh (le contrôle évolue) —
       // d'où le tracé ici plutôt que dans le decoLayer statique.
-      for (const k of state.objectives) drawFlag(k, true);         // villes (objectifs de victoire)
-      for (const k of villageKeys) drawFlag(k, false);             // villages (ravitaillement)
+      for (const k of state.objectives) drawObjective(k);          // objectifs de victoire (étoile)
+      for (const k of settlementKeys) drawFlag(k);                 // peuplements (fanion de ravito)
       if (showSupply) drawSupplyLines();
       if (state.G.phase === 'move') {
         const eZOC = zocOf(state.units, other(state.G.player), state.terrain);
