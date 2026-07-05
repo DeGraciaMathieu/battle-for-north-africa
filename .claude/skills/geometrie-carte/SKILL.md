@@ -26,11 +26,25 @@ Grille hexagonale en coordonnées **axiales** `(q, r)`. Fonctions de géométrie
 
 ## Terrain (`src/config.js` → `TERRAIN`)
 
-`sea` (infranchissable), `coast`, `sand`/`sand2` (désert, coût 1), `rock` (coût 2, +2 déf), `town` (objectif, +2 déf), `oasis` (+1 déf), `base` (camp de base, source de ravitaillement — posé via `BASES`, voir skill `ravitaillement`).
+`sea` (infranchissable, « Rivière »/lac/étang), `coast` (berge, coût 2), `sand`/`sand2` (plaine, coût 1), `rock` (coteau, coût 3, +2 déf), `town` (ville/pont, objectif, +2 déf, ravito 6), `village` (relais de ravito 4, +2 déf), `oasis` (bois, coût 2, +1 déf), `road` (route, coût 0,5, −1 déf), `base` (camp de base, source de ravitaillement — posé via `BASES`, voir skill `ravitaillement`).
 
-## Génération (`src/map.js` → `generateMap`)
+## Génération (`src/map.js` → `generateMap(seed)`)
 
-Déterministe (bruit sinus `rand`), donc reproductible sans graine. Lignes offset `rw<=1` → mer, `rw===2` → littoral, sinon désert avec rocaille/oasis aléatoires. Puis `TOWNS` posées comme villes/ports → deviennent les objectifs.
+Reproductible via une **graine** : `generateMap(seed)` seede un PRNG déterministe (`mulberry32`) → même seed, même carte. Étapes :
+
+1. **Fond de plaine** — toute la carte en `sand`/`sand2` (bruit sinus seedé).
+2. **Hydrographie** — selon la seed, deux régimes :
+   - *transversale* : un ruban qui serpente d'un bord à l'autre (styles vertical / horizontal / diagonal / fourchu) → ligne de front + ponts goulots ;
+   - *fragmenté* : quelques **lacs** (`growBlob`), des **rivières courtes** qui en naissent + une ou deux rivières indépendantes (`growRiver`).
+   Dans les deux cas, `path` (clés axiales) porte les ponts.
+3. **Relief & étangs** en amas (`stamp`) : `oasis` (bois), `rock` (coteaux), `sea` (étangs).
+4. **Berges** — toute plaine bordant l'eau → `coast`.
+5. **Ponts** — quelques `town` répartis le long de `path`.
+6. **Bases** (`BASES`) puis **peuplements** de terre : villes (objectif) ou villages (relais de ravito), jamais îlots.
+7. **Jouabilité** — tant que les deux bases ne sont pas reliées par voie terrestre, un hex d'eau frontalier devient pont.
+8. **Réseau routier** — arbre couvrant minimal reliant villes/villages/bases, chaque arête tracée par Dijkstra pondéré.
+
+Les objectifs = clés des hexes `town` (`state.objectives`).
 
 ## Ajouter un nouveau terrain
 
