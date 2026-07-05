@@ -252,12 +252,46 @@ const PIXI = window.PIXI;
         fxLayer.circle(e.x, e.y, sw).stroke({ width: 2 * a, color: 0xffd9a0, alpha: 0.6 * a });
       }
     }
-    const fxTick = (ticker) => {
-      for (const e of fx) e.t += ticker.deltaMS;
+    // Retournement de tuile (recto → verso) quand une unité est réduite : on
+    // squash horizontalement le recto (1→0), on bascule sur le verso à mi-course,
+    // puis on le déploie (0→1). Le verso est le pion déjà en place ; le recto est
+    // un pion temporaire construit pour l'occasion.
+    let flips = [];                                // { verso, recto, t, dur }
+    function flipUnit(id) {
+      const verso = counters.get(id), u = byId(id);
+      if (!verso || verso.destroyed || !u) return;
+      const recto = buildCounterSprite(u, false);
+      recto.position.copyFrom(verso.position);
+      recto.visible = false;
+      unitLayer.addChild(recto);
+      flips.push({ verso, recto, t: 0, dur: 420 });
+      startAnim();
+    }
+    function updateFlips() {
+      flips = flips.filter((f) => {
+        if (f.verso.destroyed) { if (!f.recto.destroyed) f.recto.destroy(); return false; }
+        const p = Math.min(1, f.t / f.dur);
+        if (p < 0.5) { f.recto.visible = true; f.verso.visible = false; f.recto.scale.x = 1 - p * 2; }
+        else { f.recto.visible = false; f.verso.visible = true; f.verso.scale.x = (p - 0.5) * 2; }
+        if (f.t < f.dur) return true;
+        f.recto.destroy(); f.verso.scale.x = 1; f.verso.visible = true;
+        return false;
+      });
+    }
+    const cancelFlips = () => {
+      for (const f of flips) { if (!f.recto.destroyed) f.recto.destroy(); }
+      flips = [];
+    };
+    const animTick = (ticker) => {
+      const dt = ticker.deltaMS;
+      for (const e of fx) e.t += dt;
       fx = fx.filter((e) => e.t < e.delay + e.dur);
       drawFx();
-      if (!fx.length) { app.ticker.remove(fxTick); app.ticker.stop(); fxLayer.clear(); draw(); }
+      for (const f of flips) f.t += dt;
+      updateFlips();
+      if (!fx.length && !flips.length) { app.ticker.remove(animTick); app.ticker.stop(); fxLayer.clear(); draw(); }
     };
+    const startAnim = () => { if (!app.ticker.started) { app.ticker.add(animTick); app.ticker.start(); } };
     function spawnFx(q, r, kind) {
       const { x, y } = axialToPixel(q, r);
       const rad = SIZE * 0.5;                       // distance des foyers depuis le centre
@@ -265,7 +299,7 @@ const PIXI = window.PIXI;
       [-Math.PI / 2, Math.PI / 6, (5 * Math.PI) / 6].forEach((ang, i) => { // 3 foyers à 120°
         fx.push({ x: x + Math.cos(ang) * rad, y: y + Math.sin(ang) * rad, kind, t: 0, delay: i * 90, dur });
       });
-      if (!app.ticker.started) { app.ticker.add(fxTick); app.ticker.start(); }
+      startAnim();
     }
     const fxQueue = [];                            // positions collectées pendant resolveCombat, jouées à la fermeture de la modale
 
@@ -382,10 +416,12 @@ const PIXI = window.PIXI;
       if (type === 'arty') g.circle(cx, cy, Math.min(w, h) * 0.17).fill(color);
       if (type === 'moto') g.moveTo(x, y + h).lineTo(x + w, y).stroke(line);
     };
-    function makeCounter(u) {
+    // Construit le pion pour une FACE donnée (recto = reduced false, verso = true) ;
+    // ne l'enregistre pas — sert au rendu courant comme à l'animation de flip.
+    function buildCounterSprite(u, reduced) {
       const c = new PIXI.Container();
       const baseFill = FILL[u.side];
-      const fill = u.reduced ? mixDark(baseFill) : baseFill;
+      const fill = reduced ? mixDark(baseFill) : baseFill;
       const txt = 0xf3efe2;
       const shadow = new PIXI.Graphics().roundRect(-CS / 2 + 3, -CS / 2 + 4, CS, CS, 5).fill({ color: 0, alpha: 0.35 });
       const base = new PIXI.Graphics();
@@ -403,10 +439,10 @@ const PIXI = window.PIXI;
       const nm = T(u.name, 9); nm.position.set(0, -CS / 2 + 17);
       // Facteurs de la FACE courante ; le ravitaillement modifie l'effectif au
       // combat mais pas le nombre imprimé.
-      const fa = u.reduced ? u.ratk : u.atk, fd = u.reduced ? u.rdef : u.def, fm = u.reduced ? u.rmov : u.mov;
+      const fa = reduced ? u.ratk : u.atk, fd = reduced ? u.rdef : u.def, fm = reduced ? u.rmov : u.mov;
       const fac = T(`${fa}-${fd}-${fm}`, 10); fac.position.set(0, CS / 2 - 8);
       c.addChild(shadow, base, box, ech, nm, fac);
-      if (u.reduced) {                                  // bande d'angle rouge = pion réduit
+      if (reduced) {                                    // bande d'angle rouge = pion réduit
         const stripe = new PIXI.Graphics();
         stripe.poly([CS / 2 - 12, -CS / 2, CS / 2, -CS / 2, CS / 2, -CS / 2 + 12]).fill(0xb33a2a);
         c.addChild(stripe);
@@ -418,11 +454,16 @@ const PIXI = window.PIXI;
         c.addChild(oos);
       }
       c.eventMode = 'none';
+      return c;
+    }
+    function makeCounter(u) {
+      const c = buildCounterSprite(u, u.reduced);
       counters.set(u.id, c);
       unitLayer.addChild(c);
       return c;
     }
     function rebuildCounters() {
+      cancelFlips();                                    // annule un retournement en cours (réfs invalidées)
       for (const c of counters.values()) c.destroy();
       counters.clear();
       unitLayer.removeChildren();
@@ -1013,7 +1054,10 @@ const PIXI = window.PIXI;
     $('combatBtn').onclick = () => {
       clearCombatTimers();
       $('combatModal').style.display = 'none';
-      fxQueue.splice(0).forEach(({ q, r, kind }) => spawnFx(q, r, kind)); // explosions/impacts une fois la modale fermée
+      fxQueue.splice(0).forEach(({ q, r, kind, id }) => {  // effets une fois la modale fermée
+        spawnFx(q, r, kind);
+        if (kind === 'hit') flipUnit(id);                  // unité réduite : on retourne sa tuile
+      });
     };
     $('btnRollCombat').onclick = () => {
       if (!pendingCombat) return;
@@ -1037,7 +1081,7 @@ const PIXI = window.PIXI;
     state.bus.on('log', log);
     // Effets de combat : on mémorise la position touchée ; l'animation est jouée
     // à la révélation du dé (revealAfterRoll), synchronisée avec le résultat.
-    state.bus.on('unitReduced', (u) => fxQueue.push({ q: u.q, r: u.r, kind: 'hit' }));
+    state.bus.on('unitReduced', (u) => fxQueue.push({ q: u.q, r: u.r, kind: 'hit', id: u.id }));
     state.bus.on('unitRemoved', (u) => fxQueue.push({ q: u.q, r: u.r, kind: 'kill' }));
     state.bus.on('combatResolved', runRoll);
     state.bus.on('phaseChanged', () => {
