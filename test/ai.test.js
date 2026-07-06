@@ -129,3 +129,42 @@ test('tactique : l\'artillerie se poste à portée sans se coller à l\'ennemi',
   assert.ok(d >= 2, 'elle ne finit pas au contact');
   assert.ok(d <= ARTY_RANGE, 'mais reste à portée d\'appui');
 });
+
+test('retenue : l\'IA n\'engage qu\'avec la force minimale et garde une réserve', () => {
+  const units = [
+    makeUnit({ id: 1, side: 'blue', type: 'armor', q: 0, r: 0, atk: 8 }),      // 8 vs 4 → 2:1 à lui seul
+    makeUnit({ id: 2, side: 'blue', type: 'armor', q: 2, r: 0, atk: 8 }),      // second au contact, superflu
+    makeUnit({ id: 3, side: 'red', type: 'inf', q: 1, r: 0, atk: 4, def: 4 }),
+  ];
+  const state = makeState({ terrain: field(), units });
+  const attacks = aiAttackPhase(state, 'blue');
+  assert.equal(attacks.length, 1, 'un seul assaut');
+  assert.equal(attacks[0].atk.length, 1, 'un seul attaquant suffit : l\'autre reste en réserve');
+});
+
+test('anticipation : l\'IA n\'avance pas une unité isolée sur une case suicide', () => {
+  const units = [
+    makeUnit({ id: 1, side: 'blue', type: 'inf', q: 0, r: 0, atk: 3, def: 3, mov: 10, mpLeft: 10 }), // faible, mobile
+    makeUnit({ id: 2, side: 'red', type: 'armor', q: 5, r: 0, atk: 10, def: 8, mov: 2, mpLeft: 2 }), // écrasant, lent
+  ];
+  const state = makeState({ terrain: field(), units });
+  const m = aiMovePhase(state, 'blue').find((x) => x.id === 1);
+  if (m) {
+    const [q, r] = m.to.split(',').map(Number);
+    assert.ok(hexDistance(q, r, 5, 0) > 1, 'ne se jette pas au contact d\'un ennemi bien plus fort');
+  }
+});
+
+test('pathfinding : l\'IA contourne une rivière vers la passe au lieu de bloquer sur la berge', () => {
+  const coords = [];
+  for (let q = -1; q <= 9; q++) for (let r = -4; r <= 4; r++) coords.push([q, r]);
+  const terrain = fillTerrain(coords, 'plain');
+  for (let r = -4; r <= 3; r++) terrain.set(`3,${r}`, 'river');   // mur de rivière, passe en (3,4)
+  const units = [makeUnit({ id: 1, side: 'blue', type: 'armor', q: 0, r: 0, mov: 4, mpLeft: 4 })];
+  const state = makeState({ terrain, units, objectives: ['6,0'] }); // objectif de l'autre côté
+  const m = aiMovePhase(state, 'blue').find((x) => x.id === 1);
+  assert.ok(m, 'l\'unité se déplace');
+  const [q, r] = m.to.split(',').map(Number);
+  assert.ok(r > 0, 'elle progresse vers la passe (3,4), pas tout droit contre la berge');
+  assert.ok(!(q === 2 && r === 0), 'elle ne reste pas collée à la berge la plus proche du but');
+});
