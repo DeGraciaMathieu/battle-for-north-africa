@@ -10,7 +10,7 @@ import { eAtk, eDef, eMov, other, unitsAt, enemyAt, stackCount, isArmor, isFoot 
 import { zocOf, computeReachable, moveUnit } from '../src/movement.js';
 import { resolveCombat, combatPlan } from '../src/combat.js';
 import { updateSupply, supplyRoutes, supplySources } from '../src/supply.js';
-import { createGame, updateObjectives, objCount, endPhase } from '../src/game.js';
+import { createGame, updateObjectives, objCount, victoryScore, endPhase } from '../src/game.js';
 import { loadMap } from '../src/map.js';
 import { mulberry32, makeCode, createHost, joinHost } from './net.js';
 import { aiMovePhase, aiAttackPhase } from '../src/ai.js';
@@ -156,10 +156,6 @@ const PIXI = window.PIXI;
     }
     const state = createGame(rng, seed, composition, mapData ?? undefined, fair ? { fair: true } : undefined);
     started = true;
-
-    // Effectif initial par camp, capturé avant tout combat (base des « éliminés »).
-    const initialCount = { blue: 0, red: 0 };
-    for (const u of state.units) initialCount[u.side]++;
 
     // Verrou de tour : hors ligne (sans IA) on joue les deux camps ; en ligne on
     // n'agit que pendant son propre camp ; contre l'IA on n'agit pas quand c'est
@@ -1204,17 +1200,18 @@ const PIXI = window.PIXI;
       refresh();
       maybeRunAI();                                        // enchaîne le tour de l'IA si c'est à elle
     });
-    // Récap de fin : objectifs tenus et pertes (éliminés + réduits) par camp.
+    // Récap de fin : score, objectifs tenus et pertes (éliminés + réduits) par camp.
     const buildRecap = (winner) => {
       const rows = ['blue', 'red'].map((s) => {
         const alive = state.units.filter((u) => u.side === s);
-        const eliminated = initialCount[s] - alive.length;
+        const eliminated = state.initialCount[s] - alive.length;
         const reduced = alive.filter((u) => u.reduced).length;
         const cls = s === winner ? ` class="winner"` : '';
         return `<tr${cls}><td class="side ${s}">${sideLabel(s)}</td>`
-          + `<td>${objCount(state, s)}</td><td>${eliminated}</td><td>${reduced}</td></tr>`;
+          + `<td>${victoryScore(state, s)}</td><td>${objCount(state, s)}</td>`
+          + `<td>${eliminated}</td><td>${reduced}</td></tr>`;
       }).join('');
-      return `<table><thead><tr><th>Camp</th><th>Objectifs</th><th>Éliminés</th><th>Réduits</th></tr></thead>`
+      return `<table><thead><tr><th>Camp</th><th>Score</th><th>Objectifs</th><th>Éliminés</th><th>Réduits</th></tr></thead>`
         + `<tbody>${rows}</tbody></table>`;
     };
 
