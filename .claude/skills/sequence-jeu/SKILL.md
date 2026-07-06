@@ -22,6 +22,8 @@ Machine à états de la partie dans `src/game.js`.
 | Fin au dernier tour | `checkTurnEnd(state)` (tour > `MAX_TURNS`) |
 | Fin de partie | `endGame(state, side, reason)` (émet `gameOver`) |
 
+À la fin, l'écran de bandeau (`render/app.js`, sur `gameOver`) expose un récap : **objectifs tenus** (`objCount`) et **pertes** par camp — éliminés (écart au roster initial capturé à l'init) et pions `reduced` vivants. Pur rendu, aucune règle n'est concernée.
+
 ## Règles encodées
 
 - **IGO-UGO** : chaque camp joue mouvement puis combat avant de passer la main. `endPhase` gère la transition et incrémente `turn` quand le camp Rouge (`red`) finit son combat.
