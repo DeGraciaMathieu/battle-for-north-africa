@@ -82,6 +82,22 @@ test('à égalité d\'objectifs au dernier tour, Bleu (blue) l\'emporte', () => 
   assert.equal(over.side, 'blue', 'égalité (a >= b) → Bleu');
 });
 
+test('à égalité d\'objectifs, les pertes infligées départagent le score', () => {
+  const state = createGame(() => 0);
+  let over = null;
+  state.bus.on('gameOver', (e) => { over = e; });
+  state.objControl.clear();
+  state.objControl.set(state.objectives[0], 'blue'); // 1 objectif chacun → égalité d'objectifs
+  state.objControl.set(state.objectives[1], 'red');
+  // Rouge a éliminé une unité bleue ; les pertes bleues pèsent en faveur de Rouge.
+  const victim = state.units.findIndex((u) => u.side === 'blue');
+  state.units.splice(victim, 1);
+  state.G.turn = MAX_TURNS + 1;
+  checkTurnEnd(state);
+  assert.ok(state.G.over);
+  assert.equal(over.side, 'red', 'perte bleue → score Rouge supérieur');
+});
+
 test('hors ravitaillement, startMove réduit les PM de moitié', () => {
   // Unité isolée sur un hex sans source (ni objectif ami, ni bord de carte).
   const terrain = fillTerrain([[5, 5]]);

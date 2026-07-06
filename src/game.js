@@ -28,6 +28,9 @@ export function createGame(rng = Math.random, seed, composition, map, mapOptions
     bus: createBus(),
     rng,
   };
+  // Effectif initial par camp, figé avant tout combat (base des « éliminés »).
+  state.initialCount = { blue: 0, red: 0 };
+  for (const u of state.units) state.initialCount[u.side]++;
   relocateOffWater(state);
   updateObjectives(state);
   startMove(state, 'blue');
@@ -82,6 +85,27 @@ export function updateObjectives(state) {
 export const objCount = (state, side) =>
   state.objectives.filter((k) => state.objControl.get(k) === side).length;
 
+// Pertes d'un camp : éliminés (écart au roster initial) et réduits vivants.
+export function losses(state, side) {
+  const alive = state.units.filter((u) => u.side === side);
+  return {
+    eliminated: state.initialCount[side] - alive.length,
+    reduced: alive.filter((u) => u.reduced).length,
+  };
+}
+
+// Poids du score de victoire : objectif tenu, unité ennemie éliminée / réduite.
+export const SCORE_WEIGHTS = { obj: 2, eliminated: 1, reduced: 0.5 };
+
+// Score de victoire d'un camp : objectifs tenus + pertes infligées à l'ennemi.
+export function victoryScore(state, side) {
+  const enemy = side === 'blue' ? 'red' : 'blue';
+  const { eliminated, reduced } = losses(state, enemy);
+  return objCount(state, side) * SCORE_WEIGHTS.obj
+    + eliminated * SCORE_WEIGHTS.eliminated
+    + reduced * SCORE_WEIGHTS.reduced;
+}
+
 // Début de phase de mouvement d'un camp : rafraîchit le ravitaillement (il
 // conditionne les PM) puis réinitialise PM et drapeau de combat.
 export function startMove(state, side) {
@@ -123,9 +147,9 @@ export function checkElimination(state) {
 
 export function checkTurnEnd(state) {
   if (state.G.turn > MAX_TURNS) {
-    const a = objCount(state, 'blue');
-    const b = objCount(state, 'red');
-    endGame(state, a >= b ? 'blue' : 'red', `Fin du tour ${MAX_TURNS} — objectifs ${a}–${b}`);
+    const a = victoryScore(state, 'blue');
+    const b = victoryScore(state, 'red');
+    endGame(state, a >= b ? 'blue' : 'red', `Fin du tour ${MAX_TURNS} — score ${a}–${b}`);
   }
 }
 
