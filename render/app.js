@@ -157,6 +157,10 @@ const PIXI = window.PIXI;
     const state = createGame(rng, seed, composition, mapData ?? undefined, fair ? { fair: true } : undefined);
     started = true;
 
+    // Effectif initial par camp, capturé avant tout combat (base des « éliminés »).
+    const initialCount = { blue: 0, red: 0 };
+    for (const u of state.units) initialCount[u.side]++;
+
     // Verrou de tour : hors ligne (sans IA) on joue les deux camps ; en ligne on
     // n'agit que pendant son propre camp ; contre l'IA on n'agit pas quand c'est
     // au camp de l'IA de jouer.
@@ -1200,12 +1204,27 @@ const PIXI = window.PIXI;
       refresh();
       maybeRunAI();                                        // enchaîne le tour de l'IA si c'est à elle
     });
+    // Récap de fin : objectifs tenus et pertes (éliminés + réduits) par camp.
+    const buildRecap = (winner) => {
+      const rows = ['blue', 'red'].map((s) => {
+        const alive = state.units.filter((u) => u.side === s);
+        const eliminated = initialCount[s] - alive.length;
+        const reduced = alive.filter((u) => u.reduced).length;
+        const cls = s === winner ? ` class="winner"` : '';
+        return `<tr${cls}><td class="side ${s}">${sideLabel(s)}</td>`
+          + `<td>${objCount(state, s)}</td><td>${eliminated}</td><td>${reduced}</td></tr>`;
+      }).join('');
+      return `<table><thead><tr><th>Camp</th><th>Objectifs</th><th>Éliminés</th><th>Réduits</th></tr></thead>`
+        + `<tbody>${rows}</tbody></table>`;
+    };
+
     state.bus.on('gameOver', ({ side, reason }) => {
       clearSel();
       drawOverlay();
       draw();
       $('bannerTitle').textContent = `Victoire du camp ${sideLabel(side)}`;
       $('bannerSub').textContent = reason;
+      $('bannerRecap').innerHTML = buildRecap(side);
       $('banner').style.display = 'flex';
     });
     $('bannerBtn').onclick = () => {                                       // nouvelle carte, mêmes armées
