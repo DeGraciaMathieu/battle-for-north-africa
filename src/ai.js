@@ -26,8 +26,9 @@ import { ARTY_RANGE, ODDS, CRT, TERRAIN, DIRS } from './config.js';
 import { key, hexDistance } from './geometry.js';
 import { eAtk, eDef, eDefBase, stackCount } from './units.js';
 import { computeReachable, moveUnit } from './movement.js';
-import { suppliedHexes } from './supply.js';
+import { suppliedHexes, updateSupply } from './supply.js';
 import { combatPlan } from './combat.js';
+import { updateObjectives } from './game.js';
 
 const IDX_1_1 = ODDS.indexOf('1:1');
 const IDX_2_1 = ODDS.indexOf('2:1');
@@ -37,9 +38,10 @@ const NET_MIN = 0.25;              // gain net espéré minimal pour engager un 
 const W_MAT = 1.0;                 // matériel (force des pions vivants)
 const W_OBJ = 25;                  // contrôle d'un objectif (enjeu de victoire)
 const W_MARCH = 0.6;               // rapprochement d'un objectif non tenu
-const W_SUP = 1.5;                 // unité ravitaillée
+const W_SUP = 4;                   // ravitaillement (bonus/malus par unité, def & mvt ÷2 hors ravito)
 const W_EXPOSE = 1.2;              // exposition à la riposte adverse (anticipation)
 const EXPOSE_K = 0.6;              // sensibilité de l'exposition au scoring d'hex
+const SUP_K = 0.25;               // pénalité (quadratique) d'éloignement au-delà du ravitaillement
 const W_CONTACT = 3.0;             // occasion offensive au contact d'un ennemi battable
 
 // Postures : jeux de poids passés au scoring d'hex, produisant des plans de tour
@@ -89,6 +91,30 @@ function buildFieldFn(terrain) {
   };
 }
 
+// Champ « distance au ravitaillement » : BFS multi-source depuis TOUS les hexes
+// ravitaillés (coût 0), à travers le terrain franchissable. Donne, pour chaque
+// hex, le nombre d'hexes qui le séparent du réseau (0 = dans le ravito). Sert à
+// pénaliser l'étirement au-delà du ravitaillement — l'armée avance en restant
+// ancrée à son réseau plutôt que de s'y perdre.
+function buildSupplyDist(terrain, supplied) {
+  const dist = new Map();
+  const frontier = [];
+  for (const k of supplied) { dist.set(k, 0); frontier.push({ k, c: 0 }); }
+  while (frontier.length) {
+    frontier.sort((a, b) => a.c - b.c);
+    const cur = frontier.shift();
+    if (cur.c > dist.get(cur.k)) continue;
+    const [q, r] = cur.k.split(',').map(Number);
+    for (const [dq, dr] of DIRS) {
+      const nk = key(q + dq, r + dr);
+      if (!terrain.has(nk) || !isFinite(TERRAIN[terrain.get(nk)].cost)) continue;
+      const nc = cur.c + 1;
+      if (dist.get(nk) === undefined || nc < dist.get(nk)) { dist.set(nk, nc); frontier.push({ k: nk, c: nc }); }
+    }
+  }
+  return dist;
+}
+
 // --------------------------------------------------------------------------
 //  Anticipation : carte des menaces adverses.
 // --------------------------------------------------------------------------
@@ -125,7 +151,7 @@ function evaluate(sim, side, fieldFn) {
     const val = eAtk(u) + eDefBase(u);
     if (u.side !== side) { s -= W_MAT * val; continue; }
     s += W_MAT * val;
-    if (u.supplied) s += W_SUP;
+    s += u.supplied ? W_SUP : -W_SUP;                       // rester ravitaillé compte double (bonus + malus évité)
     s -= (W_EXPOSE * (threat.get(key(u.q, u.r)) || 0)) / Math.max(1, eDef(u)); // exposition
     if (u.type === 'arty') continue;
     for (const e of sim.units) {                             // occasion offensive
@@ -223,13 +249,17 @@ export function aiAttackPhase(state, side) {
 // carte des menaces). On retient les mouvements de la posture la mieux évaluée.
 export function aiMovePhase(state, side) {
   const threat = buildThreatMap(state, side);               // menace adverse avant nos mouvements
-  const supplied = suppliedHexes(state, side);
+  const supplyDist = buildSupplyDist(state.terrain, suppliedHexes(state, side)); // éloignement au ravito
   const fieldFn = buildFieldFn(state.terrain);              // champs de distance mémoïsés (par but)
   const objHexes = state.objectives.map((k) => { const [q, r] = k.split(',').map(Number); return { k, q, r }; });
   let best = null;
   for (const p of POSTURES) {
-    const sim = { ...state, units: state.units.map((u) => ({ ...u })) };
-    const moves = planMoves(sim, side, p.w, threat, supplied, objHexes, fieldFn);
+    // `objControl` propre au sim : on peut y refléter les peuplements capturés
+    // sans corrompre l'état réel (partagé par référence sinon).
+    const sim = { ...state, units: state.units.map((u) => ({ ...u })), objControl: new Map(state.objControl) };
+    const moves = planMoves(sim, side, p.w, threat, supplyDist, objHexes, fieldFn);
+    updateObjectives(sim);                                   // peuplements occupés → sources de ravito
+    updateSupply(sim);                                       // recalcule `supplied` APRÈS les déplacements
     const val = evaluate(sim, side, fieldFn);
     if (!best || val > best.val) best = { val, moves };
   }
@@ -238,7 +268,7 @@ export function aiMovePhase(state, side) {
 
 // Construit un plan de mouvement (une destination par unité) sur `sim`, sous les
 // poids `w`. Les unités suivantes voient les déplacements déjà planifiés.
-function planMoves(sim, side, w, threat, supplied, objHexes, fieldFn) {
+function planMoves(sim, side, w, threat, supplyDist, objHexes, fieldFn) {
   const moves = [];
   for (const u of sim.units.filter((x) => x.side === side && x.mpLeft > 0)) {
     const enemies = sim.units.filter((e) => e.side !== side);
@@ -250,9 +280,9 @@ function planMoves(sim, side, w, threat, supplied, objHexes, fieldFn) {
     const field = fieldFn(key(goal.q, goal.r));               // chemin réel vers le but
     const { reachable, dist, eZOC } = computeReachable(sim, u);
     if (!reachable.size) continue;
-    let bestK = null, bestScore = scoreHex(sim, side, u, key(u.q, u.r), field, enemies, supplied, w, threat);
+    let bestK = null, bestScore = scoreHex(sim, side, u, key(u.q, u.r), field, enemies, supplyDist, w, threat);
     for (const hk of reachable) {
-      const sc = scoreHex(sim, side, u, hk, field, enemies, supplied, w, threat);
+      const sc = scoreHex(sim, side, u, hk, field, enemies, supplyDist, w, threat);
       if (sc > bestScore) { bestScore = sc; bestK = hk; }
     }
     if (bestK) { moveUnit(u, bestK, dist, eZOC); moves.push({ id: u.id, to: bestK }); }
@@ -282,7 +312,7 @@ function chooseGoal(sim, side, u, enemies, objHexes) {
 // Qualité d'un hexe pour une unité, pondérée par la posture : se rapprocher du
 // but (stratégie), chercher le bon contact et le terrain défensif, rester
 // ravitaillé et groupé, éviter l'exposition et le sur-empilement (tactique).
-function scoreHex(sim, side, u, hk, field, enemies, supplied, w, threat) {
+function scoreHex(sim, side, u, hk, field, enemies, supplyDist, w, threat) {
   const [q, r] = hk.split(',').map(Number);
   let s = -w.goal * (field.get(hk) ?? 999);                  // distance de chemin réel au but
   const adj = enemies.filter((e) => hexDistance(q, r, e.q, e.r) === 1);
@@ -295,7 +325,8 @@ function scoreHex(sim, side, u, hk, field, enemies, supplied, w, threat) {
     if (adj.length && terr) s += w.terrainDef * terr.def * 0.4;                   // se poster sur du défensif
     s -= (w.expose * (threat.get(hk) || 0)) / Math.max(1, eDef(u)) * EXPOSE_K;    // fuir l'exposition
   }
-  if (supplied.has(hk)) s += w.supply * 0.6;
+  const over = supplyDist.get(hk) ?? 20;                     // hexes au-delà du réseau de ravito
+  s -= w.supply * SUP_K * over * over;                       // s'en éloigner coûte de plus en plus cher
   if (w.support) {                                                                // rester groupé
     let friends = 0;
     for (const f of sim.units) if (f.side === side && f.id !== u.id && hexDistance(q, r, f.q, f.r) <= 2) friends++;

@@ -12,6 +12,7 @@ import { aiMovePhase, aiAttackPhase } from '../src/ai.js';
 import { makeState, makeUnit, fillTerrain } from './helpers.js';
 import { hexDistance } from '../src/geometry.js';
 import { ARTY_RANGE } from '../src/config.js';
+import { updateSupply, suppliedHexes } from '../src/supply.js';
 
 const field = () => {
   const coords = [];
@@ -167,4 +168,18 @@ test('pathfinding : l\'IA contourne une rivière vers la passe au lieu de bloque
   const [q, r] = m.to.split(',').map(Number);
   assert.ok(r > 0, 'elle progresse vers la passe (3,4), pas tout droit contre la berge');
   assert.ok(!(q === 2 && r === 0), 'elle ne reste pas collée à la berge la plus proche du but');
+});
+
+test('ravitaillement : l\'IA prend un objectif à portée sans sortir du ravitaillement', () => {
+  const coords = [];
+  for (let q = -1; q <= 12; q++) for (let r = -3; r <= 3; r++) coords.push([q, r]);
+  const terrain = fillTerrain(coords, 'plain');
+  terrain.set('0,0', 'town');                                    // source de ravito (portée 6)
+  const units = [makeUnit({ id: 1, side: 'blue', type: 'armor', q: 0, r: 0, mov: 10, mpLeft: 10 })];
+  const state = makeState({ terrain, units, objectives: ['5,0'] }); // objectif dans la portée
+  state.objControl.set('0,0', 'blue');                          // ville tenue → source active
+  updateSupply(state);
+  const supplied = suppliedHexes(state, 'blue');
+  const m = aiMovePhase(state, 'blue').find((x) => x.id === 1);
+  assert.ok(m && supplied.has(m.to), 'elle atteint son but tout en restant ravitaillée');
 });
