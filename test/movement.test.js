@@ -53,6 +53,16 @@ test('le coût du terrain est respecté (coteau = 3 PM)', () => {
   assert.ok(!reachable.has('2,0'), 'hex au-delà (3 + 1) hors de portée');
 });
 
+test('le coût du terrain est respecté (montagne = 4 PM)', () => {
+  const terrain = fillTerrain([[0, 0], [2, 0]]);
+  terrain.set('1,0', 'mountain'); // coût 4
+  const unit = makeUnit({ q: 0, r: 0, mpLeft: 4 });
+  const state = makeState({ terrain, units: [unit] });
+  const { reachable } = computeReachable(state, unit);
+  assert.ok(reachable.has('1,0'), 'montagne atteignable à 4 PM');
+  assert.ok(!reachable.has('2,0'), 'hex au-delà (4 + 1) hors de portée');
+});
+
 test('la route est plus rapide (½ PM) : 2 hexes pour 1 PM', () => {
   const terrain = fillTerrain([[3, 0]]);           // hex lointain en plaine (coût 1)
   for (const c of [0, 1, 2]) terrain.set(`${c},0`, 'road'); // corridor de routes

@@ -23,6 +23,20 @@ test('combatPlan expose la colonne sans lancer le dé ni muter l\'état', () => 
   assert.ok(!defender.reduced && !armor.reduced, 'aucune mutation');
 });
 
+test('le terrain décale la colonne : plateau protège, marais expose', () => {
+  const colOn = (t) => {
+    const terrain = fillTerrain([[0, 0], [1, 0]]);
+    terrain.set('1,0', t);
+    const atk = makeUnit({ id: 0, side: 'blue', type: 'armor', q: 0, r: 0, atk: 6 });
+    const def = makeUnit({ id: 1, side: 'red', type: 'inf', q: 1, r: 0, def: 3 });
+    return combatPlan(makeState({ terrain, units: [atk, def] }), [atk], def).col;
+  };
+  // 6 contre 3 → base « 2:1 ». Plateau (+1 déf) recule d'une colonne, marais (−1 déf) l'avance.
+  assert.equal(colOn('plain'), '2:1');
+  assert.equal(colOn('plateau'), '1:1');
+  assert.equal(colOn('marsh'), '3:1');
+});
+
 test('un « Échange » réduit défenseur et attaquant', () => {
   const terrain = fillTerrain([[0, 0], [1, 0]]);
   const attacker = makeUnit({ id: 0, side: 'blue', type: 'armor', q: 0, r: 0, atk: 6 });
