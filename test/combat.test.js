@@ -58,6 +58,22 @@ test('un « Échange » réduit défenseur et attaquant', () => {
   assert.ok(attacker.reduced, 'attaquant réduit');
 });
 
+test('un « Échange » sur des pions déjà réduits les élimine (2ᵉ palier)', () => {
+  const terrain = fillTerrain([[0, 0], [1, 0]]);
+  // Attaquant et défenseur déjà au verso : mêmes facteurs effectifs que l'EX plein
+  // (eAtk 6 via ratk, eDef 2 via rdef) → colonne « 3:1 », dé 1 → EX.
+  const attacker = makeUnit({ id: 0, side: 'blue', type: 'armor', q: 0, r: 0, reduced: true, ratk: 6 });
+  const defender = makeUnit({ id: 1, side: 'red', type: 'inf', q: 1, r: 0, reduced: true, rdef: 2 });
+  const state = makeState({ terrain, units: [attacker, defender], rng: () => 0 }); // dé 1
+  const removed = [];
+  state.bus.on('unitRemoved', (u) => removed.push(u));
+  const { res } = resolveCombat(state, [attacker], defender);
+  assert.equal(res, 'EX');
+  assert.ok(!state.units.includes(defender), 'défenseur déjà réduit → éliminé');
+  assert.ok(!state.units.includes(attacker), 'attaquant déjà réduit → éliminé');
+  assert.equal(removed.length, 2, 'unitRemoved émis pour les deux pions');
+});
+
 test('les armes combinées décalent la colonne de +1', () => {
   const terrain = fillTerrain([[0, 0], [0, 1], [1, 0]]);
   const armor = makeUnit({ id: 0, side: 'blue', type: 'armor', q: 0, r: 0, atk: 4 });
