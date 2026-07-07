@@ -13,8 +13,8 @@
 // ===========================================================================
 
 import { writeFile } from 'node:fs/promises';
-import { COLS, ROWS, BASES, DIRS, TERRAIN } from '../src/config.js';
-import { offsetToAxial, key, hexDistance } from '../src/geometry.js';
+import { COLS, ROWS, BASES, DIRS, TERRAIN, SIZE } from '../src/config.js';
+import { offsetToAxial, key, hexDistance, axialToPixel } from '../src/geometry.js';
 
 // PRNG déterministe (mulberry32) — même seed → même carte.
 const mulberry32 = (seed) => {
@@ -128,8 +128,9 @@ function connectBases(terrain) {
 }
 
 // Objectifs de victoire : hexes franchissables, hors bases, espacés entre eux et
-// à l'écart des bases.
-function placeObjectives(terrain, rng, n) {
+// à l'écart des bases. `preferType` (optionnel) tente d'abord ce terrain (ex.
+// 'mountain' pour poser les objectifs sur les sommets), avec repli sur tout terrain.
+function placeObjectives(terrain, rng, n, preferType = null) {
   const baseKeys = Object.values(BASES).map(([c, rw]) => K(c, rw));
   const cells = [];
   for (let c = 0; c < COLS; c++) for (let rw = 0; rw < ROWS; rw++) cells.push([c, rw]);
@@ -138,23 +139,56 @@ function placeObjectives(terrain, rng, n) {
     const [aq, ar] = k.split(',').map(Number);
     return hexDistance(aq, ar, q, r) >= d;
   });
-  for (let tries = 0; objs.length < n && tries < 8000; tries++) {
-    const [c, rw] = cells[Math.floor(rng() * cells.length)];
-    const k = K(c, rw);
-    if (!passable(terrain, k)) continue;
-    const [q, r] = k.split(',').map(Number);
-    if (!far(q, r, baseKeys, 4) || !far(q, r, objs, 4)) continue;
-    objs.push(k);
-  }
+  const pass = (want) => {
+    for (let tries = 0; objs.length < n && tries < 8000; tries++) {
+      const [c, rw] = cells[Math.floor(rng() * cells.length)];
+      const k = K(c, rw);
+      if (!passable(terrain, k)) continue;
+      if (want && terrain.get(k) !== want) continue;
+      const [q, r] = k.split(',').map(Number);
+      if (!far(q, r, baseKeys, 4) || !far(q, r, objs, 4)) continue;
+      objs.push(k);
+    }
+  };
+  if (preferType) pass(preferType);
+  pass(null);
   return objs;
 }
 
+// Anneau autour d'une base (barrière naturelle) : pose `type` sur les hexes à
+// distance `radius`, en laissant `nGaps` ouvertures (percées) réparties, où l'on
+// pose `gapType` à la place. Sert aux têtes de pont (river/road) et aux poches
+// (hill/plain).
+function arc(terrain, baseOff, radius, type, nGaps, gapType) {
+  const base = offsetToAxial(...baseOff);
+  const bp = axialToPixel(base.q, base.r);
+  const ring = [];
+  for (let c = 0; c < COLS; c++) {
+    for (let rw = 0; rw < ROWS; rw++) {
+      const { q, r } = offsetToAxial(c, rw);
+      if (hexDistance(base.q, base.r, q, r) !== radius) continue;
+      const p = axialToPixel(q, r);
+      ring.push({ k: key(q, r), a: Math.atan2(p.y - bp.y, p.x - bp.x) });
+    }
+  }
+  ring.sort((x, y) => x.a - y.a);
+  const gaps = new Set();
+  for (let g = 0; g < nGaps; g++) {
+    const center = Math.floor((ring.length * (g + 0.5)) / nGaps);
+    for (let d = -1; d <= 1; d++) gaps.add((center + d + ring.length) % ring.length);
+  }
+  ring.forEach((cell, i) => {
+    if (isSettle(terrain.get(cell.k))) return;
+    terrain.set(cell.k, gaps.has(i) ? gapType : type);
+  });
+}
+
 // Pose les bases, garantit terre de déploiement, connexité et objectifs.
-function finalize(terrain, rng, nObj = 5) {
+function finalize(terrain, rng, nObj = 5, preferType = null) {
   for (const [c, rw] of Object.values(BASES)) terrain.set(K(c, rw), 'base');
   ensureDeployLand(terrain);
   connectBases(terrain);
-  const objectives = placeObjectives(terrain, rng, nObj);
+  const objectives = placeObjectives(terrain, rng, nObj, preferType);
   return { terrain, objectives };
 }
 
@@ -302,6 +336,212 @@ function mountainPass(seed) {
   return finalize(terrain, rng, 5);
 }
 
+// Le Défilé fluvial : un large fleuve en travers, franchissable seulement par
+// 2-3 ponts → bataille pour les têtes de pont.
+function riverDefile(seed) {
+  const rng = mulberry32(seed);
+  const { terrain, valid } = blankMap(rng);
+  // Fleuve vertical épais (2-3 hexes), au tracé ondulant.
+  let c = 14;
+  const bridges = [];
+  for (let rw = 0; rw < ROWS; rw++) {
+    for (let w = 0; w <= 1 + (rng() < 0.5 ? 1 : 0); w++) terrain.set(K(c + w, rw), 'river');
+    if (rng() < 0.5) c += rng() < 0.5 ? -1 : 1;
+    c = Math.max(6, Math.min(COLS - 8, c));
+    bridges.push(c);
+  }
+  // 3 ponts (routes) traversant toute la largeur du fleuve, échelonnés.
+  for (const rw of [3, 10, 16]) {
+    for (let w = -1; w <= 2; w++) { const k = K(bridges[rw] + w, rw); if (terrain.get(k) === 'river') terrain.set(k, 'road'); }
+  }
+  // Reliefs de rive (têtes de pont défendables) et bois.
+  for (let i = 0; i < 5; i++) grow(terrain, valid, rng, K(4 + Math.floor(rng() * (COLS - 8)), 2 + Math.floor(rng() * (ROWS - 4))), 4, 'hill', (t) => t === 'plain' || t === 'plain2');
+  for (let i = 0; i < 8; i++) grow(terrain, valid, rng, K(2 + Math.floor(rng() * (COLS - 4)), 2 + Math.floor(rng() * (ROWS - 4))), 4, 'forest', (t) => t === 'plain' || t === 'plain2');
+  trail(terrain, BASES.blue, [14, 10], { overWater: true });
+  trail(terrain, [14, 10], BASES.red, { overWater: true });
+  return finalize(terrain, rng, 5);
+}
+
+// La Trouée (Fulda) : deux massifs encadrant un couloir de plaine diagonal reliant
+// les bases → tout passe par le milieu.
+function theGap(seed) {
+  const rng = mulberry32(seed);
+  const { terrain, valid } = blankMap(rng);
+  const a = offsetToAxial(...BASES.blue), b = offsetToAxial(...BASES.red);
+  const pa = axialToPixel(a.q, a.r), pb = axialToPixel(b.q, b.r);
+  const len = Math.hypot(pb.x - pa.x, pb.y - pa.y);
+  for (let c = 0; c < COLS; c++) {
+    for (let rw = 0; rw < ROWS; rw++) {
+      const { q, r } = offsetToAxial(c, rw);
+      const p = axialToPixel(q, r);
+      // Distance perpendiculaire au couloir base→base.
+      const dist = Math.abs((pb.x - pa.x) * (pa.y - p.y) - (pa.x - p.x) * (pb.y - pa.y)) / len;
+      const band = dist / SIZE;
+      if (band > 9) terrain.set(K(c, rw), 'mountain');
+      else if (band > 5.5) terrain.set(K(c, rw), rng() < 0.6 ? 'plateau' : 'hill');
+    }
+  }
+  // Quelques bois et un village dans le couloir pour l'intérêt tactique.
+  for (let i = 0; i < 5; i++) grow(terrain, valid, rng, K(6 + Math.floor(rng() * (COLS - 12)), 4 + Math.floor(rng() * (ROWS - 8))), 3, 'forest', (t) => t === 'plain' || t === 'plain2');
+  terrain.set(K(14, 10), 'village');
+  trail(terrain, BASES.blue, BASES.red, { overWater: false });
+  return finalize(terrain, rng, 5);
+}
+
+// La Forteresse : une grande ville tentaculaire au centre (ville + zone urbaine
+// dense), à prendre et tenir → combat urbain, défense partout.
+function fortress(seed) {
+  const rng = mulberry32(seed);
+  const { terrain, valid } = blankMap(rng);
+  // Cœur urbain dense autour du centre.
+  grow(terrain, valid, rng, K(14, 10), 34, 'urban', (t) => t === 'plain' || t === 'plain2');
+  // Noyaux bâtis (villes/objectifs) dans la nappe urbaine.
+  for (const [c, rw] of [[14, 10], [12, 8], [16, 12], [15, 7], [11, 12]]) terrain.set(K(c, rw), 'town');
+  // Faubourgs urbains autour des villes.
+  for (const [k, t] of [...terrain]) {
+    if (t !== 'town') continue;
+    const [q, r] = k.split(',').map(Number);
+    for (const [dq, dr] of DIRS) { const nk = key(q + dq, r + dr); if (terrain.get(nk) === 'plain' || terrain.get(nk) === 'plain2') terrain.set(nk, 'urban'); }
+  }
+  // Approches : quelques bois et coteaux, routes rayonnant vers la ville.
+  for (let i = 0; i < 6; i++) grow(terrain, valid, rng, K(3 + Math.floor(rng() * (COLS - 6)), 2 + Math.floor(rng() * (ROWS - 4))), 4, 'forest', (t) => t === 'plain' || t === 'plain2');
+  for (let i = 0; i < 3; i++) grow(terrain, valid, rng, K(3 + Math.floor(rng() * (COLS - 6)), 2 + Math.floor(rng() * (ROWS - 4))), 4, 'hill', (t) => t === 'plain' || t === 'plain2');
+  trail(terrain, BASES.blue, [14, 10], { overWater: false });
+  trail(terrain, [14, 10], BASES.red, { overWater: false });
+  return finalize(terrain, rng, 5);
+}
+
+// La Steppe : quasi tout plaine, très peu de couvert → guerre de mouvement,
+// les blindés dominent, peu d'abris.
+function steppe(seed) {
+  const rng = mulberry32(seed);
+  const { terrain, valid } = blankMap(rng);
+  // Rares reliefs isolés et bosquets.
+  for (let i = 0; i < 3; i++) grow(terrain, valid, rng, K(4 + Math.floor(rng() * (COLS - 8)), 3 + Math.floor(rng() * (ROWS - 6))), 3, 'hill', (t) => t === 'plain' || t === 'plain2');
+  for (let i = 0; i < 3; i++) grow(terrain, valid, rng, K(4 + Math.floor(rng() * (COLS - 8)), 3 + Math.floor(rng() * (ROWS - 6))), 2, 'forest', (t) => t === 'plain' || t === 'plain2');
+  terrain.set(K(10, 8), 'village');
+  terrain.set(K(19, 11), 'village');
+  trail(terrain, BASES.blue, BASES.red, { overWater: false });
+  return finalize(terrain, rng, 6);
+}
+
+// Le Bocage : damier serré de petits bois-haies (coût 2, +déf) → progression
+// lente, embuscades. L'inverse de la steppe.
+function bocage(seed) {
+  const rng = mulberry32(seed);
+  const { terrain, valid } = blankMap(rng);
+  // Semis régulier de bosquets (haies) sur toute la carte.
+  for (let c = 2; c < COLS - 1; c += 2) {
+    for (let rw = 2; rw < ROWS - 1; rw += 2) {
+      if (rng() < 0.75) grow(terrain, valid, rng, K(c + (rng() < 0.5 ? 0 : 1), rw), 1 + Math.floor(rng() * 3), 'forest', (t) => t === 'plain' || t === 'plain2');
+    }
+  }
+  // Chemins creux (routes) et hameaux.
+  terrain.set(K(9, 6), 'village');
+  terrain.set(K(20, 13), 'village');
+  trail(terrain, BASES.blue, [9, 6], { overWater: false });
+  trail(terrain, [9, 6], [20, 13], { overWater: false });
+  trail(terrain, [20, 13], BASES.red, { overWater: false });
+  return finalize(terrain, rng, 5);
+}
+
+// Le Marais (Pripet) : vastes marais et rivières, étroites langues de terre ferme
+// (routes-digues) → mouvement pénible, défense exposée.
+function marshland(seed) {
+  const rng = mulberry32(seed);
+  const { terrain, valid } = blankMap(rng);
+  // Grands amas de marais recouvrant l'essentiel de la plaine.
+  for (let i = 0; i < 11; i++) grow(terrain, valid, rng, K(2 + Math.floor(rng() * (COLS - 4)), 2 + Math.floor(rng() * (ROWS - 4))), 20 + Math.floor(rng() * 24), 'marsh', (t) => t === 'plain' || t === 'plain2');
+  // Rivières serpentant dans les marais.
+  for (let i = 0; i < 3; i++) {
+    let c = 3 + Math.floor(rng() * (COLS - 6)), rw = 0;
+    for (; rw < ROWS; rw++) { terrain.set(K(c, rw), 'river'); if (rng() < 0.5) c += rng() < 0.5 ? -1 : 1; c = Math.max(1, Math.min(COLS - 2, c)); }
+  }
+  // Îlots de terre ferme habités.
+  for (const [c, rw] of [[8, 6], [15, 11], [21, 7]]) { grow(terrain, valid, rng, K(c, rw), 4, 'plain', (t) => t === 'marsh'); terrain.set(K(c, rw), 'village'); }
+  // Digues (routes) reliant les bases par la terre ferme.
+  trail(terrain, BASES.blue, [8, 6], { overWater: true });
+  trail(terrain, [8, 6], [15, 11], { overWater: true });
+  trail(terrain, [15, 11], [21, 7], { overWater: true });
+  trail(terrain, [21, 7], BASES.red, { overWater: true });
+  return finalize(terrain, rng, 5);
+}
+
+// Le Massif : montagnes et plateaux dominants, vallées étroites, sommets = clés
+// de victoire (objectifs posés en altitude).
+function massif(seed) {
+  const rng = mulberry32(seed);
+  const { terrain, valid } = blankMap(rng);
+  // Grands massifs (montagne cernée de plateau).
+  for (const [c, rw] of [[9, 6], [14, 13], [20, 8], [23, 14], [7, 14]]) {
+    grow(terrain, valid, rng, K(c, rw), 12 + Math.floor(rng() * 12), 'mountain', (t) => t === 'plain' || t === 'plain2');
+    grow(terrain, valid, rng, K(c, rw), 8 + Math.floor(rng() * 8), 'plateau', (t) => t === 'plain' || t === 'plain2');
+  }
+  // Bois dans les vallées.
+  for (let i = 0; i < 6; i++) grow(terrain, valid, rng, K(3 + Math.floor(rng() * (COLS - 6)), 2 + Math.floor(rng() * (ROWS - 4))), 3, 'forest', (t) => t === 'plain' || t === 'plain2');
+  // Routes de vallée reliant les bases.
+  trail(terrain, BASES.blue, [12, 10], { overWater: false });
+  trail(terrain, [12, 10], BASES.red, { overWater: false });
+  return finalize(terrain, rng, 5, 'mountain');
+}
+
+// Les Cols jumeaux : muraille montagneuse en travers, percée de DEUX passes
+// éloignées → il faut choisir/diviser son axe d'effort.
+function twinPasses(seed) {
+  const rng = mulberry32(seed);
+  const { terrain, valid } = blankMap(rng);
+  const passes = new Set([4, 15]); // lignes des deux passes
+  for (let rw = 0; rw < ROWS; rw++) {
+    const spine = 15 + (rng() < 0.5 ? -1 : 0);
+    for (let d = -2; d <= 2; d++) {
+      const c = spine + d;
+      if (c < 1 || c >= COLS - 1) continue;
+      const nearPass = [...passes].some((pr) => Math.abs(rw - pr) <= 1);
+      if (nearPass && Math.abs(d) <= 1) continue; // trouée franchissable
+      terrain.set(K(c, rw), Math.abs(d) <= 1 ? 'mountain' : 'plateau');
+    }
+  }
+  for (let i = 0; i < 6; i++) grow(terrain, valid, rng, K(2 + Math.floor(rng() * (COLS - 4)), 2 + Math.floor(rng() * (ROWS - 4))), 3, 'forest', (t) => t === 'plain' || t === 'plain2');
+  // Routes vers les deux passes.
+  trail(terrain, BASES.blue, [15, 15], { overWater: false });
+  trail(terrain, [15, 15], BASES.red, { overWater: false });
+  trail(terrain, BASES.blue, [15, 4], { overWater: false });
+  trail(terrain, [15, 4], BASES.red, { overWater: false });
+  return finalize(terrain, rng, 6);
+}
+
+// La Poche : le camp bleu est enfermé dans un réduit (anneau de reliefs à deux
+// brèches) et doit percer vers les objectifs autour ; le rouge resserre l'étau.
+function pocket(seed) {
+  const rng = mulberry32(seed);
+  const { terrain, valid } = blankMap(rng);
+  // Anneau de coteaux/bois autour de la base bleue, avec deux percées.
+  arc(terrain, BASES.blue, 5, 'hill', 2, 'plain');
+  arc(terrain, BASES.blue, 6, 'forest', 2, 'plain');
+  // Terrain ouvert au-delà, tenu par le rouge, quelques reliefs d'appui.
+  for (let i = 0; i < 5; i++) grow(terrain, valid, rng, K(12 + Math.floor(rng() * (COLS - 14)), 2 + Math.floor(rng() * (ROWS - 4))), 4, 'hill', (t) => t === 'plain' || t === 'plain2');
+  for (let i = 0; i < 6; i++) grow(terrain, valid, rng, K(8 + Math.floor(rng() * (COLS - 10)), 2 + Math.floor(rng() * (ROWS - 4))), 3, 'forest', (t) => t === 'plain' || t === 'plain2');
+  trail(terrain, BASES.blue, [10, 10], { overWater: false });
+  trail(terrain, [10, 10], BASES.red, { overWater: false });
+  return finalize(terrain, rng, 5);
+}
+
+// La Tête de pont fluviale : le camp bleu a franchi et tient un réduit ceint d'un
+// fleuve (deux ponts dans son dos) qu'il doit élargir vers le rouge.
+function bridgehead(seed) {
+  const rng = mulberry32(seed);
+  const { terrain, valid } = blankMap(rng);
+  // Fleuve épais en arc de cercle isolant la tête de pont bleue, percé de 2 ponts.
+  for (const radius of [4, 5, 6]) arc(terrain, BASES.blue, radius, 'river', 2, 'road');
+  // Au-delà du fleuve : terrain contesté, reliefs et bois tenus par le rouge.
+  for (let i = 0; i < 5; i++) grow(terrain, valid, rng, K(12 + Math.floor(rng() * (COLS - 14)), 2 + Math.floor(rng() * (ROWS - 4))), 4, 'hill', (t) => t === 'plain' || t === 'plain2');
+  for (let i = 0; i < 7; i++) grow(terrain, valid, rng, K(8 + Math.floor(rng() * (COLS - 10)), 2 + Math.floor(rng() * (ROWS - 4))), 3, 'forest', (t) => t === 'plain' || t === 'plain2');
+  terrain.set(K(18, 8), 'village');
+  trail(terrain, BASES.blue, [18, 8], { overWater: true });
+  trail(terrain, [18, 8], BASES.red, { overWater: false });
+  return finalize(terrain, rng, 5);
+}
+
 // ---------------------------------------------------------------------------
 //  Sérialisation & écriture
 // ---------------------------------------------------------------------------
@@ -319,6 +559,16 @@ const THEMES = [
   { file: 'debarquement', name: 'Le Débarquement', gen: dDay, seed: 202 },
   { file: 'archipel', name: "L'Archipel", gen: archipelago, seed: 303 },
   { file: 'col', name: 'Le Col', gen: mountainPass, seed: 404 },
+  { file: 'defile-fluvial', name: 'Le Défilé fluvial', gen: riverDefile, seed: 505 },
+  { file: 'trouee', name: 'La Trouée', gen: theGap, seed: 606 },
+  { file: 'forteresse', name: 'La Forteresse', gen: fortress, seed: 707 },
+  { file: 'steppe', name: 'La Steppe', gen: steppe, seed: 808 },
+  { file: 'bocage', name: 'Le Bocage', gen: bocage, seed: 909 },
+  { file: 'marais', name: 'Le Marais', gen: marshland, seed: 1010 },
+  { file: 'massif', name: 'Le Massif', gen: massif, seed: 1111 },
+  { file: 'cols-jumeaux', name: 'Les Cols jumeaux', gen: twinPasses, seed: 1212 },
+  { file: 'poche', name: 'La Poche', gen: pocket, seed: 1313 },
+  { file: 'tete-de-pont', name: 'La Tête de pont fluviale', gen: bridgehead, seed: 1414 },
 ];
 
 const dir = new URL('../maps/', import.meta.url);
