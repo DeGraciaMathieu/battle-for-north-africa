@@ -18,5 +18,45 @@
   {
     "file": "col",
     "name": "Le Col"
+  },
+  {
+    "file": "defile-fluvial",
+    "name": "Le Défilé fluvial"
+  },
+  {
+    "file": "trouee",
+    "name": "La Trouée"
+  },
+  {
+    "file": "forteresse",
+    "name": "La Forteresse"
+  },
+  {
+    "file": "steppe",
+    "name": "La Steppe"
+  },
+  {
+    "file": "bocage",
+    "name": "Le Bocage"
+  },
+  {
+    "file": "marais",
+    "name": "Le Marais"
+  },
+  {
+    "file": "massif",
+    "name": "Le Massif"
+  },
+  {
+    "file": "cols-jumeaux",
+    "name": "Les Cols jumeaux"
+  },
+  {
+    "file": "poche",
+    "name": "La Poche"
+  },
+  {
+    "file": "tete-de-pont",
+    "name": "La Tête de pont fluviale"
   }
 ]
