@@ -31,6 +31,8 @@ const LAND = new Set(['plain', 'plain2', 'forest', 'hill', 'plateau']);
 export const BIOMES = {
   tempere: { name: 'Tempéré', gen: generateTempere },
   aride: { name: 'Aride', gen: generateAride },
+  hiver: { name: 'Hiver', gen: generateHiver },
+  tropical: { name: 'Tropical', gen: generateTropical },
 };
 
 export function generateMap(seed = 1, { fair = false, biome = 'tempere' } = {}) {
@@ -582,6 +584,203 @@ function generateAride(seed = 1, { fair = false } = {}) {
     if (baseKeys.has(k) || TERRAIN[terrain.get(k)].cost === Infinity || objNear(q, r)) continue;
     objectives.push(k);
   }
+  return { terrain, hexes, objectives };
+}
+
+// --- Helpers partagés par les biomes (hiver, tropical) -----------------------
+// Clé axiale depuis des coordonnées offset.
+const offKey = (c, rw) => { const { q, r } = offsetToAxial(c, rw); return key(q, r); };
+const offDist = (a, b) => { const [aq, ar] = a.split(',').map(Number), [bq, br] = b.split(',').map(Number); return hexDistance(aq, ar, bq, br); };
+
+// Carte de départ : toute la grille remplie par `fill` (type fixe ou fonction).
+function biomeBase(rng, fill) {
+  const terrain = new Map();
+  const hexes = [];
+  for (let c = 0; c < COLS; c++) {
+    for (let rw = 0; rw < ROWS; rw++) {
+      const { q, r } = offsetToAxial(c, rw);
+      terrain.set(key(q, r), typeof fill === 'function' ? fill(rng) : fill);
+      hexes.push({ q, r });
+    }
+  }
+  return { terrain, hexes };
+}
+
+// Amas organique borné, ne recouvrant que les terrains autorisés par `allow`.
+function growBlob(terrain, rng, startKey, size, type, allow) {
+  const frontier = [startKey];
+  const seen = new Set();
+  let placed = 0;
+  while (frontier.length && placed < size) {
+    const k = frontier.splice(Math.floor(rng() * frontier.length), 1)[0];
+    if (seen.has(k)) continue;
+    seen.add(k);
+    if (!terrain.has(k) || (allow && !allow(terrain.get(k)))) continue;
+    terrain.set(k, type);
+    placed++;
+    const [q, r] = k.split(',').map(Number);
+    for (const [dq, dr] of DIRS) frontier.push(key(q + dq, r + dr));
+  }
+}
+
+// Rivière/oued/glace serpentante depuis un point intérieur.
+function growStream(terrain, rng, len, type) {
+  const rint = (lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
+  let d = rint(0, 5); let { q, r } = offsetToAxial(rint(2, COLS - 3), rint(2, ROWS - 3));
+  for (let s = 0; s < len; s++) {
+    if (rng() < 0.32) d = (d + (rng() < 0.5 ? 1 : 5)) % 6;
+    q += DIRS[d][0]; r += DIRS[d][1];
+    if (!terrain.has(key(q, r))) break;
+    terrain.set(key(q, r), type);
+  }
+}
+
+// Ligne d'hexes contiguë a → b (glouton vers la cible) posant une route ; n'écrase
+// ni base ni peuplement. Franchit tout le reste (→ gués sur les rivières).
+function traceTrail(terrain, a, b) {
+  let q = a.q, r = a.r;
+  for (let guard = 0; (q !== b.q || r !== b.r) && guard < 200; guard++) {
+    let best = null;
+    for (const [dq, dr] of DIRS) {
+      const nq = q + dq, nr = r + dr;
+      if (!terrain.has(key(nq, nr))) continue;
+      const d = hexDistance(nq, nr, b.q, b.r);
+      if (!best || d < best.d) best = { nq, nr, d };
+    }
+    if (!best) break;
+    q = best.nq; r = best.nr;
+    const t = terrain.get(key(q, r));
+    if (t && !['base', 'town', 'village', 'oasis'].includes(t)) terrain.set(key(q, r), 'road');
+  }
+}
+
+// Arbre couvrant reliant des nœuds (clés) par des pistes.
+function roadNetwork(terrain, keys) {
+  const nodes = keys.map((k) => { const [q, r] = k.split(',').map(Number); return { q, r }; });
+  const inTree = new Set([0]);
+  while (nodes.length > 1 && inTree.size < nodes.length) {
+    let best = null;
+    for (const i of inTree) for (let j = 0; j < nodes.length; j++) {
+      if (inTree.has(j)) continue;
+      const d = hexDistance(nodes[i].q, nodes[i].r, nodes[j].q, nodes[j].r);
+      if (!best || d < best.d) best = { i, j, d };
+    }
+    inTree.add(best.j);
+    traceTrail(terrain, nodes[best.i], nodes[best.j]);
+  }
+}
+
+// Garantit la liaison terrestre des deux bases : perce un hexe d'eau frontalier
+// en route tant qu'elles ne sont pas reliées (cf. biome tempéré, §7).
+function connectBasesCarve(terrain) {
+  const passable = (k) => { const t = terrain.get(k); return t && TERRAIN[t].cost !== Infinity; };
+  const bk = (s) => { const { q, r } = offsetToAxial(...BASES[s]); return key(q, r); };
+  for (let guard = 0; guard < 300; guard++) {
+    const seen = new Set([bk('blue')]);
+    const stack = [bk('blue')];
+    while (stack.length) {
+      const [q, r] = stack.pop().split(',').map(Number);
+      for (const [dq, dr] of DIRS) { const nk = key(q + dq, r + dr); if (!seen.has(nk) && terrain.has(nk) && passable(nk)) { seen.add(nk); stack.push(nk); } }
+    }
+    if (seen.has(bk('red'))) return;
+    let crossing = null;
+    for (const k of [...seen].sort()) {
+      const [q, r] = k.split(',').map(Number);
+      for (const [dq, dr] of DIRS) { if (terrain.get(key(q + dq, r + dr)) === 'river') { crossing = key(q + dq, r + dr); break; } }
+      if (crossing) break;
+    }
+    if (!crossing) return;
+    terrain.set(crossing, 'road');
+  }
+}
+
+// Peuplements (villages, rares villes) espacés, sur les terrains autorisés, hors
+// bases. `fair` : maillage régulier ; sinon tirage aléatoire.
+function placeSettlements(terrain, rng, fair, allowedTypes) {
+  const rint = (lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
+  const baseKeys = Object.values(BASES).map(([c, rw]) => offKey(c, rw));
+  const allowed = new Set(allowedTypes);
+  const settle = [];
+  const trySet = (c, rw, i) => {
+    const k = offKey(c, rw);
+    if (!allowed.has(terrain.get(k)) || baseKeys.includes(k)) return;
+    if (settle.some((s) => offDist(s, k) < 3)) return;
+    terrain.set(k, i % 4 === 0 ? 'town' : 'village'); settle.push(k);
+  };
+  if (fair) {
+    let ri = 0, i = 0;
+    for (let rw = 3; rw <= ROWS - 3; rw += 4, ri++) { const sh = ri % 2 ? 3 : 0; for (let c = 3 + sh; c <= COLS - 3; c += 6) { trySet(c, rw, i); i++; } }
+  } else {
+    for (let placed = 0, tries = 0, want = rint(6, 10); placed < want && tries < 1500; tries++) { const before = settle.length; trySet(rint(1, COLS - 2), rint(1, ROWS - 2), placed); if (settle.length > before) placed++; }
+  }
+  return settle;
+}
+
+// Objectifs franchissables, hors bases, espacés (>= 4). `prefer` (optionnel) tente
+// d'abord ce terrain, avec repli sur tout terrain franchissable.
+function placeSpacedObjectives(terrain, rng, want, prefer) {
+  const rint = (lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
+  const passable = (k) => { const t = terrain.get(k); return t && TERRAIN[t].cost !== Infinity; };
+  const baseKeys = Object.values(BASES).map(([c, rw]) => offKey(c, rw));
+  const objs = [];
+  const far = (q, r, list, d) => list.every((k) => { const [aq, ar] = k.split(',').map(Number); return hexDistance(aq, ar, q, r) >= d; });
+  const pass = (wantType) => {
+    for (let tries = 0; objs.length < want && tries < 4000; tries++) {
+      const { q, r } = offsetToAxial(rint(1, COLS - 2), rint(1, ROWS - 2));
+      const k = key(q, r);
+      if (!passable(k) || baseKeys.includes(k) || (wantType && terrain.get(k) !== wantType)) continue;
+      if (!far(q, r, baseKeys, 4) || !far(q, r, objs, 4)) continue;
+      objs.push(k);
+    }
+  };
+  if (prefer) pass(prefer);
+  pass(null);
+  return objs;
+}
+
+// Biome HIVER : manteau neigeux (ralentissement général), clairières déneigées,
+// forêts et reliefs enneigés, rivières et lacs GELÉS (glace = franchissable, la
+// route reste vitale). `fair` : peuplements sur maillage régulier.
+function generateHiver(seed = 1, { fair = false } = {}) {
+  const rng = mulberry32(seed);
+  const rint = (lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
+  const { terrain, hexes } = biomeBase(rng, 'snow');
+  const snowy = (t) => t === 'snow' || t === 'plain' || t === 'plain2';
+  for (let i = 0, n = rint(8, 12); i < n; i++) growBlob(terrain, rng, offKey(rint(1, COLS - 2), rint(1, ROWS - 2)), rint(5, 14), rng() < 0.5 ? 'plain' : 'plain2', (t) => t === 'snow');
+  for (let i = 0, n = rint(10, 16); i < n; i++) growBlob(terrain, rng, offKey(rint(1, COLS - 2), rint(1, ROWS - 2)), rint(4, 12), 'forest', snowy);
+  for (let i = 0, n = rint(3, 6); i < n; i++) { const c = rint(3, COLS - 4), rw = rint(3, ROWS - 4); growBlob(terrain, rng, offKey(c, rw), rint(4, 9), 'hill', snowy); growBlob(terrain, rng, offKey(c, rw), rint(1, 3), 'mountain', (t) => t === 'hill'); }
+  for (let i = 0, n = rint(2, 4); i < n; i++) growStream(terrain, rng, rint(6, 13), 'bank');       // rivières gelées
+  for (let i = 0, n = rint(1, 2); i < n; i++) growBlob(terrain, rng, offKey(rint(3, COLS - 4), rint(3, ROWS - 4)), rint(3, 7), 'bank', snowy); // lacs gelés
+  const baseKeys = [];
+  for (const [c, rw] of Object.values(BASES)) { terrain.set(offKey(c, rw), 'base'); baseKeys.push(offKey(c, rw)); }
+  const settle = placeSettlements(terrain, rng, fair, ['snow', 'plain', 'plain2', 'forest']);
+  roadNetwork(terrain, [...baseKeys, ...settle]);
+  const objectives = placeSpacedObjectives(terrain, rng, rint(4, 6), null);
+  return { terrain, hexes, objectives };
+}
+
+// Biome TROPICAL : jungle très dense (couvert forestier étendu), rivières
+// nombreuses (franchies par des gués), marais le long des cours d'eau. Cousin
+// humide de l'aride. `fair` : peuplements sur maillage régulier.
+function generateTropical(seed = 1, { fair = false } = {}) {
+  const rng = mulberry32(seed);
+  const rint = (lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
+  const { terrain, hexes } = biomeBase(rng, (r) => (r() < 0.5 ? 'plain' : 'plain2'));
+  const green = (t) => t === 'plain' || t === 'plain2';
+  for (let i = 0, n = rint(4, 6); i < n; i++) growStream(terrain, rng, rint(7, 15), 'river');       // rivières nombreuses
+  for (const [k, t] of [...terrain]) {                                                              // marais riverains
+    if (t !== 'river') continue;
+    const [q, r] = k.split(',').map(Number);
+    for (const [dq, dr] of DIRS) { const nk = key(q + dq, r + dr); if (green(terrain.get(nk)) && rng() < 0.3) terrain.set(nk, 'marsh'); }
+  }
+  for (let i = 0, n = rint(22, 32); i < n; i++) growBlob(terrain, rng, offKey(rint(1, COLS - 2), rint(1, ROWS - 2)), rint(6, 18), 'forest', green); // jungle dense
+  for (let i = 0, n = rint(3, 5); i < n; i++) growBlob(terrain, rng, offKey(rint(2, COLS - 3), rint(2, ROWS - 3)), rint(3, 6), 'hill', (t) => green(t) || t === 'forest');
+  const baseKeys = [];
+  for (const [c, rw] of Object.values(BASES)) { terrain.set(offKey(c, rw), 'base'); baseKeys.push(offKey(c, rw)); }
+  const settle = placeSettlements(terrain, rng, fair, ['plain', 'plain2', 'forest']);
+  roadNetwork(terrain, [...baseKeys, ...settle]);   // pistes = gués sur les rivières
+  connectBasesCarve(terrain);                       // filet de sécurité de connexité
+  const objectives = placeSpacedObjectives(terrain, rng, rint(4, 6), null);
   return { terrain, hexes, objectives };
 }
 
