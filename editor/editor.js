@@ -11,7 +11,7 @@ import { key, axialToPixel, offsetToAxial, pixelToAxial, hexCorners } from '../s
 import { generateMap } from '../src/map.js';
 
 // ---- Palette : ordre d'affichage des terrains peignables. -----------------
-const PALETTE = ['plain', 'plain2', 'road', 'bank', 'river', 'forest', 'hill', 'village', 'town', 'urban', 'base'];
+const PALETTE = ['plain', 'plain2', 'plateau', 'road', 'bank', 'marsh', 'river', 'forest', 'hill', 'mountain', 'village', 'town', 'urban', 'base'];
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 
 // ---- État de l'éditeur. ----------------------------------------------------

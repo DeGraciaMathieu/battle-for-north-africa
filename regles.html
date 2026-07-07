@@ -100,7 +100,7 @@
         <tbody></tbody>
       </table>
       <div class="legend" id="terrain-legend"></div>
-      <p>Un coût de <code>0.5</code> (route) permet d'aller plus vite ; un décalage défensif <b>négatif</b> (route) <em>désavantage</em> le
+      <p>Un coût de <code>0.5</code> (route) permet d'aller plus vite ; un décalage défensif <b>négatif</b> (route, marais) <em>désavantage</em> le
         défenseur. La <em>rivière</em> est infranchissable : aucune unité ne peut y entrer. Les <em>villes</em> et <em>villages</em>,
         en plus de protéger le défenseur, sont des <b>sources de ravitaillement</b> une fois occupés (voir §8).</p>
     </section>
@@ -291,13 +291,15 @@
     $('p-arty').textContent = ARTY_RANGE;
 
     // -- Tableau des terrains ----------------------------------------------
-    const TERRAIN_ORDER = ['plain', 'road', 'forest', 'hill', 'town', 'village', 'bank', 'river', 'base'];
+    const TERRAIN_ORDER = ['plain', 'road', 'forest', 'plateau', 'hill', 'mountain', 'town', 'village', 'bank', 'marsh', 'river', 'base'];
     const seen = new Set();
     const roleOf = (t, tp) =>
       tp.cost === Infinity ? 'Infranchissable'
       : tp.supply ? `Source de ravitaillement (portée ${tp.supply})`
       : t === 'road' ? 'Accélère le déplacement, expose le défenseur'
+      : tp.def < 0 ? 'Terrain pénible, expose le défenseur'
       : tp.def >= 2 ? 'Bon abri défensif'
+      : tp.def >= 1 ? 'Léger abri défensif'
       : '-';
     const tbody = $('terrain-table').querySelector('tbody');
     for (const t of TERRAIN_ORDER) {
