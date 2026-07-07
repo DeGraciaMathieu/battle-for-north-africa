@@ -320,6 +320,30 @@ const PIXI = window.PIXI;
       const a = e * 2, b = ((e + 1) % 6) * 2;
       g.moveTo(c[a], c[a + 1]).lineTo(c[b], c[b + 1]).stroke({ width, color, alpha });
     };
+    // Étagement d'altitude (palier par type de terrain) → teinte hypsométrique
+    // et courbes de niveau, à la manière d'une carte topographique. Palette
+    // sombre : vert foncé dans les bas-fonds → gris-vert → gris pierre en altitude.
+    // Purement visuel : aucune règle ne dépend de ces valeurs.
+    const ELEV = { river: 0, bank: 0, marsh: 1, plain: 2, plain2: 2, forest: 2, road: 2, town: 2, village: 2, urban: 2, base: 2, plateau: 3, hill: 4, mountain: 5 };
+    const WATER_R = new Set(['river', 'bank']);
+    const bandNoise = (q, r) => {                          // 0..1 déterministe, deux fréquences
+      const a = Math.sin(q * 12.9898 + r * 78.233) * 43758.5453;
+      const b = Math.sin(q * 39.3468 - r * 11.135) * 24634.6345;
+      return (a - Math.floor(a)) * 0.6 + (b - Math.floor(b)) * 0.4;
+    };
+    const ELEV_RAMP = [[0, 0x2f3a2a], [0.3, 0x445040], [0.55, 0x666b5e], [0.78, 0x808079], [1, 0x9a9a95]];
+    const elevColor = (a) => {
+      a = Math.max(0, Math.min(1, a));
+      for (let i = 1; i < ELEV_RAMP.length; i++) {
+        if (a <= ELEV_RAMP[i][0]) {
+          const [a0, c0] = ELEV_RAMP[i - 1], [a1, c1] = ELEV_RAMP[i];
+          return lerpColor(c0, c1, (a - a0) / (a1 - a0));
+        }
+      }
+      return ELEV_RAMP[ELEV_RAMP.length - 1][1];
+    };
+    // Altitude continue d'un hex (palier + bruit doux) normalisée sur [0, 1].
+    const altAt = (q, r) => ((ELEV[state.terrain.get(key(q, r))] ?? 2) + (bandNoise(q, r) - 0.5) * 1.1) / 5;
     for (const { q, r } of state.hexes) {
       const { x, y } = axialToPixel(q, r);
       const type = state.terrain.get(key(q, r));
@@ -330,6 +354,8 @@ const PIXI = window.PIXI;
         sp.anchor.set(0.5);
         sp.position.set(x, y);
         sp.width = SIZE * 2; sp.height = SIZE * SQRT3;
+        // Ombrage d'altitude sur la terre (l'eau garde sa teinte propre).
+        if (type === 'plain' || type === 'plain2' || type === 'forest') sp.tint = lerpColor(0xffffff, elevColor(altAt(q, r)), 0.45);
         tileLayer.addChild(sp);
       } else {                                          // terrain sans tuile (relief, peuplements, route) : aplat vectoriel
         const t = TERRAIN[type];
@@ -343,6 +369,17 @@ const PIXI = window.PIXI;
     for (const { q, r } of state.hexes) {
       const type = state.terrain.get(key(q, r));
       const { x, y } = axialToPixel(q, r);
+      // Courbe de niveau : trait fin sur l'arête franchie entre deux paliers
+      // d'altitude. Tracée du seul côté amont → un seul trait par frontière.
+      if (!WATER_R.has(type)) {
+        const cc = hexCorners(x, y);
+        const myB = ELEV[type] ?? 2;
+        for (let d = 0; d < 6; d++) {
+          const nt = state.terrain.get(key(q + DIRS[d][0], r + DIRS[d][1]));
+          if (!nt || WATER_R.has(nt)) continue;
+          if (myB > (ELEV[nt] ?? 2)) strokeEdge(decoLayer, cc, DIR_TO_EDGE[d], 0x161c12, 0.4, 1.6);
+        }
+      }
       // Villes et villages : pas de marqueur statique ici — leur drapeau de
       // contrôle (drawFlag, dans l'overlay) fait office de repère.
       if (type === 'urban') {
@@ -353,8 +390,18 @@ const PIXI = window.PIXI;
         decoLayer.rect(x - 4, y + 2, 5, 5).fill(0x40414a).stroke({ width: 1, color: 0xc7c7cf });
       } else if (type === 'hill') {
         // coteau : deux bosses.
-        decoLayer.poly([x - 9, y + 4, x - 3, y - 5, x + 3, y + 4]).fill(0x7c7360).stroke({ width: 1, color: 0xc7bfa6 });
-        decoLayer.poly([x + 1, y + 5, x + 6, y - 3, x + 10, y + 5]).fill(0x8b8168).stroke({ width: 1, color: 0xc7bfa6 });
+        decoLayer.poly([x - 9, y + 4, x - 3, y - 5, x + 3, y + 4]).fill(0x6e6c5e).stroke({ width: 1, color: 0xb0ac96 });
+        decoLayer.poly([x + 1, y + 5, x + 6, y - 3, x + 10, y + 5]).fill(0x7b7869).stroke({ width: 1, color: 0xb0ac96 });
+      } else if (type === 'mountain') {
+        // montagne : pic marqué, versant éclairé et arête sommitale claire.
+        decoLayer.poly([x - 11, y + 6, x, y - 9, x + 11, y + 6]).fill(0x6f6f77).stroke({ width: 1, color: 0xb9b9c2 });
+        decoLayer.poly([x, y - 9, x + 5, y - 1, x - 1, y + 1]).fill(0x9a9aa2);
+        decoLayer.moveTo(x - 3, y - 3).lineTo(x, y - 9).lineTo(x + 3, y - 3).stroke({ width: 1, color: 0xe6e6ec, alpha: 0.75 });
+      } else if (type === 'marsh') {
+        // marais : touffes de roseaux et flaques.
+        decoLayer.moveTo(x - 7, y + 3).lineTo(x - 3, y + 3).stroke({ width: 1, color: 0x8fa07a, alpha: 0.7 });
+        decoLayer.moveTo(x + 1, y - 1).lineTo(x + 6, y - 1).stroke({ width: 1, color: 0x8fa07a, alpha: 0.7 });
+        decoLayer.moveTo(x - 2, y + 6).lineTo(x + 4, y + 6).stroke({ width: 1, color: 0x6f88b0, alpha: 0.6 });
       } else if (type === 'river') {
         // rivière : rides.
         decoLayer.moveTo(x - 6, y - 3).quadraticCurveTo(x - 3, y - 5, x, y - 3).quadraticCurveTo(x + 3, y - 1, x + 6, y - 3).stroke({ width: 1, color: 0xaed3e2, alpha: 0.5 });
