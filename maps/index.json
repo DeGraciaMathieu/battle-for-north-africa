@@ -1,3 +1,22 @@
 [
-  { "file": "angers", "name": "Angers" }
+  {
+    "file": "angers",
+    "name": "Angers"
+  },
+  {
+    "file": "grande-foret",
+    "name": "La Grande Forêt"
+  },
+  {
+    "file": "debarquement",
+    "name": "Le Débarquement"
+  },
+  {
+    "file": "archipel",
+    "name": "L'Archipel"
+  },
+  {
+    "file": "col",
+    "name": "Le Col"
+  }
 ]
