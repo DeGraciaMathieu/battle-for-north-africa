@@ -87,7 +87,7 @@ const PIXI = window.PIXI;
     // -- Résolution de la partie selon le rôle réseau -------------------------
     // Host/solo lisent l'URL ; le guest reçoit tout le descriptif de l'hôte, de
     // sorte que les deux clients construisent un état STRICTEMENT identique.
-    let seed, fair, mapParam, mapData, composition, rng, rngSeed;
+    let seed, fair, biome, mapParam, mapData, composition, rng, rngSeed;
     let localSide = null, net = null, started = false, netLost = false;
     const netQueue = [];                  // messages de jeu reçus avant la fin de l'init (différés)
     let onGameMsg = null;
@@ -108,7 +108,7 @@ const PIXI = window.PIXI;
           onError: () => reject(new Error('Connexion impossible : code invalide ou hôte absent.')),
         });
       });
-      seed = desc.seed; fair = desc.fair; mapParam = desc.mapParam || null; rngSeed = desc.rngSeed;
+      seed = desc.seed; fair = desc.fair; biome = desc.biome || null; mapParam = desc.mapParam || null; rngSeed = desc.rngSeed;
       composition = desc.b && desc.r ? { blue: parseArmy(desc.b), red: parseArmy(desc.r) } : undefined;
       mapData = await loadMapData(mapParam);
       rng = mulberry32(rngSeed);
@@ -117,6 +117,7 @@ const PIXI = window.PIXI;
       const seedParam = params.get('seed');
       seed = seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) : Math.floor(Math.random() * 0xffffffff);
       fair = params.get('gen') === 'fair';
+      biome = params.get('biome') || null;
       mapParam = params.get('map');
       mapData = await loadMapData(mapParam);
       const b = params.get('b'), r = params.get('r');
@@ -133,7 +134,7 @@ const PIXI = window.PIXI;
             onConnect: () => setLobbyStatus('Adversaire connecté — synchronisation…'),
             onData: (m) => {
               if (onGameMsg) return onGameMsg(m);
-              if (m.t === 'hello') { net.send({ t: 'desc', seed, fair, mapParam: mapParam || null, b, r, rngSeed }); resolve(); }
+              if (m.t === 'hello') { net.send({ t: 'desc', seed, fair, biome: biome || null, mapParam: mapParam || null, b, r, rngSeed }); resolve(); }
               else netQueue.push(m);
             },
             onClose: onPeerLost,
@@ -149,12 +150,12 @@ const PIXI = window.PIXI;
     document.getElementById('seedVal').textContent = mapData ? mapParam : seed;
     if (!isOnline) {
       const q = new URLSearchParams();
-      if (mapData) q.set('map', mapParam); else { q.set('seed', String(seed)); if (fair) q.set('gen', 'fair'); }
+      if (mapData) q.set('map', mapParam); else { q.set('seed', String(seed)); if (fair) q.set('gen', 'fair'); if (biome && biome !== 'tempere') q.set('biome', biome); }
       if (composition) { q.set('b', params.get('b')); q.set('r', params.get('r')); }
       if (isAI) q.set('ai', aiSide);
       history.replaceState(null, '', `?${q.toString()}`);
     }
-    const state = createGame(rng, seed, composition, mapData ?? undefined, fair ? { fair: true } : undefined);
+    const state = createGame(rng, seed, composition, mapData ?? undefined, mapData ? undefined : { fair, biome });
     started = true;
 
     // Verrou de tour : hors ligne (sans IA) on joue les deux camps ; en ligne on
@@ -333,7 +334,7 @@ const PIXI = window.PIXI;
     // et courbes de niveau, à la manière d'une carte topographique. Palette
     // sombre : vert foncé dans les bas-fonds → gris-vert → gris pierre en altitude.
     // Purement visuel : aucune règle ne dépend de ces valeurs.
-    const ELEV = { river: 0, bank: 0, marsh: 1, plain: 2, plain2: 2, forest: 2, road: 2, town: 2, village: 2, urban: 2, base: 2, plateau: 3, hill: 4, mountain: 5 };
+    const ELEV = { river: 0, bank: 0, marsh: 1, wadi: 1, plain: 2, plain2: 2, desert: 2, dunes: 2, oasis: 2, snow: 2, forest: 2, road: 2, town: 2, village: 2, urban: 2, ruins: 2, base: 2, plateau: 3, rough: 3, hill: 4, mountain: 5 };
     const WATER_R = new Set(['river', 'bank']);
     const bandNoise = (q, r) => {                          // 0..1 déterministe, deux fréquences
       const a = Math.sin(q * 12.9898 + r * 78.233) * 43758.5453;
@@ -411,6 +412,27 @@ const PIXI = window.PIXI;
         decoLayer.moveTo(x - 7, y + 3).lineTo(x - 3, y + 3).stroke({ width: 1, color: 0x8fa07a, alpha: 0.7 });
         decoLayer.moveTo(x + 1, y - 1).lineTo(x + 6, y - 1).stroke({ width: 1, color: 0x8fa07a, alpha: 0.7 });
         decoLayer.moveTo(x - 2, y + 6).lineTo(x + 4, y + 6).stroke({ width: 1, color: 0x6f88b0, alpha: 0.6 });
+      } else if (type === 'dunes') {
+        // dunes : crêtes de sable ondulantes.
+        decoLayer.moveTo(x - 8, y + 2).quadraticCurveTo(x - 3, y - 3, x + 1, y + 1).quadraticCurveTo(x + 5, y + 4, x + 9, y - 1).stroke({ width: 1, color: 0xe7d6a6, alpha: 0.8 });
+        decoLayer.moveTo(x - 7, y + 6).quadraticCurveTo(x - 2, y + 2, x + 3, y + 6).stroke({ width: 1, color: 0xb59a5c, alpha: 0.7 });
+      } else if (type === 'oasis') {
+        // oasis : point d'eau cerné de palmes.
+        decoLayer.circle(x, y + 2, 3).fill({ color: 0x4aa6c9 }).stroke({ width: 1, color: 0xcfeaf2 });
+        for (const dx of [-6, 0, 6]) decoLayer.moveTo(x + dx, y - 1).lineTo(x + dx, y - 8).stroke({ width: 1, color: 0x2f7d47 });
+      } else if (type === 'rough') {
+        // rocaille : éclats de roche épars.
+        decoLayer.poly([x - 8, y + 3, x - 5, y - 2, x - 2, y + 3]).fill(0x6f6a5e);
+        decoLayer.poly([x + 1, y + 5, x + 5, y - 1, x + 9, y + 5]).fill(0x7d786a);
+        decoLayer.circle(x - 1, y - 3, 1.6).fill(0x60594d);
+      } else if (type === 'ruins') {
+        // ruines : pans de murs brisés.
+        decoLayer.rect(x - 8, y - 4, 4, 6).fill(0x5f5b57).stroke({ width: 1, color: 0x2f2c29 });
+        decoLayer.rect(x - 1, y - 6, 4, 8).fill(0x6b6763).stroke({ width: 1, color: 0x2f2c29 });
+        decoLayer.rect(x + 5, y - 1, 3, 4).fill(0x565350).stroke({ width: 1, color: 0x2f2c29 });
+      } else if (type === 'wadi') {
+        // oued : lit asséché sinueux.
+        decoLayer.moveTo(x - 8, y - 2).quadraticCurveTo(x - 2, y + 3, x + 2, y - 1).quadraticCurveTo(x + 6, y - 4, x + 9, y + 1).stroke({ width: 2, color: 0x8a7846, alpha: 0.8 });
       } else if (type === 'river') {
         // rivière : rides.
         decoLayer.moveTo(x - 6, y - 3).quadraticCurveTo(x - 3, y - 5, x, y - 3).quadraticCurveTo(x + 3, y - 1, x + 6, y - 3).stroke({ width: 1, color: 0xaed3e2, alpha: 0.5 });
@@ -699,7 +721,7 @@ const PIXI = window.PIXI;
     // dessinés à part (grand drapeau) et retirés d'ici pour éviter le doublon.
     const objSet = new Set(state.objectives);
     const settlementKeys = [...state.terrain]
-      .filter(([k, t]) => (t === 'town' || t === 'village') && !objSet.has(k))
+      .filter(([k, t]) => (t === 'town' || t === 'village' || t === 'oasis') && !objSet.has(k))
       .map(([k]) => k);
     // Contrôle : couleurs vives de camp, gris atténué si neutre. La couleur
     // (bleu/rouge/gris) donne le contrôle ; la forme donne la nature.

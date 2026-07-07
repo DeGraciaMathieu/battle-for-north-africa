@@ -63,6 +63,18 @@ test('le coût du terrain est respecté (montagne = 4 PM)', () => {
   assert.ok(!reachable.has('2,0'), 'hex au-delà (4 + 1) hors de portée');
 });
 
+test('terrains désertiques : désert franchi à 1 PM, dunes/rocaille/oued/neige à 2 PM', () => {
+  for (const [t, need] of [['desert', 1], ['dunes', 2], ['rough', 2], ['wadi', 2], ['snow', 2]]) {
+    const terrain = fillTerrain([[0, 0], [2, 0]]);
+    terrain.set('1,0', t);
+    const unit = makeUnit({ q: 0, r: 0, mpLeft: need });
+    const state = makeState({ terrain, units: [unit] });
+    const { reachable } = computeReachable(state, unit);
+    assert.ok(reachable.has('1,0'), `${t} atteignable à ${need} PM`);
+    if (need > 1) assert.ok(!computeReachable(makeState({ terrain, units: [makeUnit({ q: 0, r: 0, mpLeft: need - 1 })] }), makeUnit({ q: 0, r: 0, mpLeft: need - 1 })).reachable.has('1,0'), `${t} hors de portée à ${need - 1} PM`);
+  }
+});
+
 test('la route est plus rapide (½ PM) : 2 hexes pour 1 PM', () => {
   const terrain = fillTerrain([[3, 0]]);           // hex lointain en plaine (coût 1)
   for (const c of [0, 1, 2]) terrain.set(`${c},0`, 'road'); // corridor de routes

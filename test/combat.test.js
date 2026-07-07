@@ -35,6 +35,15 @@ test('le terrain décale la colonne : plateau protège, marais expose', () => {
   assert.equal(colOn('plain'), '2:1');
   assert.equal(colOn('plateau'), '1:1');
   assert.equal(colOn('marsh'), '3:1');
+  // Nouveaux terrains désertiques : ruines protègent (+2), rocaille/oued/oasis (+1),
+  // désert/dunes/neige neutres.
+  assert.equal(colOn('ruins'), '1:2');   // 2:1 reculé de 2 colonnes
+  assert.equal(colOn('rough'), '1:1');
+  assert.equal(colOn('wadi'), '1:1');
+  assert.equal(colOn('oasis'), '1:1');
+  assert.equal(colOn('desert'), '2:1');
+  assert.equal(colOn('dunes'), '2:1');
+  assert.equal(colOn('snow'), '2:1');
 });
 
 test('un « Échange » réduit défenseur et attaquant', () => {

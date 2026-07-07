@@ -26,6 +26,19 @@ test('au-delà de la portée d\'une ville (6), une unité est coupée du ravitai
   assert.equal(reach.get(`${R},0`), 0, 'hex le plus loin à portée restante nulle');
 });
 
+test('une oasis tenue ravitaille comme un relais (portée 4)', () => {
+  const coords = [];
+  for (let q = 0; q <= 6; q++) coords.push([q, 0]);
+  const terrain = fillTerrain(coords);
+  terrain.set('0,0', 'oasis');
+  const state = makeState({ terrain, units: [] });
+  state.objControl.set('0,0', 'blue');                  // oasis tenue par Bleu
+  assert.ok(supplySources(state, 'blue').has('0,0'), 'oasis tenue = source de ravitaillement');
+  const supplied = supplyRoutes(state, 'blue').supplied;
+  assert.ok(supplied.has('4,0'), 'oasis : ravitaille jusqu\'à 4 hexes');
+  assert.ok(!supplied.has('5,0'), 'oasis : ne dépasse pas 4 hexes');
+});
+
 test('une ville (6) ravitaille plus loin qu\'un village (4)', () => {
   const coords = [];
   for (let q = 0; q <= 6; q++) coords.push([q, 0]);

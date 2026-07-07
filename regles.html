@@ -101,7 +101,7 @@
       </table>
       <div class="legend" id="terrain-legend"></div>
       <p>Un coût de <code>0.5</code> (route) permet d'aller plus vite ; un décalage défensif <b>négatif</b> (route, marais) <em>désavantage</em> le
-        défenseur. La <em>rivière</em> est infranchissable : aucune unité ne peut y entrer. Les <em>villes</em> et <em>villages</em>,
+        défenseur. La <em>rivière</em> est infranchissable : aucune unité ne peut y entrer. Les <em>villes</em>, <em>villages</em> et <em>oasis</em>,
         en plus de protéger le défenseur, sont des <b>sources de ravitaillement</b> une fois occupés (voir §8).</p>
     </section>
 
@@ -193,7 +193,7 @@
       <p>Le ravitaillement se propage depuis des <b>sources</b> par un « écoulement » d'hexe en hexe (flood-fill). Les sources d'un camp sont :</p>
       <ul>
         <li>son <b>camp de base</b> (portée <b id="p-supply"></b> hexes) ;</li>
-        <li>chaque <b>ville</b> (portée 6) et <b>village</b> (portée 4) qu'il <em>tient</em>.</li>
+        <li>chaque <b>ville</b> (portée 6), <b>village</b> (portée 4) et <b>oasis</b> (portée 4) qu'il <em>tient</em>.</li>
       </ul>
       <p>Depuis chaque source, le ravitaillement se répand en perdant 1 de portée par hexe traversé. Il <b>ne peut pas</b>
         franchir :</p>
@@ -269,7 +269,7 @@
           camp Bleu.</li>
       </ul>
       <p>Les <b>objectifs</b> sont des marqueurs signalés sur la carte, posés sur n'importe quel terrain (pas forcément une
-        ville) : eux seuls comptent pour la victoire finale. Villes et villages, eux, servent de sources de ravitaillement
+        ville) : eux seuls comptent pour la victoire finale. Villes, villages et oasis, eux, servent de sources de ravitaillement
         (voir §8), indépendamment des objectifs.</p>
     </section>
 
@@ -291,7 +291,7 @@
     $('p-arty').textContent = ARTY_RANGE;
 
     // -- Tableau des terrains ----------------------------------------------
-    const TERRAIN_ORDER = ['plain', 'road', 'forest', 'plateau', 'hill', 'mountain', 'town', 'village', 'bank', 'marsh', 'river', 'base'];
+    const TERRAIN_ORDER = ['plain', 'desert', 'road', 'forest', 'dunes', 'rough', 'wadi', 'plateau', 'hill', 'mountain', 'snow', 'town', 'village', 'oasis', 'ruins', 'bank', 'marsh', 'river', 'base'];
     const seen = new Set();
     const roleOf = (t, tp) =>
       tp.cost === Infinity ? 'Infranchissable'

@@ -73,7 +73,7 @@ export function updateObjectives(state) {
   // objectifs de victoire, ces derniers pouvant être sur n'importe quel terrain.
   const tracked = new Set(state.objectives);
   for (const [k, t] of state.terrain) {
-    if (t === 'town' || t === 'village') tracked.add(k);
+    if (t === 'town' || t === 'village' || t === 'oasis') tracked.add(k);
   }
   for (const k of tracked) {
     const [q, r] = k.split(',').map(Number);

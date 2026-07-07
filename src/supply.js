@@ -17,8 +17,8 @@ import { zocOf } from './movement.js';
 export function supplySources(state, side) {
   const { terrain, objControl } = state;
   const src = new Set();
-  for (const [k, t] of terrain) {                                          // villes/villages tenus
-    if ((t === 'town' || t === 'village') && objControl.get(k) === side) src.add(k);
+  for (const [k, t] of terrain) {                                          // villes/villages/oasis tenus
+    if ((t === 'town' || t === 'village' || t === 'oasis') && objControl.get(k) === side) src.add(k);
   }
   const { q, r } = offsetToAxial(...BASES[side]);                          // camp de base
   const k = key(q, r);
