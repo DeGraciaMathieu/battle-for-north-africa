@@ -23,12 +23,27 @@ function mulberry32(seed) {
 
 const LAND = new Set(['plain', 'plain2', 'forest', 'hill', 'plateau']);
 
-// Construit une carte reproductible depuis `seed`. Renvoie le terrain, la liste
-// des hexes et les clés des objectifs (villes de terre).
+// Registre des biomes de génération procédurale. Un biome est une fonction
+// (seed, options) → { terrain, hexes, objectives } produisant une carte
+// reproductible. Ajouter un biome (aride, hiver…) = une seule entrée ici.
+// `generateMap` dispatche sur l'option `biome` (défaut : tempéré), de sorte que
+// le comportement historique reste inchangé quand aucun biome n'est précisé.
+export const BIOMES = {
+  tempere: { name: 'Tempéré', gen: generateTempere },
+  aride: { name: 'Aride', gen: generateAride },
+};
+
+export function generateMap(seed = 1, { fair = false, biome = 'tempere' } = {}) {
+  return (BIOMES[biome] ?? BIOMES.tempere).gen(seed, { fair });
+}
+
+// Biome TEMPÉRÉ : plaines bicolores, hydrographie (fleuve transversal ou réseau
+// fragmenté), reliefs (bois, coteaux, montagnes, plateaux), peuplements et réseau
+// routier. Renvoie le terrain, la liste des hexes et les clés des objectifs.
 // `fair` : place les peuplements sur un maillage régulier (équidistants) au lieu
 // d'un tirage aléatoire ; le reste du terrain (rivière, reliefs, urbain, routes)
 // demeure aléatoire.
-export function generateMap(seed = 1, { fair = false } = {}) {
+function generateTempere(seed = 1, { fair = false } = {}) {
   const rng = mulberry32(seed);
   const rint = (lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
   const terrain = new Map();
@@ -439,6 +454,133 @@ export function generateMap(seed = 1, { fair = false } = {}) {
     if (baseKeys.has(k) || !passable(k) || objNear(q, r)) continue;
     objectives.push(k);
     placed++;
+  }
+  return { terrain, hexes, objectives };
+}
+
+// Biome ARIDE : désert de sable et de dunes, oueds (lits asséchés serpentants),
+// jebels rocheux (hamada, coteaux, quelques sommets), oasis (points d'eau =
+// sources de ravitaillement ET objectifs naturels) et pistes reliant de rares
+// peuplements. Tout y est FRANCHISSABLE (aucune barrière d'eau) → les bases sont
+// toujours reliées. `fair` : peuplements sur maillage régulier.
+function generateAride(seed = 1, { fair = false } = {}) {
+  const rng = mulberry32(seed);
+  const rint = (lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
+  const terrain = new Map();
+  const hexes = [];
+  const K = (c, rw) => { const { q, r } = offsetToAxial(c, rw); return key(q, r); };
+  const dist = (a, b) => { const [aq, ar] = a.split(',').map(Number), [bq, br] = b.split(',').map(Number); return hexDistance(aq, ar, bq, br); };
+
+  // 1) Fond désertique.
+  for (let c = 0; c < COLS; c++) {
+    for (let rw = 0; rw < ROWS; rw++) { const { q, r } = offsetToAxial(c, rw); terrain.set(key(q, r), 'desert'); hexes.push({ q, r }); }
+  }
+  // Amas organique borné, ne recouvrant que les terrains autorisés.
+  const grow = (c0, rw0, size, type, allow) => {
+    const frontier = [K(c0, rw0)]; const seen = new Set(); let placed = 0;
+    while (frontier.length && placed < size) {
+      const k = frontier.splice(Math.floor(rng() * frontier.length), 1)[0];
+      if (seen.has(k)) continue;
+      seen.add(k);
+      if (!terrain.has(k) || (allow && !allow(terrain.get(k)))) continue;
+      terrain.set(k, type);
+      placed++;
+      const [q, r] = k.split(',').map(Number);
+      for (const [dq, dr] of DIRS) frontier.push(key(q + dq, r + dr));
+    }
+  };
+  const sand = (t) => t === 'desert' || t === 'dunes';
+
+  // 2) Champs de dunes ; 3) hamada rocheuse et jebels (coteaux + sommets).
+  for (let i = 0, n = rint(6, 10); i < n; i++) grow(rint(1, COLS - 2), rint(1, ROWS - 2), rint(6, 18), 'dunes', (t) => t === 'desert');
+  for (let i = 0, n = rint(4, 7); i < n; i++) grow(rint(1, COLS - 2), rint(1, ROWS - 2), rint(4, 10), 'rough', sand);
+  for (let i = 0, n = rint(2, 4); i < n; i++) { const c = rint(3, COLS - 4), rw = rint(3, ROWS - 4); grow(c, rw, rint(4, 9), 'hill', sand); grow(c, rw, rint(1, 3), 'mountain', (t) => t === 'hill'); }
+
+  // 4) Oueds : lits asséchés serpentant (franchissables).
+  for (let i = 0, n = rint(2, 4); i < n; i++) {
+    let d = rint(0, 5); let { q, r } = offsetToAxial(rint(2, COLS - 3), rint(2, ROWS - 3));
+    for (let s = 0, len = rint(6, 13); s < len; s++) {
+      if (rng() < 0.3) d = (d + (rng() < 0.5 ? 1 : 5)) % 6;
+      q += DIRS[d][0]; r += DIRS[d][1];
+      if (!terrain.has(key(q, r))) break;
+      terrain.set(key(q, r), 'wadi');
+    }
+  }
+
+  // 5) Bases (priment sur tout).
+  const baseKeys = new Set();
+  for (const [c, rw] of Object.values(BASES)) { terrain.set(K(c, rw), 'base'); baseKeys.add(K(c, rw)); }
+
+  // 6) Oasis : de préférence en bordure d'oued (résurgences). Espacées.
+  const oasisKeys = [];
+  const wadiCells = [...terrain].filter(([, t]) => t === 'wadi').map(([k]) => k);
+  for (let i = 0, tries = 0, want = rint(3, 5); oasisKeys.length < want && tries < 400; tries++) {
+    let k;
+    if (wadiCells.length && rng() < 0.7) {
+      const [q, r] = wadiCells[Math.floor(rng() * wadiCells.length)].split(',').map(Number);
+      const [dq, dr] = DIRS[rint(0, 5)];
+      k = key(q + dq, r + dr);
+    } else k = K(rint(1, COLS - 2), rint(1, ROWS - 2));
+    if (!terrain.has(k) || baseKeys.has(k) || oasisKeys.some((ok) => dist(ok, k) < 3)) continue;
+    terrain.set(k, 'oasis'); oasisKeys.push(k);
+  }
+
+  // 7) Peuplements (villages, rares villes), espacés, hors base et oasis.
+  const settleKeys = [];
+  const trySettle = (c, rw, i) => {
+    const k = K(c, rw);
+    if (!['desert', 'dunes', 'rough'].includes(terrain.get(k)) || baseKeys.has(k)) return;
+    if (settleKeys.some((s) => dist(s, k) < 3) || oasisKeys.some((o) => dist(o, k) < 2)) return;
+    terrain.set(k, i % 4 === 0 ? 'town' : 'village'); settleKeys.push(k);
+  };
+  if (fair) {
+    let ri = 0, i = 0;
+    for (let rw = 3; rw <= ROWS - 3; rw += 4, ri++) { const shift = ri % 2 ? 3 : 0; for (let c = 3 + shift; c <= COLS - 3; c += 6) { trySettle(c, rw, i); i++; } }
+  } else {
+    for (let placed = 0, tries = 0, want = rint(5, 8); placed < want && tries < 1500; tries++) { const before = settleKeys.length; trySettle(rint(1, COLS - 2), rint(1, ROWS - 2), placed); if (settleKeys.length > before) placed++; }
+  }
+
+  // 8) Pistes : arbre couvrant reliant bases, peuplements et oasis. Chaque arête
+  //    est tracée par une ligne d'hexes (glouton vers la cible → tracé contigu).
+  const trail = (a, b) => {
+    let q = a.q, r = a.r;
+    for (let guard = 0; (q !== b.q || r !== b.r) && guard < 200; guard++) {
+      let best = null;
+      for (const [dq, dr] of DIRS) {
+        const nq = q + dq, nr = r + dr;
+        if (!terrain.has(key(nq, nr))) continue;
+        const d = hexDistance(nq, nr, b.q, b.r);
+        if (!best || d < best.d) best = { nq, nr, d };
+      }
+      if (!best) break;
+      q = best.nq; r = best.nr;
+      const t = terrain.get(key(q, r));
+      if (t && !['base', 'town', 'village', 'oasis'].includes(t)) terrain.set(key(q, r), 'road');
+    }
+  };
+  const nodes = [...baseKeys, ...settleKeys, ...oasisKeys].map((k) => { const [q, r] = k.split(',').map(Number); return { q, r }; });
+  const inTree = new Set([0]);
+  while (nodes.length > 1 && inTree.size < nodes.length) {
+    let best = null;
+    for (const i of inTree) for (let j = 0; j < nodes.length; j++) {
+      if (inTree.has(j)) continue;
+      const d = hexDistance(nodes[i].q, nodes[i].r, nodes[j].q, nodes[j].r);
+      if (!best || d < best.d) best = { i, j, d };
+    }
+    inTree.add(best.j); trail(nodes[best.i], nodes[best.j]);
+  }
+
+  // 9) Objectifs : oasis en priorité (points d'eau vitaux), complétés au besoin
+  //    sur terre franchissable, hors base et espacés.
+  const objectives = [];
+  const objNear = (q, r) => objectives.some((k) => { const [oq, or] = k.split(',').map(Number); return hexDistance(oq, or, q, r) < 4; });
+  const want = rint(4, 6);
+  for (const k of oasisKeys) { if (objectives.length >= want) break; const [q, r] = k.split(',').map(Number); if (!objNear(q, r)) objectives.push(k); }
+  for (let tries = 0; objectives.length < want && tries < 2000; tries++) {
+    const { q, r } = offsetToAxial(rint(1, COLS - 2), rint(1, ROWS - 2));
+    const k = key(q, r);
+    if (baseKeys.has(k) || TERRAIN[terrain.get(k)].cost === Infinity || objNear(q, r)) continue;
+    objectives.push(k);
   }
   return { terrain, hexes, objectives };
 }

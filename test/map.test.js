@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateMap } from '../src/map.js';
+import { generateMap, BIOMES } from '../src/map.js';
 import { createGame } from '../src/game.js';
 import { BASES, DIRS, TERRAIN } from '../src/config.js';
 import { offsetToAxial, key, hexDistance } from '../src/geometry.js';
@@ -10,6 +10,35 @@ const serialize = (m) => JSON.stringify([...m.entries()].sort());
 
 test('une même seed produit exactement la même carte', () => {
   assert.equal(serialize(generateMap(12345).terrain), serialize(generateMap(12345).terrain));
+});
+
+test('le biome par défaut est « tempéré » ; un biome inconnu y retombe', () => {
+  assert.ok(BIOMES.tempere, 'le registre expose le biome tempéré');
+  const base = serialize(generateMap(777).terrain);
+  assert.equal(serialize(generateMap(777, { biome: 'tempere' }).terrain), base, 'défaut = tempéré');
+  assert.equal(serialize(generateMap(777, { biome: 'inconnu' }).terrain), base, 'biome inconnu → repli tempéré');
+});
+
+test('chaque biome du registre est jouable (déterministe, bases reliées, objectifs)', () => {
+  const passable = (terrain, k) => terrain.has(k) && TERRAIN[terrain.get(k)].cost !== Infinity;
+  for (const [id, def] of Object.entries(BIOMES)) {
+    assert.equal(typeof def.gen, 'function', `biome ${id} : générateur manquant`);
+    assert.equal(typeof def.name, 'string', `biome ${id} : nom manquant`);
+    for (const seed of SEEDS) {
+      const opts = { biome: id };
+      assert.equal(serialize(generateMap(seed, opts).terrain), serialize(generateMap(seed, opts).terrain), `${id}/${seed} : non déterministe`);
+      const { terrain, objectives } = generateMap(seed, opts);
+      assert.ok(objectives.length >= 3, `${id}/${seed} : ${objectives.length} objectifs`);
+      const a = offsetToAxial(...BASES.blue), b = offsetToAxial(...BASES.red);
+      const seen = new Set([key(a.q, a.r)]);
+      const stack = [[a.q, a.r]];
+      while (stack.length) {
+        const [q, r] = stack.pop();
+        for (const [dq, dr] of DIRS) { const nk = key(q + dq, r + dr); if (!seen.has(nk) && passable(terrain, nk)) { seen.add(nk); stack.push([q + dq, r + dr]); } }
+      }
+      assert.ok(seen.has(key(b.q, b.r)), `${id}/${seed} : bases non reliées`);
+    }
+  }
 });
 
 test('des seeds différentes produisent des cartes différentes', () => {

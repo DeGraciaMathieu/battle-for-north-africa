@@ -98,6 +98,8 @@
   <div class="settings">
     <div class="field"><label for="map">Carte</label>
       <select id="map"><option value="">Aléatoire (seed)</option></select></div>
+    <div class="field"><label for="biome">Biome</label>
+      <select id="biome"></select></div>
     <div class="field"><label for="genMode">Génération</label>
       <select id="genMode"><option value="random">Aléatoire</option><option value="fair">Équitable</option></select></div>
     <div class="field"><label for="seed">Seed</label>
@@ -127,6 +129,7 @@
 
   <script type="module">
     import { UNIT_CATALOG, CATALOG_ORDER, ARMY_POINTS } from './src/config.js';
+    import { BIOMES } from './src/map.js';
     const $ = (id) => document.getElementById(id);
     const SIDES = ['blue', 'red'];
     const counts = {
@@ -190,11 +193,19 @@
         }
       })
       .catch(() => {});
+    // Biomes de génération procédurale (registre src/map.js) : peuplent le menu.
+    for (const [id, def] of Object.entries(BIOMES)) {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = def.name;
+      $('biome').appendChild(opt);
+    }
     $('map').onchange = () => {
-      const fixed = !!$('map').value;
+      const fixed = !!$('map').value;              // carte fixe → seed & génération inertes
       $('seed').disabled = fixed;
       $('gen').disabled = fixed;
       $('genMode').disabled = fixed;
+      $('biome').disabled = fixed;
     };
 
     $('gen').onclick = () => { $('seed').value = String(Math.floor(Math.random() * 0xffffffff)); };
@@ -208,6 +219,7 @@
       else {
         if (/^\d+$/.test(raw)) q.set('seed', raw);
         if ($('genMode').value === 'fair') q.set('gen', 'fair');
+        if ($('biome').value && $('biome').value !== 'tempere') q.set('biome', $('biome').value);
       }
       q.set('b', enc('blue'));
       q.set('r', enc('red'));
