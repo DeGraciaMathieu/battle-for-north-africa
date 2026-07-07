@@ -21,7 +21,7 @@ function mulberry32(seed) {
   };
 }
 
-const LAND = new Set(['plain', 'plain2', 'forest', 'hill']);
+const LAND = new Set(['plain', 'plain2', 'forest', 'hill', 'plateau']);
 
 // Construit une carte reproductible depuis `seed`. Renvoie le terrain, la liste
 // des hexes et les clés des objectifs (villes de terre).
@@ -228,14 +228,43 @@ export function generateMap(seed = 1, { fair = false } = {}) {
   for (let i = 0, n = rint(4, 5); i < n; i++) growRidge();                     // chaînes de coteaux
   stamp('river', rint(1, 3), 2, 5, { elongate: true });                         // étangs
 
-  // 4) Berges : une partie des plaines bordant l'eau devient une berge. Liseré
-  //    irrégulier (tirage) plutôt que continu, pour ne pas élargir les rivières.
+  // 3b) Étagement du relief. Deux bandes d'altitude greffées sur les coteaux :
+  //     — MONTAGNES au cœur des massifs (un coteau cerné de reliefs devient un
+  //       sommet : plus coûteux, plus défensif) ;
+  //     — PLATEAUX au pied des reliefs (les plaines qui les bordent forment une
+  //       terrasse intermédiaire). Donne une pente plaine → plateau → coteau → sommet.
+  for (const [k, t] of [...terrain]) {
+    if (t !== 'hill') continue;
+    const [q, r] = k.split(',').map(Number);
+    const relief = DIRS.filter(([dq, dr]) => {
+      const nt = terrain.get(key(q + dq, r + dr));
+      return nt === 'hill' || nt === 'mountain';
+    }).length;
+    if (relief >= 4 && rng() < 0.5) terrain.set(k, 'mountain');
+  }
+  for (const [k, t] of [...terrain]) {
+    if (t !== 'plain' && t !== 'plain2') continue;
+    const [q, r] = k.split(',').map(Number);
+    const foot = DIRS.some(([dq, dr]) => {
+      const nt = terrain.get(key(q + dq, r + dr));
+      return nt === 'hill' || nt === 'mountain';
+    });
+    if (foot && rng() < 0.45) terrain.set(k, 'plateau');
+  }
+
+  // 4) Bordures d'eau : une partie des plaines riveraines devient une berge
+  //    (sèche) ou, plus rarement, un marais (bas-fond humide, pénible et exposé).
+  //    Liseré irrégulier (tirage) plutôt que continu, pour ne pas élargir les rivières.
   for (const [k, t] of [...terrain]) {
     if (t !== 'river') continue;
     const [q, r] = k.split(',').map(Number);
     for (const [dq, dr] of DIRS) {
       const nk = key(q + dq, r + dr);
-      if ((terrain.get(nk) === 'plain' || terrain.get(nk) === 'plain2') && rng() < 0.45) terrain.set(nk, 'bank');
+      const nt = terrain.get(nk);
+      if (nt !== 'plain' && nt !== 'plain2') continue;
+      const roll = rng();
+      if (roll < 0.40) terrain.set(nk, 'bank');
+      else if (roll < 0.52) terrain.set(nk, 'marsh');
     }
   }
 
@@ -341,7 +370,7 @@ export function generateMap(seed = 1, { fair = false } = {}) {
   //    posées (coût quasi nul) → tronçons partagés, embranchements, tracé
   //    organique. Un bruit seedé donne le méandre.
   const SETTLE = (t) => t === 'town' || t === 'village' || t === 'base';
-  const BASE_COST = { road: 0.2, plain: 1, plain2: 1, forest: 2, hill: 3, bank: 3, river: 6 };
+  const BASE_COST = { road: 0.2, plain: 1, plain2: 1, plateau: 1.4, forest: 2, hill: 3, mountain: 5, bank: 3, marsh: 4, river: 6 };
   const stepCost = (q, r) => {
     const t = terrain.get(key(q, r));
     if (!t) return Infinity;                                 // hors carte

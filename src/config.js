@@ -25,9 +25,12 @@ export const DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
 export const TERRAIN = {
   river:   { name: 'Rivière',      fill: 0x336d94, stroke: 0x1f4c6e, cost: Infinity, def: 0 },
   bank:    { name: 'Berge',        fill: 0x77aec2, stroke: 0x437a92, cost: 2, def: 0 },
+  marsh:   { name: 'Marais',       fill: 0x4b5540, stroke: 0x333c2a, cost: 3, def: -1 },
   plain:   { name: 'Plaine',       fill: 0x93b957, stroke: 0x67863a, cost: 1, def: 0 },
   plain2:  { name: 'Plaine',       fill: 0xaacb69, stroke: 0x67863a, cost: 1, def: 0 },
-  hill:    { name: 'Coteau',       fill: 0x9a9078, stroke: 0x655d49, cost: 3, def: 2 },
+  plateau: { name: 'Plateau',      fill: 0x676c5b, stroke: 0x454a3a, cost: 1, def: 1 },
+  hill:    { name: 'Coteau',       fill: 0x7c7a6c, stroke: 0x4f4d42, cost: 3, def: 2 },
+  mountain:{ name: 'Montagne',     fill: 0x888890, stroke: 0x56565e, cost: 4, def: 3 },
   town:    { name: 'Ville',        fill: 0xbaa971, stroke: 0x7a6a3f, cost: 1, def: 2, supply: 6 },
   village: { name: 'Village',      fill: 0xa8977a, stroke: 0x6e6042, cost: 1, def: 2, supply: 4 },
   urban:   { name: 'Zone urbaine', fill: 0x9a9aa0, stroke: 0x63636b, cost: 1, def: 2 },
