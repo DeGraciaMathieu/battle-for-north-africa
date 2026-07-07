@@ -221,8 +221,8 @@ const PIXI = window.PIXI;
 
     const world = new PIXI.Container();
     const tileLayer = new PIXI.Container(), mapLayer = new PIXI.Graphics(), decoLayer = new PIXI.Graphics(),
-      overlay = new PIXI.Graphics(), unitLayer = new PIXI.Container(), fxLayer = new PIXI.Graphics();
-    world.addChild(tileLayer, mapLayer, decoLayer, overlay, unitLayer, fxLayer); // fx au-dessus des pions
+      overlay = new PIXI.Graphics(), unitLayer = new PIXI.Container(), statsLayer = new PIXI.Container(), fxLayer = new PIXI.Graphics();
+    world.addChild(tileLayer, mapLayer, decoLayer, overlay, unitLayer, statsLayer, fxLayer); // stats & fx au-dessus des pions
     app.stage.addChild(world);
 
     // -- Effets de combat : impact (unité réduite) / explosion (unité éliminée).
@@ -454,6 +454,27 @@ const PIXI = window.PIXI;
       decoLayer.poly([x + 1, y - 10, x + 8, y - 8, x + 1, y - 6]).fill(col);
     }
 
+    // -- Filtre « stats » : coût de mouvement (PM) et défense de chaque hexe. --
+    // Le terrain est fixe sur la partie → couche construite une fois, simplement
+    // montrée/masquée par le bouton STAT. Défense en valeur perçue (+ = abri).
+    statsLayer.visible = false;
+    const statLabel = (s, color) => {
+      const t = new PIXI.Text({ text: s, style: { fontFamily: 'Arial', fontSize: 11, fontWeight: '700', fill: color } });
+      t.anchor.set(0.5);
+      return t;
+    };
+    for (const { q, r } of state.hexes) {
+      const tp = TERRAIN[state.terrain.get(key(q, r))];
+      if (!tp) continue;
+      const { x, y } = axialToPixel(q, r);
+      const cost = tp.cost === Infinity ? '∞' : tp.cost;
+      const def = tp.def > 0 ? `+${tp.def}` : `${tp.def}`;
+      const chip = new PIXI.Graphics().roundRect(x - 21, y - 15, 42, 30, 5).fill({ color: 0x11140d, alpha: 0.66 });
+      const pm = statLabel(`PM ${cost}`, 0x9fe08a); pm.position.set(x, y - 7);
+      const df = statLabel(`DÉF ${def}`, 0xe6b45a); df.position.set(x, y + 7);
+      statsLayer.addChild(chip, pm, df);
+    }
+
     // -- Pions ---------------------------------------------------------------
     const CS = 50;
     const counters = new Map();
@@ -551,6 +572,7 @@ const PIXI = window.PIXI;
     let pendingCombat = null;     // { atkUnits, defender } — combat en attente de décision
     let showSupply = false;       // overlay de la zone ravitaillée du camp actif
     let showLegend = false;       // panneau de légende (coin bas-droit)
+    let showStats = false;        // filtre : PM & défense de chaque hexe
     const attackers = new Set();  // ids des unités attaquantes       (phase combat)
     function clearPending() {
       pending = null;
@@ -1001,6 +1023,14 @@ const PIXI = window.PIXI;
       showSupply = !showSupply;
       btnSupply.classList.toggle('on', showSupply);
       drawOverlay();
+      draw();
+    };
+    const btnStats = document.getElementById('btnStats');
+    btnStats.classList.toggle('on', showStats);
+    btnStats.onclick = () => {
+      showStats = !showStats;
+      btnStats.classList.toggle('on', showStats);
+      statsLayer.visible = showStats;
       draw();
     };
     const legend = document.getElementById('legend');
