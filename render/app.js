@@ -211,7 +211,16 @@ const PIXI = window.PIXI;
     // Rendu à la demande : jeu au tour par tour, rien n'anime → on coupe la
     // boucle 60 fps et on ne redessine que quand l'état OU la vue change.
     app.ticker.stop();
-    const draw = () => app.render();
+    // Rendu coalescé : plusieurs draw() dans la même frame (ex. rafale de
+    // pointermove pendant un pan sur souris/écran haute fréquence) ne déclenchent
+    // qu'UN seul app.render() au prochain rAF, au lieu d'un rendu synchrone par
+    // événement. Évite les saccades sans changer la logique « à la demande ».
+    let drawScheduled = false;
+    const draw = () => {
+      if (drawScheduled) return;
+      drawScheduled = true;
+      requestAnimationFrame(() => { drawScheduled = false; app.render(); });
+    };
     window.addEventListener('resize', () => {
       app.renderer.resize(window.innerWidth, window.innerHeight);
       app.stage.hitArea = app.screen;
@@ -453,6 +462,14 @@ const PIXI = window.PIXI;
       decoLayer.rect(x - 1, y - 10, 2, 9).fill(col);
       decoLayer.poly([x + 1, y - 10, x + 8, y - 8, x + 1, y - 6]).fill(col);
     }
+
+    // Aplatissement des couches statiques : le terrain vectoriel (mapLayer) et
+    // les décors (decoLayer) ne changent JAMAIS après l'init → on les rasterise
+    // chacun en une texture. Des milliers d'opérations de tracé (biseaux, courbes
+    // de niveau, décors) deviennent un seul quad par rendu. Résolution 2 pour
+    // rester net à un zoom modéré ; léger flou au zoom maximal (compromis assumé).
+    mapLayer.cacheAsTexture({ resolution: 2, antialias: true });
+    decoLayer.cacheAsTexture({ resolution: 2, antialias: true });
 
     // -- Filtre « stats » : heatmap de défense + chiffres PM/DÉF par hexe. -----
     // Le terrain est fixe sur la partie → couche construite une fois, simplement
