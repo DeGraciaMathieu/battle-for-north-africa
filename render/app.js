@@ -454,26 +454,37 @@ const PIXI = window.PIXI;
       decoLayer.poly([x + 1, y - 10, x + 8, y - 8, x + 1, y - 6]).fill(col);
     }
 
-    // -- Filtre « stats » : coût de mouvement (PM) et défense de chaque hexe. --
+    // -- Filtre « stats » : heatmap de défense + chiffres PM/DÉF par hexe. -----
     // Le terrain est fixe sur la partie → couche construite une fois, simplement
-    // montrée/masquée par le bouton STAT. Défense en valeur perçue (+ = abri).
+    // montrée/masquée par le bouton STAT. Chaque hexe est teinté selon sa défense
+    // (rouge = exposé → vert = bon abri) en SEMI-TRANSPARENT : la carte reste
+    // lisible dessous. Les deux chiffres se lisent par-dessus (∞ = infranchissable).
     statsLayer.visible = false;
-    const statLabel = (s, color) => {
-      const t = new PIXI.Text({ text: s, style: { fontFamily: 'Arial', fontSize: 11, fontWeight: '700', fill: color } });
+    const statLabel = (s, sz) => {
+      const t = new PIXI.Text({ text: s, style: { fontFamily: 'Arial', fontSize: sz, fontWeight: '700', fill: 0xffffff, stroke: { color: 0x0c0f08, width: 3 } } });
       t.anchor.set(0.5);
       return t;
     };
+    // Échelle de défense −1..+3 → rouge → jaune → vert.
+    const defColor = (d) => {
+      const t = Math.max(0, Math.min(1, (d + 1) / 4));
+      return t < 0.5 ? lerpColor(0xd23b2b, 0xd9c04a, t / 0.5) : lerpColor(0xd9c04a, 0x3f8f3a, (t - 0.5) / 0.5);
+    };
+    const statFill = new PIXI.Graphics();                 // teintes (une seule géométrie)
     for (const { q, r } of state.hexes) {
       const tp = TERRAIN[state.terrain.get(key(q, r))];
       if (!tp) continue;
       const { x, y } = axialToPixel(q, r);
-      const cost = tp.cost === Infinity ? '∞' : tp.cost;
+      const impassable = tp.cost === Infinity;
+      const cost = impassable ? '∞' : tp.cost;
       const def = tp.def > 0 ? `+${tp.def}` : `${tp.def}`;
-      const chip = new PIXI.Graphics().roundRect(x - 21, y - 15, 42, 30, 5).fill({ color: 0x11140d, alpha: 0.66 });
-      const pm = statLabel(`PM ${cost}`, 0x9fe08a); pm.position.set(x, y - 7);
-      const df = statLabel(`DÉF ${def}`, 0xe6b45a); df.position.set(x, y + 7);
-      statsLayer.addChild(chip, pm, df);
+      const col = impassable ? 0x2a3340 : defColor(tp.def); // infranchissable → ardoise neutre
+      statFill.poly(hexCorners(x, y)).fill({ color: col, alpha: 0.5 }).stroke({ width: 1, color: 0x0c0f08, alpha: 0.35 });
+      const pm = statLabel(`PM ${cost}`, 11); pm.position.set(x, y - 8);
+      const df = statLabel(`DÉF ${def}`, 11); df.position.set(x, y + 9);
+      statsLayer.addChild(pm, df);
     }
+    statsLayer.addChildAt(statFill, 0);                    // teintes sous les chiffres
 
     // -- Pions ---------------------------------------------------------------
     const CS = 50;
