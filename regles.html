@@ -100,7 +100,7 @@
         <tbody></tbody>
       </table>
       <div class="legend" id="terrain-legend"></div>
-      <p>Un coût de <code>0.5</code> (route) permet d'aller plus vite ; un décalage défensif <b>négatif</b> (route, marais) <em>désavantage</em> le
+      <p>Un coût de <code>0.5</code> (route) permet d'aller plus vite ; un décalage défensif <b>négatif</b> (route, marais, plage) <em>désavantage</em> le
         défenseur. La <em>rivière</em> est infranchissable : aucune unité ne peut y entrer. Les <em>villes</em>, <em>villages</em> et <em>oasis</em>,
         en plus de protéger le défenseur, sont des <b>sources de ravitaillement</b> une fois occupés (voir §8).</p>
     </section>
@@ -291,7 +291,7 @@
     $('p-arty').textContent = ARTY_RANGE;
 
     // -- Tableau des terrains ----------------------------------------------
-    const TERRAIN_ORDER = ['plain', 'desert', 'road', 'forest', 'dunes', 'rough', 'wadi', 'plateau', 'hill', 'mountain', 'snow', 'town', 'village', 'oasis', 'ruins', 'bank', 'marsh', 'river', 'base'];
+    const TERRAIN_ORDER = ['plain', 'desert', 'road', 'forest', 'dunes', 'rough', 'wadi', 'plateau', 'hill', 'mountain', 'snow', 'town', 'village', 'oasis', 'ruins', 'bank', 'beach', 'marsh', 'river', 'base'];
     const seen = new Set();
     const roleOf = (t, tp) =>
       tp.cost === Infinity ? 'Infranchissable'

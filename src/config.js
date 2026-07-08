@@ -25,6 +25,7 @@ export const DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
 export const TERRAIN = {
   river:   { name: 'Rivière',      fill: 0x336d94, stroke: 0x1f4c6e, cost: Infinity, def: 0 },
   bank:    { name: 'Berge',        fill: 0x77aec2, stroke: 0x437a92, cost: 2, def: 0 },
+  beach:   { name: 'Plage',        fill: 0xe8d7a0, stroke: 0xc0a86e, cost: 2, def: -1 },
   marsh:   { name: 'Marais',       fill: 0x4b5540, stroke: 0x333c2a, cost: 3, def: -1 },
   wadi:    { name: 'Oued',         fill: 0xac9866, stroke: 0x6f5f38, cost: 2, def: 1 },
   plain:   { name: 'Plaine',       fill: 0x93b957, stroke: 0x67863a, cost: 1, def: 0 },

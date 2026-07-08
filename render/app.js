@@ -334,7 +334,7 @@ const PIXI = window.PIXI;
     // et courbes de niveau, à la manière d'une carte topographique. Palette
     // sombre : vert foncé dans les bas-fonds → gris-vert → gris pierre en altitude.
     // Purement visuel : aucune règle ne dépend de ces valeurs.
-    const ELEV = { river: 0, bank: 0, marsh: 1, wadi: 1, plain: 2, plain2: 2, desert: 2, dunes: 2, oasis: 2, snow: 2, forest: 2, road: 2, town: 2, village: 2, urban: 2, ruins: 2, base: 2, plateau: 3, rough: 3, hill: 4, mountain: 5 };
+    const ELEV = { river: 0, bank: 0, beach: 1, marsh: 1, wadi: 1, plain: 2, plain2: 2, desert: 2, dunes: 2, oasis: 2, snow: 2, forest: 2, road: 2, town: 2, village: 2, urban: 2, ruins: 2, base: 2, plateau: 3, rough: 3, hill: 4, mountain: 5 };
     const WATER_R = new Set(['river', 'bank']);
     const bandNoise = (q, r) => {                          // 0..1 déterministe, deux fréquences
       const a = Math.sin(q * 12.9898 + r * 78.233) * 43758.5453;
