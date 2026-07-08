@@ -1287,6 +1287,7 @@ const PIXI = window.PIXI;
     function closeCombat() {
       clearCombatTimers();
       $('combatModal').style.display = 'none';
+      refresh();                                           // le plateau ne reflète pertes/reculs qu'à la fermeture
       fxQueue.splice(0).forEach(({ q, r, kind, id }) => {  // effets une fois la modale fermée
         spawnFx(q, r, kind);
         if (kind === 'hit') flipUnit(id);                  // unité réduite : on retourne sa tuile
@@ -1303,8 +1304,8 @@ const PIXI = window.PIXI;
       fxQueue.length = 0;
       resolveCombat(state, atkUnits, defender);             // → combatResolved → runRoll (anime la colonne)
       attackers.clear();
-      refresh();
-      if (state.G.over) $('combatModal').style.display = 'none'; // le bandeau de victoire prend le relais
+      // le plateau n'est synchronisé qu'à la fermeture (closeCombat) : pas de spoiler pendant l'animation du dé
+      if (state.G.over) { $('combatModal').style.display = 'none'; refresh(); } // le bandeau de victoire prend le relais
     };
     $('btnRefuseCombat').onclick = () => {
       pendingCombat = null;
@@ -1369,8 +1370,8 @@ const PIXI = window.PIXI;
       fxQueue.length = 0;
       resolveCombat(state, atkUnits, defender);           // → combatResolved → runRoll (anime la colonne)
       attackers.clear();
-      refresh();
-      if (state.G.over) $('combatModal').style.display = 'none';
+      // synchro du plateau différée à closeCombat pour ne rien dévoiler avant la fin du dé
+      if (state.G.over) { $('combatModal').style.display = 'none'; refresh(); }
     }
 
     // -- Pilote de l'IA (solo) : rejoue les intentions du planificateur pur
