@@ -11,7 +11,7 @@ import { key, axialToPixel, offsetToAxial, pixelToAxial, hexCorners } from '../s
 import { generateMap } from '../src/map.js';
 
 // ---- Palette : ordre d'affichage des terrains peignables. -----------------
-const PALETTE = ['plain', 'plain2', 'plateau', 'road', 'bank', 'marsh', 'river', 'forest', 'hill', 'mountain', 'rough', 'desert', 'dunes', 'oasis', 'snow', 'wadi', 'ruins', 'village', 'town', 'urban', 'base'];
+const PALETTE = ['plain', 'plain2', 'plateau', 'road', 'bank', 'beach', 'marsh', 'river', 'forest', 'hill', 'mountain', 'rough', 'desert', 'dunes', 'oasis', 'snow', 'wadi', 'ruins', 'village', 'town', 'urban', 'base'];
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 
 // ---- État de l'éditeur. ----------------------------------------------------
@@ -114,6 +114,7 @@ function paintAt(k) {
   if (!k || terrain.get(k) === brush) return;
   terrain.set(k, brush);
   draw();
+  renderStats();
 }
 
 // ---- Interaction souris. ---------------------------------------------------
@@ -148,19 +149,46 @@ canvas.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 // ---- Palette (UI). ---------------------------------------------------------
+// Caractéristiques d'un terrain : coût en PM et décalage défensif (signé).
+function terrainFx(def) {
+  if (def.cost === Infinity) return 'infranchissable';
+  const pm = def.cost === 0.5 ? '½' : def.cost;
+  const d = def.def > 0 ? '+' + def.def : def.def;   // négatif → le « − » est déjà présent
+  return pm + ' PM · ' + d + ' déf';
+}
 const palEl = document.getElementById('palette');
 const swatches = new Map();
-for (const t of PALETTE) {
+const palOrder = [...PALETTE].sort((a, b) => TERRAIN[a].name.localeCompare(TERRAIN[b].name, 'fr'));
+for (const t of palOrder) {
   const def = TERRAIN[t];
   const b = document.createElement('button');
   b.className = 'swatch-btn';
-  b.innerHTML = '<span class="sw" style="background:' + hex6(def.fill) + '"></span>' + def.name;
+  b.innerHTML = '<span class="sw" style="background:' + hex6(def.fill) + '"></span>'
+    + '<span class="pal-lbl"><span class="pal-nm">' + def.name + '</span>'
+    + '<span class="pal-fx">' + terrainFx(def) + '</span></span>';
   b.addEventListener('click', () => { brush = t; select(t); });
   palEl.appendChild(b);
   swatches.set(t, b);
 }
 function select(t) { for (const [k, b] of swatches) b.classList.toggle('on', k === t); }
 select(brush);
+
+// ---- Statistiques : répartition des hexes par terrain (temps réel). --------
+// Terrains présents triés par ordre alphabétique de leur nom, plus un total.
+const statsEl = document.getElementById('stats');
+function renderStats() {
+  const counts = new Map();
+  for (const t of terrain.values()) counts.set(t, (counts.get(t) || 0) + 1);
+  const total = terrain.size;
+  const order = [...counts.keys()].sort((a, b) => TERRAIN[a].name.localeCompare(TERRAIN[b].name, 'fr'));
+  statsEl.innerHTML = order.map((t) => {
+    const def = TERRAIN[t], n = counts.get(t);
+    return '<div class="stat-row"><span class="sw" style="background:' + hex6(def.fill) + '"></span>'
+      + '<span class="nm">' + def.name + '</span><span class="ct">' + n + '</span>'
+      + '<span class="pc">' + Math.round((n / total) * 100) + '%</span></div>';
+  }).join('')
+    + '<div class="stat-row total"><span class="nm">Total</span><span class="ct">' + total + '</span><span class="pc"></span></div>';
+}
 
 // ---- Barre d'outils. -------------------------------------------------------
 const tip = document.getElementById('tip');
@@ -171,6 +199,7 @@ document.getElementById('btnClear').addEventListener('click', () => {
   if (!confirm('Tout effacer et repartir d’une plaine vierge ?')) return;
   for (const k of terrain.keys()) terrain.set(k, plain());
   draw();
+  renderStats();
 });
 
 document.getElementById('btnSeed').addEventListener('click', () => {
@@ -179,6 +208,7 @@ document.getElementById('btnSeed').addEventListener('click', () => {
   const gen = generateMap(Number(s) || 1);
   for (const k of terrain.keys()) terrain.set(k, gen.terrain.get(k) || 'plain');
   draw();
+  renderStats();
 });
 
 document.getElementById('btnExport').addEventListener('click', () => {
@@ -201,6 +231,7 @@ fileInput.addEventListener('change', async () => {
     const src = data.terrain || {};
     for (const k of terrain.keys()) terrain.set(k, TERRAIN[src[k]] ? src[k] : 'plain');
     draw();
+    renderStats();
   } catch {
     alert('Fichier illisible : JSON invalide.');
   }
@@ -211,3 +242,4 @@ fileInput.addEventListener('change', async () => {
 window.addEventListener('resize', resize);
 resize();
 fit();
+renderStats();

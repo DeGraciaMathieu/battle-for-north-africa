@@ -25,12 +25,23 @@
   .swatch-btn:hover { background: #2c281c; }
   .swatch-btn.on { background: #3a3323; border-color: #8a7838; color: #efe4bc; }
   .sw { width: 14px; height: 14px; border: 1px solid #2a2418; border-radius: 3px; flex: 0 0 14px; }
+  .pal-lbl { display: flex; flex: 1; align-items: baseline; gap: 6px; }
+  .pal-nm { flex: 1; }
+  .pal-fx { font-size: 10px; color: #8a8064; white-space: nowrap; }
+  .swatch-btn.on .pal-fx { color: #b7a878; }
 
   .tools { display: flex; flex-direction: column; gap: 6px; }
   .tools button { cursor: pointer; font-family: inherit; font-weight: 700; font-size: 12px;
     background: #3a3323; color: #e8b95a; border: 1px solid #6d5f38; border-radius: 4px;
     padding: 8px; letter-spacing: .5px; }
   .tools button:hover { background: #4a4029; }
+
+  #stats { display: flex; flex-direction: column; gap: 3px; }
+  .stat-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #c8bd97; }
+  .stat-row .nm { flex: 1; }
+  .stat-row .ct { color: #efe4bc; font-weight: 700; }
+  .stat-row .pc { color: #8a8064; min-width: 32px; text-align: right; }
+  .stat-row.total { border-top: 1px solid #48412c; padding-top: 4px; margin-top: 2px; }
 
   /* Zone de dessin */
   #main { flex: 1; position: relative; }
@@ -61,6 +72,9 @@
       <button id="btnImport">Importer un JSON…</button>
       <button id="btnExport">Exporter en JSON</button>
     </div>
+
+    <div class="sect">Statistiques</div>
+    <div id="stats"></div>
   </aside>
 
   <main id="main">
