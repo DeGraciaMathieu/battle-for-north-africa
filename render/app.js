@@ -1060,9 +1060,19 @@ const PIXI = window.PIXI;
       world.position.set((app.screen.width - b.width * s) / 2 - b.x * s, (app.screen.height - b.height * s) / 2 - b.y * s);
       draw();
     }
-    document.getElementById('btnIn').onclick = () => zoomAt(1.2, app.screen.width / 2, app.screen.height / 2);
-    document.getElementById('btnOut').onclick = () => zoomAt(0.83, app.screen.width / 2, app.screen.height / 2);
+    const zoomIn = () => zoomAt(1.2, app.screen.width / 2, app.screen.height / 2);
+    const zoomOut = () => zoomAt(0.83, app.screen.width / 2, app.screen.height / 2);
+    document.getElementById('btnIn').onclick = zoomIn;
+    document.getElementById('btnOut').onclick = zoomOut;
     document.getElementById('btnReset').onclick = fitView;
+    // Zoom au clavier : + (ou =) pour agrandir, - pour réduire, centré sur l'écran.
+    window.addEventListener('keydown', (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const el = e.target;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+      if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomIn(); }
+      else if (e.key === '-') { e.preventDefault(); zoomOut(); }
+    });
     const btnSupply = document.getElementById('btnSupply');
     btnSupply.classList.toggle('on', showSupply);
     btnSupply.onclick = () => {
