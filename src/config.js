@@ -9,7 +9,7 @@ export const COLS = 30;          // largeur de la carte en colonnes offset
 export const ROWS = 20;          // hauteur de la carte en lignes offset
 export const SQRT3 = Math.sqrt(3);
 export const STACK_MAX = 3;      // limite d'empilement par hex et par camp
-export const MAX_TURNS = 6;      // durée de la partie (objectifs comptés à la fin)
+export const MAX_TURNS = 10;     // durée de la partie (objectifs comptés à la fin)
 export const ARTY_RANGE = 5;     // portée d'appui de l'artillerie (en hex)
 export const SUPPLY_RANGE = 8;   // longueur max d'une route de ravitaillement (hexes)
 
