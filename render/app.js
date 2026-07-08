@@ -199,9 +199,14 @@ const PIXI = window.PIXI;
     const FOREST_WEIGHTS = [1, 3, 2];              // deep raréfié au profit de dense
     const FOREST_TOTAL = FOREST_WEIGHTS.reduce((a, b) => a + b, 0);
     const forestTex = [];
+    // Médailles d'objectif : une par état de contrôle (neutre / Bleu / Rouge).
+    const medalTex = {};
     await Promise.all([
       ...TERRAIN_TILES.map(async (t) => { terrainTex[t] = await PIXI.Assets.load(asset(`terrain-${t}.png`)); }),
       ...FOREST_TILES.map(async (f, i) => { forestTex[i] = await PIXI.Assets.load(asset(`terrain-${f}.png`)); }),
+      (async () => { medalTex.neutral = await PIXI.Assets.load(asset('medal_gray.png')); })(),
+      (async () => { medalTex.blue = await PIXI.Assets.load(asset('medal_blue.png')); })(),
+      (async () => { medalTex.red = await PIXI.Assets.load(asset('medal_red.png')); })(),
     ]);
     const forestPick = (q, r) => {
       const n = Math.sin(q * 91.7 + r * 47.3) * 43758.5453;
@@ -231,8 +236,8 @@ const PIXI = window.PIXI;
 
     const world = new PIXI.Container();
     const tileLayer = new PIXI.Container(), mapLayer = new PIXI.Graphics(), decoLayer = new PIXI.Graphics(),
-      overlay = new PIXI.Graphics(), unitLayer = new PIXI.Container(), statsLayer = new PIXI.Container(), fxLayer = new PIXI.Graphics();
-    world.addChild(tileLayer, mapLayer, decoLayer, overlay, unitLayer, statsLayer, fxLayer); // stats & fx au-dessus des pions
+      overlay = new PIXI.Graphics(), objLayer = new PIXI.Container(), unitLayer = new PIXI.Container(), statsLayer = new PIXI.Container(), fxLayer = new PIXI.Graphics();
+    world.addChild(tileLayer, mapLayer, decoLayer, overlay, objLayer, unitLayer, statsLayer, fxLayer); // médailles au-dessus des surbrillances, sous les pions
     app.stage.addChild(world);
 
     // -- Effets de combat : impact (unité réduite) / explosion (unité éliminée).
@@ -742,33 +747,24 @@ const PIXI = window.PIXI;
       overlay.poly([px, topY, px + w, topY + h * 0.45, px, topY + h])
         .fill({ color: col, alpha }).stroke({ width: 1.2, color: 0x1c1810, alpha: 0.9 });
     };
-    // Objectif de victoire : étoile à 5 branches dans la couleur du camp tenant
-    // (gris translucide si neutre). Forme volontairement distincte des fanions,
-    // posée sur n'importe quel terrain.
-    const starPoly = (cx, cy, R, r) => {
-      const p = [];
-      for (let i = 0; i < 10; i++) {
-        const a = -Math.PI / 2 + (i * Math.PI) / 5;
-        const rad = i % 2 === 0 ? R : r;
-        p.push(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad);
-      }
-      return p;
-    };
+    // Objectif de victoire : médaille dans la couleur du camp tenant (grise si
+    // neutre). Sprite posé sur n'importe quel terrain, distinct des fanions.
     const drawObjective = (k) => {
       const [q, r] = k.split(',').map(Number);
       const { x, y } = axialToPixel(q, r);
       const ctrl = state.objControl.get(k);
-      const col = ctrl ? FLAG_COL[ctrl] : FLAG_COL.neutral;
-      const alpha = ctrl ? 1 : 0.6;
-      overlay.ellipse(x, y + 12, 8, 2.5).fill({ color: 0x1c1810, alpha: 0.4 });                // ombre au sol
-      overlay.poly(starPoly(x, y - 3, 16, 6.7))
-        .fill({ color: col, alpha }).stroke({ width: 1.8, color: 0x1c1810, alpha: 0.9 });
+      const sp = new PIXI.Sprite(medalTex[ctrl] || medalTex.neutral);
+      sp.anchor.set(0.5);
+      sp.position.set(x, y);
+      sp.width = SIZE * 1.5; sp.height = SIZE * 1.5;
+      objLayer.addChild(sp);
     };
     function drawOverlay() {
       overlay.clear();
+      objLayer.removeChildren();
       // Contrôle des peuplements. Rejoué à chaque refresh (le contrôle évolue) —
       // d'où le tracé ici plutôt que dans le decoLayer statique.
-      for (const k of state.objectives) drawObjective(k);          // objectifs de victoire (étoile)
+      for (const k of state.objectives) drawObjective(k);          // objectifs de victoire (médaille)
       for (const k of settlementKeys) drawFlag(k);                 // peuplements (fanion de ravito)
       if (showSupply) drawSupplyLines();
       if (state.G.phase === 'move') {
