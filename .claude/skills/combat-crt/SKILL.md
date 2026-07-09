@@ -33,7 +33,7 @@ Résolution des combats dans `src/combat.js` ; table (`CRT`, `ODDS`) dans `src/c
 ## Effets des résultats
 
 - `DE` → `hitUnit(defender)` (1 palier). `DR` → recul. `EX` → défenseur réduit + attaquants réduits jusqu'à couvrir `eDef(defender)`. `AR` → attaquants reculent. `AE` → attaquants réduits.
-- **Avance après combat** : si `DE`/`DR` libère l'hex du défenseur, l'attaquant adjacent le plus fort y entre (si l'empilement le permet).
+- **Percée (avance après combat)** : si `DE`/`DR` libère l'hex du défenseur, `resolveCombat` la PROPOSE (`summary.advance = { id, name, to }`, attaquant adjacent le plus fort) sans l'appliquer. `advanceAfterCombat(state, id, to)` l'applique en revalidant (ennemi, empilement). Décision : le joueur via la bulle `#advanceTip` ancrée sur l'hexe conquis (`ui.pendingAdvance`, affichée à la fermeture de la modale par `hud.refresh`), l'IA toujours (`drivers.js`), le distant via le message `{ t:'advance', id, to }`.
 
 ## Points d'attention
 
