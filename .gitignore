@@ -1,0 +1,12 @@
+# Dépendances d'outillage (ESLint/Prettier) — régénérées par `npm install`
+node_modules/
+package-lock.json
+
+# macOS
+.DS_Store
+
+# Réglages Claude Code personnels (le settings.json partagé reste versionné)
+.claude/settings.local.json
+
+# Archives locales d'anciens assets (copies de sauvegarde, non utilisées)
+assets/old/
