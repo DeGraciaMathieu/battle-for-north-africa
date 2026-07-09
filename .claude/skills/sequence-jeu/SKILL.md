@@ -28,7 +28,7 @@ Machine à états de la partie dans `src/game.js`.
 
 - **IGO-UGO** : chaque camp joue mouvement puis combat avant de passer la main. `endPhase` gère la transition et incrémente `turn` quand le camp Rouge (`red`) finit son combat.
 - **Victoire** : anéantissement d'un camp (immédiat, via `checkElimination` après chaque combat) OU, au tour `MAX_TURNS`, le camp au **score** le plus élevé (`checkTurnEnd`). Le score (`victoryScore`) = objectifs tenus + pertes infligées à l'ennemi, pondérés par `SCORE_WEIGHTS` (objectif 2, éliminé 1, réduit 0,5). Les pertes (`losses`) se mesurent par rapport à `state.initialCount`, figé à la création.
-- **Objectifs** : `objControl` retient le *dernier occupant* d'une ville/port (`updateObjectives`).
+- **Objectifs** : `objControl` retient le *dernier occupant* d’un dépôt/oasis (`updateObjectives`).
 
 ## Points d'attention
 

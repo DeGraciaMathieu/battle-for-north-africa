@@ -1,6 +1,6 @@
 ---
 name: geometrie-carte
-description: Use when working on the hex grid, coordinate conversions, terrain generation, or objectives (towns/ports).
+description: Use when working on the hex grid, coordinate conversions, terrain generation, or objectives, supply depots.
 auto_invoke: true
 ---
 
@@ -15,18 +15,18 @@ Grille hexagonale en coordonnées **axiales** `(q, r)`. Fonctions de géométrie
 | Coordonnée axiale sérialisée | `key(q, r)` → `"q,r"` (`src/geometry.js`) |
 | Axial → pixel (rendu) | `axialToPixel(q, r)` |
 | Pixel → axial (clic) | `pixelToAxial(x, y)` via `axialRound` |
-| Offset (col, row) → axial | `offsetToAxial(c, rw)` — le roster et `TOWNS` sont en offset |
+| Offset (col, row) → axial | `offsetToAxial(c, rw)` — le roster et `BASES` sont en offset |
 | Distance en hex | `hexDistance(aq, ar, bq, br)` |
 | Coins d'un hex (rendu) | `hexCorners(cx, cy)` |
 | 6 voisins | `DIRS` (`src/config.js`) |
 | Terrain d'un hex | `terrain.get(key(q, r))` → clé de `TERRAIN` |
 | Coût de mouvement | `TERRAIN[t].cost` (`Infinity` = mer) |
 | Décalage défensif | `TERRAIN[t].def` |
-| Objectifs | `state.objectives` (clés des hexes `town`), contrôle dans `state.objControl` |
+| Objectifs | `state.objectives` (clés indépendantes du terrain), contrôle dans `state.objControl` |
 
 ## Terrain (`src/config.js` → `TERRAIN`)
 
-`river` (infranchissable, « Rivière »/lac/étang), `bank` (berge, coût 2), `plain`/`plain2` (plaine, coût 1), `hill` (coteau, coût 3, +2 déf), `town` (ville/pont, objectif, +2 déf, ravito 6), `village` (relais de ravito 4, +2 déf), `forest` (bois, coût 2, +1 déf), `road` (route, coût 0,5, −1 déf), `base` (camp de base, source de ravitaillement — posé via `BASES`, voir skill `ravitaillement`).
+`river` (infranchissable, « Rivière »/lac/étang), `bank` (berge, coût 2), `plain`/`plain2` (plaine, coût 1), `hill` (coteau, coût 3, +2 déf), `depot` (grand dépôt de ravitaillement, +2 déf, ravito 6), `dump` (petit dépôt, relais de ravito 4, +2 déf), `forest` (bois, coût 2, +1 déf), `road` (route, coût 0,5, −1 déf), `base` (camp de base, source de ravitaillement — posé via `BASES`, voir skill `ravitaillement`).
 
 ## Génération (`src/map.js` → `generateMap(seed)`)
 
@@ -39,12 +39,12 @@ Reproductible via une **graine** : `generateMap(seed)` seede un PRNG déterminis
    Dans les deux cas, `path` (clés axiales) porte les ponts.
 3. **Relief & étangs** en amas (`stamp`) : `forest` (bois), `hill` (coteaux), `river` (étangs).
 4. **Berges** — toute plaine bordant l'eau → `bank`.
-5. **Ponts** — quelques `town` répartis le long de `path`.
-6. **Bases** (`BASES`) puis **peuplements** de terre : villes (objectif) ou villages (relais de ravito), jamais îlots.
+5. **Ponts** — routes réparties le long de `path`.
+6. **Bases** (`BASES`) puis **dépôts de ravitaillement** : grands (ravito 6) ou petits (ravito 4), jamais îlots.
 7. **Jouabilité** — tant que les deux bases ne sont pas reliées par voie terrestre, un hex d'eau frontalier devient pont.
-8. **Réseau routier** — arbre couvrant minimal reliant villes/villages/bases, chaque arête tracée par Dijkstra pondéré.
+8. **Réseau routier** — arbre couvrant minimal reliant dépôts/bases, chaque arête tracée par Dijkstra pondéré.
 
-Les objectifs = clés des hexes `town` (`state.objectives`).
+Les objectifs (`state.objectives`) sont posés indépendamment du terrain.
 
 ## Ajouter un nouveau terrain
 

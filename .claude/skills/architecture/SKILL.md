@@ -12,7 +12,7 @@ Deux couches strictement séparées : `src/` (règles, testables) et `render/` (
 
 | Module | Rôle | Dépend de |
 |---|---|---|
-| `src/config.js` | Constantes : dimensions, `TERRAIN`, `TOWNS`, `ODDS`, `CRT`, `DIRS`, portées | — |
+| `src/config.js` | Constantes : dimensions, `TERRAIN`, `ODDS`, `CRT`, `DIRS`, portées | — |
 | `src/geometry.js` | Hex axial pur : `key`, `axialToPixel`, `pixelToAxial`, `hexDistance`, `hexCorners`, `clamp` | config |
 | `src/events.js` | Bus d'événements (`createBus`) | — |
 | `src/map.js` | `generateMap()` → terrain, hexes, objectifs | config, geometry |

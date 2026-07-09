@@ -101,7 +101,7 @@
       </table>
       <div class="legend" id="terrain-legend"></div>
       <p>Un coût de <code>0.5</code> (route) permet d'aller plus vite ; un décalage défensif <b>négatif</b> (route, marais, plage) <em>désavantage</em> le
-        défenseur. La <em>rivière</em> est infranchissable : aucune unité ne peut y entrer. Les <em>villes</em>, <em>villages</em> et <em>oasis</em>,
+        défenseur. La <em>rivière</em> est infranchissable : aucune unité ne peut y entrer. Les <em>grands dépôts</em>, <em>petits dépôts</em> et <em>oasis</em>,
         en plus de protéger le défenseur, sont des <b>sources de ravitaillement</b> une fois occupés (voir §8).</p>
     </section>
 
@@ -193,7 +193,7 @@
       <p>Le ravitaillement se propage depuis des <b>sources</b> par un « écoulement » d'hexe en hexe (flood-fill). Les sources d'un camp sont :</p>
       <ul>
         <li>son <b>camp de base</b> (portée <b id="p-supply"></b> hexes) ;</li>
-        <li>chaque <b>ville</b> (portée 6), <b>village</b> (portée 4) et <b>oasis</b> (portée 4) qu'il <em>tient</em>.</li>
+        <li>chaque <b>grand dépôt</b> (portée 6), <b>petit dépôt</b> (portée 4) et <b>oasis</b> (portée 4) qu'il <em>tient</em>.</li>
       </ul>
       <p>Depuis chaque source, le ravitaillement se répand en perdant 1 de portée par hexe traversé. Il <b>ne peut pas</b>
         franchir :</p>
@@ -204,7 +204,7 @@
       </ul>
       <p>Toute unité posée sur un hexe atteint par cet écoulement est <b>ravitaillée</b>. Les autres sont
         <b>hors ravitaillement</b> et subissent la pénalité de défense et de mouvement décrite au §4. Le ravitaillement est
-        recalculé au début de chaque phase de mouvement : capturer une ville ennemie peut instantanément raviver vos unités
+        recalculé au début de chaque phase de mouvement : capturer un dépôt ennemi peut instantanément raviver vos unités
         avancées… ou assécher les siennes.</p>
     </section>
 
@@ -268,8 +268,8 @@
           <b>réduites</b> &times; 0,5. Le camp au score le plus élevé l'emporte ; en cas d'égalité, l'avantage revient au
           camp Bleu.</li>
       </ul>
-      <p>Les <b>objectifs</b> sont des marqueurs signalés sur la carte, posés sur n'importe quel terrain (pas forcément une
-        ville) : eux seuls comptent pour la victoire finale. Villes, villages et oasis, eux, servent de sources de ravitaillement
+      <p>Les <b>objectifs</b> sont des marqueurs signalés sur la carte, posés sur n'importe quel terrain (pas forcément un
+        dépôt) : eux seuls comptent pour la victoire finale. Dépôts et oasis, eux, servent de sources de ravitaillement
         (voir §8), indépendamment des objectifs.</p>
     </section>
 
@@ -291,7 +291,7 @@
     $('p-arty').textContent = ARTY_RANGE;
 
     // -- Tableau des terrains ----------------------------------------------
-    const TERRAIN_ORDER = ['plain', 'desert', 'road', 'forest', 'dunes', 'rough', 'wadi', 'plateau', 'hill', 'mountain', 'snow', 'town', 'village', 'oasis', 'ruins', 'bank', 'beach', 'marsh', 'river', 'base'];
+    const TERRAIN_ORDER = ['plain', 'desert', 'road', 'forest', 'dunes', 'rough', 'wadi', 'plateau', 'hill', 'mountain', 'snow', 'depot', 'dump', 'oasis', 'ruins', 'bank', 'beach', 'marsh', 'river', 'base'];
     const seen = new Set();
     const roleOf = (t, tp) =>
       tp.cost === Infinity ? 'Infranchissable'
