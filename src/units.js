@@ -51,7 +51,7 @@ function rosterFrom(composition) {
       for (let k = 0; k < (counts[t] || 0); k++) {
         const p = pos[i++];
         specs.push({
-          side, type: tpl.type, ech: tpl.ech, name: `${tpl.abbr}-${k + 1}`, fullName: `${tpl.label} ${k + 1}`,
+          side, type: tpl.type, name: `${tpl.abbr}-${k + 1}`, fullName: `${tpl.label} ${k + 1}`,
           atk: tpl.atk, def: tpl.def, mov: tpl.mov, ratk: tpl.ratk, rdef: tpl.rdef, rmov: tpl.rmov, col: p.col, row: p.row,
         });
       }

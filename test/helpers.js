@@ -29,7 +29,7 @@ export function fillTerrain(coords, type = 'plain') {
 // Pion de test : valeurs par défaut raisonnables, surchargées au besoin.
 export function makeUnit(over = {}) {
   return {
-    id: 0, side: 'blue', type: 'armor', name: 'T', ech: 'XX',
+    id: 0, side: 'blue', type: 'armor', name: 'T',
     q: 0, r: 0, atk: 6, def: 6, mov: 10, ratk: 4, rdef: 4, rmov: 8,
     mpLeft: 10, hasFought: false, reduced: false, supplied: true, ...over,
   };

@@ -45,13 +45,11 @@ export function createCounters(state, stage) {
       t.anchor.set(0.5);
       return t;
     };
-    const ech = T(u.ech, 8); ech.position.set(0, -CS / 2 + 7);
-    const nm = T(u.name, 9); nm.position.set(0, -CS / 2 + 17);
     // Facteurs de la FACE courante ; le ravitaillement modifie l'effectif au
     // combat mais pas le nombre imprimé.
     const fa = reduced ? u.ratk : u.atk, fd = reduced ? u.rdef : u.def, fm = reduced ? u.rmov : u.mov;
     const fac = T(`${fa}-${fd}-${fm}`, 10); fac.position.set(0, CS / 2 - 8);
-    c.addChild(shadow, base, box, ech, nm, fac);
+    c.addChild(shadow, base, box, fac);
     if (reduced) { // bande d'angle rouge = pion réduit
       const stripe = new PIXI.Graphics();
       stripe.poly([CS / 2 - 12, -CS / 2, CS / 2, -CS / 2, CS / 2, -CS / 2 + 12]).fill(0xb33a2a);

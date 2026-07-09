@@ -67,10 +67,10 @@ export const RESULT_FR = {
 // Catalogue d'unités pour l'éditeur d'armée (point-buy) : facteurs recto/verso
 // et coût en points. Partagé par la homepage et la construction des pions.
 export const UNIT_CATALOG = {
-  armor: { type: 'armor', label: 'Blindé',     ech: 'XX', abbr: 'BLD', cost: 5, atk: 8, def: 7, mov: 6, ratk: 5, rdef: 4, rmov: 5 },
-  mech:  { type: 'mech',  label: 'Mécanisée',  ech: 'XX', abbr: 'MEC', cost: 4, atk: 6, def: 6, mov: 5, ratk: 4, rdef: 4, rmov: 4 },
-  arty:  { type: 'arty',  label: 'Artillerie', ech: 'X',  abbr: 'ART', cost: 4, atk: 2, def: 3, mov: 3, ratk: 1, rdef: 2, rmov: 3 },
-  inf:   { type: 'inf',   label: 'Infanterie', ech: 'XX', abbr: 'INF', cost: 3, atk: 6, def: 6, mov: 4, ratk: 4, rdef: 4, rmov: 3 },
+  armor: { type: 'armor', label: 'Blindé',     abbr: 'BLD', cost: 5, atk: 8, def: 7, mov: 6, ratk: 5, rdef: 4, rmov: 5 },
+  mech:  { type: 'mech',  label: 'Mécanisée',  abbr: 'MEC', cost: 4, atk: 6, def: 6, mov: 5, ratk: 4, rdef: 4, rmov: 4 },
+  arty:  { type: 'arty',  label: 'Artillerie', abbr: 'ART', cost: 4, atk: 2, def: 3, mov: 3, ratk: 1, rdef: 2, rmov: 3 },
+  inf:   { type: 'inf',   label: 'Infanterie', abbr: 'INF', cost: 3, atk: 6, def: 6, mov: 4, ratk: 4, rdef: 4, rmov: 3 },
 };
 export const CATALOG_ORDER = ['armor', 'mech', 'arty', 'inf']; // ordre d'encodage URL
 export const ARMY_POINTS = 45;                                          // budget par camp
