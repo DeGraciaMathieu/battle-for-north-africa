@@ -9,6 +9,10 @@ export function makeState({ terrain = new Map(), units = [], objectives = [], rn
     objectives,
     objControl: new Map(),
     units,
+    initialCount: {
+      blue: units.filter((u) => u.side === 'blue').length,
+      red: units.filter((u) => u.side === 'red').length,
+    },
     G: { turn: 1, player: 'blue', phase: 'move', over: false },
     bus: createBus(),
     rng,
