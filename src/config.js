@@ -40,7 +40,7 @@ export const TERRAIN = {
   mountain:{ name: 'Montagne',     fill: 0x888890, stroke: 0x56565e, cost: 4, def: 3 },
   town:    { name: 'Ville',        fill: 0xbaa971, stroke: 0x7a6a3f, cost: 1, def: 2, supply: 6 },
   village: { name: 'Village',      fill: 0xa8977a, stroke: 0x6e6042, cost: 1, def: 2, supply: 4 },
-  urban:   { name: 'Zone urbaine', fill: 0x9a9aa0, stroke: 0x63636b, cost: 1, def: 2 },
+  urban:   { name: 'Zone urbaine', fill: 0xc4c3bd, stroke: 0x94938e, cost: 1, def: 2 },
   ruins:   { name: 'Ruines',       fill: 0x8f8a86, stroke: 0x585450, cost: 1, def: 2 },
   forest:  { name: 'Bois',         fill: 0x468236, stroke: 0x2c5622, cost: 2, def: 1 },
   road:    { name: 'Route',        fill: 0xc2ab7a, stroke: 0x8a7550, cost: 0.5, def: -1 },

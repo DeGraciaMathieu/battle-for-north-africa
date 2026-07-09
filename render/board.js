@@ -32,51 +32,83 @@ const forestPick = (q, r) => {
   return FOREST_WEIGHTS.length - 1;
 };
 
-// Tissu urbain : variantes d'îlots bâtis [dx, dy, w, h] en repère quartier —
-// damier, grand-place (place dégagée + monument), faubourg en barres, vieux
-// centre serré. Chaque hexe tire sa variante, son orientation, une gigue et
-// des teintes de toits qui lui sont propres : deux hexes ne se ressemblent
-// jamais. Purement visuel, aucune règle ne dépend de ces formes.
+// Tissu urbain façon plan de ville : le fond clair de l'hexe fait office de
+// voirie ; on pose dessus des ÎLOTS (pâtés de maisons) gris pâle aux liserés
+// discrets, quelques bâtiments notables plus sombres, puis les axes blancs
+// vers les hexes voisins. Quatre trames — grille orthogonale, tissu radial,
+// boulevards obliques, place centrale — tournées et perturbées par hexe :
+// deux hexes ne se ressemblent jamais. Purement visuel, aucune règle ici.
 const URBAN_VARIANTS = [
-  { blds: [[-7, -8, 8, 7], [8, -7, 8, 6], [-8, 7, 9, 6], [7, 7, 7, 7], [13, 0, 4, 3]] },
-  { square: [0, 0, 6.5], blds: [[-9, -6, 6, 5], [7, -8, 8, 5], [11, 3, 5, 6], [-1, -11, 7, 4], [-10, 5, 6, 6], [2, 10, 8, 4]] },
-  { blds: [[-7, -8, 10, 3], [5, -9, 8, 3], [-1, -3, 12, 3], [-6, 8, 8, 4], [7, 7, 6, 4]] },
-  { blds: [[-4, -9, 4, 4], [4, -10, 5, 3], [-9, -2, 4, 5], [9, -1, 4, 4], [-5, 7, 5, 4], [6, 8, 4, 4], [12, -6, 3, 3], [-11, 6, 3, 3]] },
+  { blocks: [ // damier : quatre gros îlots réguliers
+    [-26, -26, -2, -26, -2, -2, -26, -2],
+    [2, -26, 26, -26, 26, -2, 2, -2],
+    [-26, 2, -2, 2, -2, 26, -26, 26],
+    [2, 2, 26, 2, 26, 26, 2, 26],
+  ] },
+  { blocks: [ // rangées décalées : deux gros îlots au nord, trois au sud
+    [-26, -26, -2, -26, -2, -2, -26, -2],
+    [2, -26, 26, -26, 26, -2, 2, -2],
+    [-26, 2, -11, 2, -11, 26, -26, 26],
+    [-7, 2, 7, 2, 7, 26, -7, 26],
+    [11, 2, 26, 2, 26, 26, 11, 26],
+  ] },
+  { blocks: [ // boulevards : bandes traversantes parallèles
+    [-26, -26, 26, -26, 26, -10, -26, -10],
+    [-26, -6, 4, -6, 4, 6, -26, 6],
+    [8, -6, 26, -6, 26, 6, 8, 6],
+    [-26, 10, 26, 10, 26, 26, -26, 26],
+  ] },
+  { square: true, blocks: [ // place centrale dégagée, îlots en couronne
+    [-26, -26, 26, -26, 26, -11, -26, -11],
+    [-26, -7, -9, -7, -9, 26, -26, 26],
+    [9, -7, 26, -7, 26, 26, 9, 26],
+    [-5, 11, 5, 11, 5, 26, -5, 26],
+  ] },
 ];
-const ROOF_FILLS = [0x494a54, 0x3c3d46, 0x5a4a41]; // ardoise, sombre, tuile brune
-const URBAN_STREET = { width: 2.2, color: 0xc0c0c7, alpha: 0.75 };
-const URBAN_K = 1.25; // agrandissement du bâti (specs en repère compact)
+const URBAN_BLOCK = { fill: 0xaaa9a3, stroke: { width: 0.8, color: 0x908f8a, alpha: 0.8 } };
+const URBAN_BLD = { fill: 0x8b8a85, stroke: { width: 0.7, color: 0x74736d, alpha: 0.9 } };
+const URBAN_STREET = { width: 2.4, color: 0xdeddd8, alpha: 0.9 };
 
-// Dessine le tissu urbain d'un hexe : rues vers les bords reliés (voisins
-// bâtis ou routiers) puis îlots de la variante, le tout tourné d'un bloc.
-// Les îlots portent une ombre pour se détacher de l'aplat.
+// Dessine le plan de ville d'un hexe : îlots de la trame (sommets gigués),
+// bâtiments notables posés dessus, puis axes vers les bords reliés (voisins
+// bâtis ou routiers) — les avenues découpent le tissu, comme sur un plan.
 function drawUrban(g, x, y, q, r, mids) {
-  for (const m of mids) g.moveTo(x, y).lineTo(m.x, m.y).stroke(URBAN_STREET);
   const A = (hash01(q, r, 9) - 0.5) * 0.6; // orientation du quartier (±17°)
   const cosA = Math.cos(A), sinA = Math.sin(A);
   const at = (px, py) => [x + px * cosA - py * sinA, y + px * sinA + py * cosA];
-  if (!mids.length) { // quartier isolé : une ruelle traversante tout de même
-    const [ax, ay] = at(-14, 9), [bx, by] = at(14, -9);
-    g.moveTo(ax, ay).lineTo(bx, by).stroke(URBAN_STREET);
-  }
   const v = URBAN_VARIANTS[Math.floor(hash01(q, r, 5) * URBAN_VARIANTS.length)];
-  if (v.square) { // place dégagée et son monument
-    const [sx, sy] = at(v.square[0] * URBAN_K, v.square[1] * URBAN_K);
-    g.circle(sx, sy, v.square[2] * URBAN_K).fill(0xb7b7be);
-    g.circle(sx, sy, 1.6).fill(0x2e2f36);
-  }
-  v.blds.forEach((b, i) => {
-    const cx = b[0] * URBAN_K + (hash01(q, r, 20 + i) - 0.5) * 3;
-    const cy = b[1] * URBAN_K + (hash01(q, r, 40 + i) - 0.5) * 3;
-    const w = Math.max(3, b[2] * URBAN_K + (hash01(q, r, 60 + i) - 0.5) * 2.5);
-    const h = Math.max(3, b[3] * URBAN_K + (hash01(q, r, 80 + i) - 0.5) * 2.5);
+  v.blocks.forEach((poly, i) => {
+    const pts = [];
+    for (let j = 0; j < poly.length; j += 2) {
+      const jx = (hash01(q, r, 20 + i * 8 + j) - 0.5) * 2.4;
+      const jy = (hash01(q, r, 60 + i * 8 + j) - 0.5) * 2.4;
+      pts.push(...at(poly[j] + jx, poly[j + 1] + jy));
+    }
+    g.poly(pts).fill(URBAN_BLOCK.fill).stroke(URBAN_BLOCK.stroke);
+  });
+  // Bâtiments notables : 2-3 rectangles plus soutenus, posés sur des îlots.
+  const nb = 2 + Math.floor(hash01(q, r, 12) * 2);
+  for (let k = 0; k < nb; k++) {
+    const poly = v.blocks[Math.floor(hash01(q, r, 130 + k) * v.blocks.length)];
+    let cx = 0, cy = 0;
+    for (let j = 0; j < poly.length; j += 2) { cx += poly[j]; cy += poly[j + 1]; }
+    cx = cx / (poly.length / 2) + (hash01(q, r, 150 + k) - 0.5) * 4;
+    cy = cy / (poly.length / 2) + (hash01(q, r, 170 + k) - 0.5) * 4;
+    const w = 4.5 + hash01(q, r, 190 + k) * 3, h = 4 + hash01(q, r, 210 + k) * 3;
     const pts = [];
     for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) pts.push(...at(cx + (sx * w) / 2, cy + (sy * h) / 2));
-    const shadow = pts.map((p, j) => p + (j % 2 ? 1.2 : 0.9)); // ombre portée
-    g.poly(shadow).fill({ color: 0x14110c, alpha: 0.3 });
-    g.poly(pts).fill(ROOF_FILLS[Math.floor(hash01(q, r, 100 + i) * ROOF_FILLS.length)])
-      .stroke({ width: 0.8, color: 0x1e1f24, alpha: 0.5 });
-  });
+    g.poly(pts).fill(URBAN_BLD.fill).stroke(URBAN_BLD.stroke);
+  }
+  // Axes principaux : rues blanches vers les bords reliés ; isolé → ruelle.
+  for (const m of mids) g.moveTo(x, y).lineTo(m.x, m.y).stroke(URBAN_STREET);
+  if (!mids.length) {
+    const [ax, ay] = at(-26, 17), [bx, by] = at(26, -17);
+    g.moveTo(ax, ay).lineTo(bx, by).stroke(URBAN_STREET);
+  }
+  if (v.square) { // la place est le fond dégagé au centre ; son monument
+    const [sx, sy] = at(0, 0);
+    g.circle(sx, sy, 1.8).fill(0x6f6e69);
+  }
 }
 
 // Étagement d'altitude (palier par type de terrain) → teinte hypsométrique
@@ -173,7 +205,7 @@ export async function buildBoard(state, stage) {
         const nq = q + dq, nr = r + dr;
         const nt = state.terrain.get(key(nq, nr));
         const open = nt === 'urban'
-          ? hash01(q + nq, r + nr, 3) < 0.55
+          ? hash01(q + nq, r + nr, 3) < 0.45
           : nt === 'road' || nt === 'town' || nt === 'village' || nt === 'base';
         if (open) {
           const np = axialToPixel(nq, nr);
