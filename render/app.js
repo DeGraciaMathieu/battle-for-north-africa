@@ -628,6 +628,7 @@ const PIXI = window.PIXI;
     let showSupply = false;       // overlay de la zone ravitaillée du camp actif
     let showLegend = false;       // panneau de légende (coin bas-droit)
     let showStats = false;        // filtre : PM & défense de chaque hexe
+    let showZoc = false;          // zone d'influence (ZOC) des unités du camp actif
     const attackers = new Set();  // ids des unités attaquantes       (phase combat)
     function clearPending() {
       pending = null;
@@ -767,6 +768,11 @@ const PIXI = window.PIXI;
       for (const k of state.objectives) drawObjective(k);          // objectifs de victoire (médaille)
       for (const k of settlementKeys) drawFlag(k);                 // peuplements (fanion de ravito)
       if (showSupply) drawSupplyLines();
+      if (showZoc) {                                               // zone d'influence (ZOC) du camp actif
+        const zone = zocOf(state.units, state.G.player, state.terrain);
+        for (const u of state.units) if (u.side === state.G.player) zone.add(key(u.q, u.r));
+        drawZoneOutline(zone, 0xcc4433, 2.5, 0.8);
+      }
       if (state.G.phase === 'move') {
         const eZOC = zocOf(state.units, other(state.G.player), state.terrain);
         const zone = new Set(eZOC);
@@ -1087,6 +1093,14 @@ const PIXI = window.PIXI;
       showStats = !showStats;
       btnStats.classList.toggle('on', showStats);
       statsLayer.visible = showStats;
+      draw();
+    };
+    const btnZoc = document.getElementById('btnZoc');
+    btnZoc.classList.toggle('on', showZoc);
+    btnZoc.onclick = () => {
+      showZoc = !showZoc;
+      btnZoc.classList.toggle('on', showZoc);
+      drawOverlay();
       draw();
     };
     const legend = document.getElementById('legend');
