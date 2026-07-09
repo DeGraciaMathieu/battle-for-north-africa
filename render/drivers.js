@@ -8,10 +8,10 @@
 // ===========================================================================
 
 import { key } from '../src/geometry.js';
-import { reorderStack } from '../src/units.js';
+import { reorderStack, unitsAt } from '../src/units.js';
 import { computeReachable, moveUnit } from '../src/movement.js';
 import { endPhase } from '../src/game.js';
-import { aiMovePhase, aiAttackPhase } from '../src/ai.js';
+import { aiMovePhase, aiAttackPhase, aiReorderPhase } from '../src/ai.js';
 
 export function createDrivers({ state, stage, ui, session, hud, overlay, combatModal }) {
   const byId = (id) => state.units.find((u) => u.id === id);
@@ -37,12 +37,16 @@ export function createDrivers({ state, stage, ui, session, hud, overlay, combatM
         await wait(AI_MOVE_MS);
       }
       if (state.G.over) return;
+      // Meilleur défenseur au sommet de chaque pile (un combat cible le dessus).
+      for (const o of aiReorderPhase(state, session.aiSide)) reorderStack(state.units, o.ids);
       endPhase(state); // mouvement → combat
       await wait(AI_STEP_MS);
       for (const a of aiAttackPhase(state, session.aiSide)) { // phase de combat
         if (state.G.over) return;
         const atk = a.atk.map(byId).filter(Boolean), def = byId(a.def);
         if (!atk.length || !def) continue;
+        const defStack = unitsAt(state.units, def.q, def.r);
+        if (defStack[defStack.length - 1] !== def) continue; // seul le dessus d'une pile se bat
         ui.combatSpotlight = { atk: new Set(atk.map((u) => key(u.q, u.r))), def: key(def.q, def.r) };
         overlay.drawOverlay(); stage.draw(); // marque attaquants/défenseur
         await stage.panToHex(def.q, def.r); // amène le combat au centre de l'écran
