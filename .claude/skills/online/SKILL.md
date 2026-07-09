@@ -40,6 +40,7 @@ Canal WebRTC **fiable et ordonné** (`reliable: true`) — condition du lockstep
 | `{ t:'desc', … }` | hôte, à la réception de `hello` | guest construit son état |
 | `{ t:'move', id, to }` | après `moveUnit` local | recalcule `computeReachable(state, u)` **localement** puis `moveUnit` — on ne transmet pas le chemin |
 | `{ t:'combat', atk:[ids], def }` | après `resolveCombat` local | `remoteCombat` (preview spectateur + `resolveCombat`, même dé via RNG semé) |
+| `{ t:'reorder', ids }` | après `reorderStack` local (éventail de pile) | `reorderStack(state.units, ids)` |
 | `{ t:'phase' }` | après `endPhase` local | `endPhase(state)` |
 
 Les messages de jeu reçus avant la fin de l'init sont différés (`netQueue`) puis rejoués une fois `onGameMsg` prêt.

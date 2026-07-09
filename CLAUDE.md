@@ -19,7 +19,7 @@ Commandes :
 Deux couches, strictement séparées :
 
 - **`src/` = règles de jeu, agnostiques du rendu.** Ne touchent JAMAIS au DOM ni à PixiJS. Opèrent sur un objet d'état (`state`) et publient des événements sur `state.bus`. C'est la couche testée.
-- **`render/` = rendu & interaction**, découpé en modules par responsabilité (scène, plateau, pions, overlay, HUD, modale de combat, entrées, pilotes IA/réseau) assemblés par `render/app.js`. Importe les règles depuis `src/`, lit l'état, s'abonne au bus. Ne contient AUCUNE règle de jeu. Deux modules purs (`render/html.js`, `render/gfx.js`) sont testables sans navigateur.
+- **`render/` = rendu & interaction**, découpé en modules par responsabilité (scène, plateau, pions, overlay, HUD, modale de combat, éventail de pile, entrées, pilotes IA/réseau) assemblés par `render/app.js`. Importe les règles depuis `src/`, lit l'état, s'abonne au bus. Ne contient AUCUNE règle de jeu. Deux modules purs (`render/html.js`, `render/gfx.js`) sont testables sans navigateur.
 
 L'état de partie est créé par `createGame()` (`src/game.js`) : `{ terrain, hexes, objectives, objControl, units, G, bus, rng }`.
 

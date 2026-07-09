@@ -32,6 +32,7 @@ Deux couches strictement séparées : `src/` (règles, testables) et `render/` (
 | `render/uiState.js` | État d'interaction partagé : `sel`, `pending`, `attackers`, bascules d'affichage, `clearSel` | — |
 | `render/hud.js` | HUD DOM : `log`, `refresh`, bulle de déplacement, info-bulle d'hexe, écran de fin | supply, game, html |
 | `render/combatModal.js` | Modale de combat : aperçu, animation du dé (`runRoll`), `closeCombat`, rejeu spectateur (`remoteCombat`) | combat, html |
+| `render/stackFan.js` | Éventail de pile : survol prolongé d'un hexe empilé → cartes cliquables (jouer une unité) et glissables (réordonner la pile via `reorderStack`) | geometry, units, movement, counters |
 | `render/input.js` | Entrées joueur : clics, drag & drop, survol, molette/clavier, bascules, fin de phase | movement, combat, game |
 | `render/drivers.js` | Pilotes d'adversaire : tour de l'IA (`maybeRunAI`), rejeu des actions distantes (`attachNet`) | movement, game, ai |
 | `render/html.js` | Fragments HTML PURS (inspecteur, info-bulle, table CRT, récap de fin) — testable sans navigateur | config, units, supply, game |
