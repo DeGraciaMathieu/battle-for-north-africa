@@ -6,12 +6,12 @@ import { TERRAIN, BASES } from '../src/config.js';
 import { offsetToAxial, hexDistance } from '../src/geometry.js';
 import { makeState, fillTerrain, makeUnit } from './helpers.js';
 
-test('au-delà de la portée d\'une ville (6), une unité est coupée du ravitaillement', () => {
-  const R = TERRAIN.town.supply;                                  // portée d'une ville = 6
+test('au-delà de la portée d\'un grand dépôt (6), une unité est coupée du ravitaillement', () => {
+  const R = TERRAIN.depot.supply;                                  // portée d'un grand dépôt = 6
   const coords = [];
   for (let q = 0; q <= R + 1; q++) coords.push([q, 0]);          // corridor rectiligne
   const terrain = fillTerrain(coords);
-  terrain.set('0,0', 'town');
+  terrain.set('0,0', 'depot');
   const near = makeUnit({ id: 0, side: 'blue', q: R, r: 0 });     // route = portée max
   const far = makeUnit({ id: 1, side: 'blue', q: R + 1, r: 0 });  // un hex au-delà
   const state = makeState({ terrain, units: [near, far] });
@@ -39,7 +39,7 @@ test('une oasis tenue ravitaille comme un relais (portée 4)', () => {
   assert.ok(!supplied.has('5,0'), 'oasis : ne dépasse pas 4 hexes');
 });
 
-test('une ville (6) ravitaille plus loin qu\'un village (4)', () => {
+test('un grand dépôt (6) ravitaille plus loin qu\'un petit dépôt (4)', () => {
   const coords = [];
   for (let q = 0; q <= 6; q++) coords.push([q, 0]);
   const build = (type) => {
@@ -49,24 +49,24 @@ test('une ville (6) ravitaille plus loin qu\'un village (4)', () => {
     state.objControl.set('0,0', 'blue');
     return supplyRoutes(state, 'blue').supplied;
   };
-  const ville = build('town');
-  const village = build('village');
-  assert.ok(ville.has('6,0'), 'ville : ravitaille jusqu\'à 6 hexes');
-  assert.ok(!village.has('5,0'), 'village : ne dépasse pas 4 hexes');
-  assert.ok(village.has('4,0'), 'village : ravitaille jusqu\'à 4 hexes');
+  const grand = build('depot');
+  const petit = build('dump');
+  assert.ok(grand.has('6,0'), 'grand dépôt : ravitaille jusqu\'à 6 hexes');
+  assert.ok(!petit.has('5,0'), 'petit dépôt : ne dépasse pas 4 hexes');
+  assert.ok(petit.has('4,0'), 'petit dépôt : ravitaille jusqu\'à 4 hexes');
 });
 
-test('occuper une ville ennemie en prend le contrôle et l\'ajoute aux sources', () => {
+test('occuper un dépôt ennemi en prend le contrôle et l\'ajoute aux sources', () => {
   const terrain = fillTerrain([[0, 0], [1, 0]]);
-  terrain.set('0,0', 'town');
+  terrain.set('0,0', 'depot');
   const state = makeState({ terrain, units: [], objectives: ['0,0'] });
-  state.objControl.set('0,0', 'red');                    // ville tenue par Rouge
+  state.objControl.set('0,0', 'red');                    // dépôt tenu par Rouge
   assert.ok(!supplySources(state, 'blue').has('0,0'), 'pas encore une source pour Bleu');
 
-  state.units.push(makeUnit({ id: 0, side: 'blue', q: 0, r: 0 })); // Bleu occupe la ville
+  state.units.push(makeUnit({ id: 0, side: 'blue', q: 0, r: 0 })); // Bleu occupe le dépôt
   updateObjectives(state);
   assert.equal(state.objControl.get('0,0'), 'blue', 'contrôle basculé à Bleu');
-  assert.ok(supplySources(state, 'blue').has('0,0'), 'la ville devient source de ravito pour Bleu');
+  assert.ok(supplySources(state, 'blue').has('0,0'), 'le dépôt devient source de ravito pour Bleu');
 });
 
 test('au départ, chaque unité déploie à ≤3 hexes de sa base et est ravitaillée', () => {
@@ -89,7 +89,7 @@ test('le ravitaillement part du camp de base', () => {
 
 test('la mer bloque la propagation du ravitaillement', () => {
   const terrain = fillTerrain([[0, 0], [2, 0]]);
-  terrain.set('0,0', 'town');
+  terrain.set('0,0', 'depot');
   terrain.set('1,0', 'river'); // coupe la seule route entre la source et l'unité
   const unit = makeUnit({ id: 0, side: 'blue', q: 2, r: 0 });
   const state = makeState({ terrain, units: [unit], objectives: ['0,0'] });
@@ -101,7 +101,7 @@ test('la mer bloque la propagation du ravitaillement', () => {
 test('une ZOC ennemie sur le chemin coupe la ligne de ravitaillement', () => {
   // Corridor (0,0)→(3,0) ; l'ennemi en (2,1) met (2,0) sous ZOC et casse la route.
   const terrain = fillTerrain([[0, 0], [1, 0], [2, 0], [3, 0]]);
-  terrain.set('0,0', 'town');
+  terrain.set('0,0', 'depot');
   const objectives = ['0,0'];
 
   const a = makeUnit({ id: 0, side: 'blue', q: 1, r: 0 }); // ravitaillé depuis (0,0)
@@ -125,7 +125,7 @@ test('une ZOC ennemie sur le chemin coupe la ligne de ravitaillement', () => {
 test('deux unités au corps à corps restent ravitaillées via leur arrière', () => {
   // Régression : chacune est dans la ZOC de l'autre, mais garde sa ligne arrière.
   const terrain = fillTerrain([[0, 0], [1, 0], [2, 0]]);
-  terrain.set('0,0', 'town');
+  terrain.set('0,0', 'depot');
   const mine = makeUnit({ id: 0, side: 'blue', q: 2, r: 0 });  // au contact de l'ennemi
   const enemy = makeUnit({ id: 1, side: 'red', q: 2, r: 1 }); // adjacent → ZOC sur (2,0)
   const state = makeState({ terrain, units: [mine, enemy], objectives: ['0,0'] });

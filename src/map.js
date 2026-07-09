@@ -292,50 +292,50 @@ function generateTempere(seed = 1, { fair = false } = {}) {
     if (terrain.get(bk) === 'river') terrain.set(bk, 'road');
   }
 
-  // 6) Bases (elles priment sur tout) puis peuplements de terre, espacés et à
-  //    l'écart des bases : chacun est une ville (objectif, portée 6) ou un
-  //    village (relais de ravito seul, portée 4). Les ponts sont des routes.
+  // 6) Bases (elles priment sur tout) puis dépôts de ravitaillement, espacés et
+  //    à l'écart des bases : chacun est un grand dépôt (portée 6) ou un petit
+  //    dépôt (portée 4). Les ponts sont des routes.
   const baseKeys = new Set();
   for (const [c, rw] of Object.values(BASES)) {
     const { q, r } = offsetToAxial(c, rw);
     terrain.set(key(q, r), 'base');
     baseKeys.add(key(q, r));
   }
-  const townKeys = [];
-  const near = (q, r) => townKeys.some((k) => {
+  const depotKeys = [];
+  const near = (q, r) => depotKeys.some((k) => {
     const [tq, tr] = k.split(',').map(Number);
     return (Math.abs(tq - q) + Math.abs(tq + tr - q - r) + Math.abs(tr - r)) / 2 < 3;
   });
-  // Deux villes ne peuvent pas être collées : vrai si un voisin direct est déjà
-  // une ville (lecture directe du terrain, indépendante de townKeys).
-  const townAdjacent = (q, r) =>
-    DIRS.some(([dq, dr]) => terrain.get(key(q + dq, r + dr)) === 'town');
-  // Un peuplement doit tenir sur une terre libre, hors base et à l'écart des
+  // Deux grands dépôts ne peuvent pas être collés : vrai si un voisin direct est
+  // déjà un grand dépôt (lecture directe du terrain, indépendante de depotKeys).
+  const depotAdjacent = (q, r) =>
+    DIRS.some(([dq, dr]) => terrain.get(key(q + dq, r + dr)) === 'depot');
+  // Un dépôt doit tenir sur une terre libre, hors base et à l'écart des
   // autres, avec au moins un voisin terrestre (jamais un îlot).
-  const canSettle = (q, r) => {
+  const canPlaceDepot = (q, r) => {
     const k = key(q, r);
     if (!LAND.has(terrain.get(k)) || baseKeys.has(k) || near(q, r)) return false;
     return DIRS.some(([dq, dr]) => LAND.has(terrain.get(key(q + dq, r + dr))));
   };
   if (fair) {
-    // Maillage régulier : peuplements équidistants sur l'intérieur jouable.
-    // Décalage triangulaire une ligne sur deux ; une case sur trois est une ville.
+    // Maillage régulier : dépôts équidistants sur l'intérieur jouable.
+    // Décalage triangulaire une ligne sur deux ; un sur trois est un grand dépôt.
     for (let ri = 0, rw = 3; rw <= ROWS - 3; rw += 4, ri++) {
       const shift = ri % 2 ? 3 : 0;
       for (let c = 3 + shift; c <= COLS - 3; c += 6) {
         const { q, r } = offsetToAxial(c, rw);
-        if (!canSettle(q, r)) continue;
-        terrain.set(key(q, r), townKeys.length % 3 === 0 && !townAdjacent(q, r) ? 'town' : 'village');
-        townKeys.push(key(q, r));
+        if (!canPlaceDepot(q, r)) continue;
+        terrain.set(key(q, r), depotKeys.length % 3 === 0 && !depotAdjacent(q, r) ? 'depot' : 'dump');
+        depotKeys.push(key(q, r));
       }
     }
   } else {
     for (let placed = 0, tries = 0; placed < rint(9, 13) && tries < 1500; tries++) {
       const { q, r } = offsetToAxial(rint(1, COLS - 2), rint(1, ROWS - 2));
-      if (!canSettle(q, r)) continue;
-      // grande majorité de villages ; ville seulement si aucune ville adjacente.
-      terrain.set(key(q, r), rng() < 0.85 || townAdjacent(q, r) ? 'village' : 'town');
-      townKeys.push(key(q, r));
+      if (!canPlaceDepot(q, r)) continue;
+      // grande majorité de petits dépôts ; grand seulement si aucun grand adjacent.
+      terrain.set(key(q, r), rng() < 0.85 || depotAdjacent(q, r) ? 'dump' : 'depot');
+      depotKeys.push(key(q, r));
       placed++;
     }
   }
@@ -367,11 +367,11 @@ function generateTempere(seed = 1, { fair = false } = {}) {
     terrain.set(crossing, 'road');
   }
 
-  // 7b) Zones urbaines : périphérie bâtie autour des peuplements. Denses autour
-  //     des villes, plus clairsemées autour des villages. Elles offrent la
-  //     protection d'une ville mais n'apportent aucun ravitaillement.
+  // 7b) Zones urbaines : périphérie bâtie autour des dépôts. Denses autour des
+  //     grands dépôts, plus clairsemées autour des petits. Elles offrent la
+  //     même protection défensive mais n'apportent aucun ravitaillement.
   for (const [k, t] of [...terrain]) {
-    const density = t === 'town' ? 0.85 : t === 'village' ? 0.5 : 0;
+    const density = t === 'depot' ? 0.85 : t === 'dump' ? 0.5 : 0;
     if (!density) continue;
     const [q, r] = k.split(',').map(Number);
     for (const [dq, dr] of DIRS) {
@@ -380,18 +380,18 @@ function generateTempere(seed = 1, { fair = false } = {}) {
     }
   }
 
-  // 8) Réseau routier : relie villes, villages et bases par un arbre couvrant
+  // 8) Réseau routier : relie dépôts et bases par un arbre couvrant
   //    minimal (arêtes reliant les nœuds les plus proches). Chaque arête est
   //    tracée par un Dijkstra pondéré : la route préfère la plaine, contourne
   //    relief et eau (franchissables mais coûteux), et RÉUTILISE les routes déjà
   //    posées (coût quasi nul) → tronçons partagés, embranchements, tracé
   //    organique. Un bruit seedé donne le méandre.
-  const SETTLE = (t) => t === 'town' || t === 'village' || t === 'base';
+  const HUB = (t) => t === 'depot' || t === 'dump' || t === 'base';
   const BASE_COST = { road: 0.2, plain: 1, plain2: 1, plateau: 1.4, forest: 2, hill: 3, mountain: 5, bank: 3, marsh: 4, river: 6 };
   const stepCost = (q, r) => {
     const t = terrain.get(key(q, r));
     if (!t) return Infinity;                                 // hors carte
-    if (SETTLE(t)) return 0.4;                               // traverse un peuplement
+    if (HUB(t)) return 0.4;                                  // traverse un dépôt ou une base
     return (BASE_COST[t] ?? 1) * (0.8 + noise(q, r) * 0.7);  // + jitter organique
   };
   // Chemin de moindre coût entre deux hexes (Dijkstra), renvoie les clés
@@ -423,7 +423,7 @@ function generateTempere(seed = 1, { fair = false } = {}) {
 
   const nodes = [];
   for (const [k, t] of terrain) {
-    if (SETTLE(t)) { const [q, r] = k.split(',').map(Number); nodes.push({ q, r }); }
+    if (HUB(t)) { const [q, r] = k.split(',').map(Number); nodes.push({ q, r }); }
   }
   const inTree = new Set([0]);
   while (nodes.length > 1 && inTree.size < nodes.length) {
@@ -437,14 +437,14 @@ function generateTempere(seed = 1, { fair = false } = {}) {
     }
     inTree.add(best.j);
     for (const k of roadPath(nodes[best.i], nodes[best.j])) {
-      if (!SETTLE(terrain.get(k)) && terrain.get(k) !== 'urban') terrain.set(k, 'road'); // n'écrase ni peuplements ni zones urbaines
+      if (!HUB(terrain.get(k)) && terrain.get(k) !== 'urban') terrain.set(k, 'road'); // n'écrase ni dépôts ni zones urbaines
     }
   }
 
-  // Objectifs de victoire : posés indépendamment du terrain (ville et objectif
+  // Objectifs de victoire : posés indépendamment du terrain (dépôt et objectif
   // sont deux notions distinctes). Répartis sur la terre franchissable, hors
   // base et espacés les uns des autres — ils peuvent tomber sur n'importe quel
-  // terrain, pas seulement une ville.
+  // terrain, pas seulement un dépôt.
   const objectives = [];
   const objNear = (q, r) => objectives.some((k) => {
     const [oq, or] = k.split(',').map(Number);
@@ -527,22 +527,22 @@ function generateAride(seed = 1, { fair = false } = {}) {
     terrain.set(k, 'oasis'); oasisKeys.push(k);
   }
 
-  // 7) Peuplements (villages, rares villes), espacés, hors base et oasis.
-  const settleKeys = [];
-  const trySettle = (c, rw, i) => {
+  // 7) Dépôts (petits en majorité, rares grands), espacés, hors base et oasis.
+  const depotSpots = [];
+  const tryDepot = (c, rw, i) => {
     const k = K(c, rw);
     if (!['desert', 'dunes', 'rough'].includes(terrain.get(k)) || baseKeys.has(k)) return;
-    if (settleKeys.some((s) => dist(s, k) < 3) || oasisKeys.some((o) => dist(o, k) < 2)) return;
-    terrain.set(k, i % 4 === 0 ? 'town' : 'village'); settleKeys.push(k);
+    if (depotSpots.some((s) => dist(s, k) < 3) || oasisKeys.some((o) => dist(o, k) < 2)) return;
+    terrain.set(k, i % 4 === 0 ? 'depot' : 'dump'); depotSpots.push(k);
   };
   if (fair) {
     let ri = 0, i = 0;
-    for (let rw = 3; rw <= ROWS - 3; rw += 4, ri++) { const shift = ri % 2 ? 3 : 0; for (let c = 3 + shift; c <= COLS - 3; c += 6) { trySettle(c, rw, i); i++; } }
+    for (let rw = 3; rw <= ROWS - 3; rw += 4, ri++) { const shift = ri % 2 ? 3 : 0; for (let c = 3 + shift; c <= COLS - 3; c += 6) { tryDepot(c, rw, i); i++; } }
   } else {
-    for (let placed = 0, tries = 0, want = rint(5, 8); placed < want && tries < 1500; tries++) { const before = settleKeys.length; trySettle(rint(1, COLS - 2), rint(1, ROWS - 2), placed); if (settleKeys.length > before) placed++; }
+    for (let placed = 0, tries = 0, want = rint(5, 8); placed < want && tries < 1500; tries++) { const before = depotSpots.length; tryDepot(rint(1, COLS - 2), rint(1, ROWS - 2), placed); if (depotSpots.length > before) placed++; }
   }
 
-  // 8) Pistes : arbre couvrant reliant bases, peuplements et oasis. Chaque arête
+  // 8) Pistes : arbre couvrant reliant bases, dépôts et oasis. Chaque arête
   //    est tracée par une ligne d'hexes (glouton vers la cible → tracé contigu).
   const trail = (a, b) => {
     let q = a.q, r = a.r;
@@ -557,10 +557,10 @@ function generateAride(seed = 1, { fair = false } = {}) {
       if (!best) break;
       q = best.nq; r = best.nr;
       const t = terrain.get(key(q, r));
-      if (t && !['base', 'town', 'village', 'oasis'].includes(t)) terrain.set(key(q, r), 'road');
+      if (t && !['base', 'depot', 'dump', 'oasis'].includes(t)) terrain.set(key(q, r), 'road');
     }
   };
-  const nodes = [...baseKeys, ...settleKeys, ...oasisKeys].map((k) => { const [q, r] = k.split(',').map(Number); return { q, r }; });
+  const nodes = [...baseKeys, ...depotSpots, ...oasisKeys].map((k) => { const [q, r] = k.split(',').map(Number); return { q, r }; });
   const inTree = new Set([0]);
   while (nodes.length > 1 && inTree.size < nodes.length) {
     let best = null;
@@ -650,7 +650,7 @@ function traceTrail(terrain, a, b) {
     if (!best) break;
     q = best.nq; r = best.nr;
     const t = terrain.get(key(q, r));
-    if (t && !['base', 'town', 'village', 'oasis'].includes(t)) terrain.set(key(q, r), 'road');
+    if (t && !['base', 'depot', 'dump', 'oasis'].includes(t)) terrain.set(key(q, r), 'road');
   }
 }
 
@@ -694,9 +694,9 @@ function connectBasesCarve(terrain) {
   }
 }
 
-// Peuplements (villages, rares villes) espacés, sur les terrains autorisés, hors
-// bases. `fair` : maillage régulier ; sinon tirage aléatoire.
-function placeSettlements(terrain, rng, fair, allowedTypes) {
+// Dépôts (petits en majorité, rares grands) espacés, sur les terrains autorisés,
+// hors bases. `fair` : maillage régulier ; sinon tirage aléatoire.
+function placeDepots(terrain, rng, fair, allowedTypes) {
   const rint = (lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
   const baseKeys = Object.values(BASES).map(([c, rw]) => offKey(c, rw));
   const allowed = new Set(allowedTypes);
@@ -705,7 +705,7 @@ function placeSettlements(terrain, rng, fair, allowedTypes) {
     const k = offKey(c, rw);
     if (!allowed.has(terrain.get(k)) || baseKeys.includes(k)) return;
     if (settle.some((s) => offDist(s, k) < 3)) return;
-    terrain.set(k, i % 4 === 0 ? 'town' : 'village'); settle.push(k);
+    terrain.set(k, i % 4 === 0 ? 'depot' : 'dump'); settle.push(k);
   };
   if (fair) {
     let ri = 0, i = 0;
@@ -753,7 +753,7 @@ function generateHiver(seed = 1, { fair = false } = {}) {
   for (let i = 0, n = rint(1, 2); i < n; i++) growBlob(terrain, rng, offKey(rint(3, COLS - 4), rint(3, ROWS - 4)), rint(3, 7), 'bank', snowy); // lacs gelés
   const baseKeys = [];
   for (const [c, rw] of Object.values(BASES)) { terrain.set(offKey(c, rw), 'base'); baseKeys.push(offKey(c, rw)); }
-  const settle = placeSettlements(terrain, rng, fair, ['snow', 'plain', 'plain2', 'forest']);
+  const settle = placeDepots(terrain, rng, fair, ['snow', 'plain', 'plain2', 'forest']);
   roadNetwork(terrain, [...baseKeys, ...settle]);
   const objectives = placeSpacedObjectives(terrain, rng, rint(4, 6), null);
   return { terrain, hexes, objectives };
@@ -777,7 +777,7 @@ function generateTropical(seed = 1, { fair = false } = {}) {
   for (let i = 0, n = rint(3, 5); i < n; i++) growBlob(terrain, rng, offKey(rint(2, COLS - 3), rint(2, ROWS - 3)), rint(3, 6), 'hill', (t) => green(t) || t === 'forest');
   const baseKeys = [];
   for (const [c, rw] of Object.values(BASES)) { terrain.set(offKey(c, rw), 'base'); baseKeys.push(offKey(c, rw)); }
-  const settle = placeSettlements(terrain, rng, fair, ['plain', 'plain2', 'forest']);
+  const settle = placeDepots(terrain, rng, fair, ['plain', 'plain2', 'forest']);
   roadNetwork(terrain, [...baseKeys, ...settle]);   // pistes = gués sur les rivières
   connectBasesCarve(terrain);                       // filet de sécurité de connexité
   const objectives = placeSpacedObjectives(terrain, rng, rint(4, 6), null);
@@ -788,7 +788,7 @@ function generateTropical(seed = 1, { fair = false } = {}) {
 // (`{ terrain: { "q,r": type }, objectives: ["q,r", …] }`). Mêmes sorties que
 // `generateMap` : terrain, liste des hexes et objectifs. Les objectifs sont une
 // liste explicite indépendante du terrain ; à défaut (anciennes cartes), on
-// retombe sur les villes. Les bases priment (positions fixées par le moteur),
+// retombe sur les grands dépôts. Les bases priment (positions fixées par le moteur),
 // garantissant les sources de ravitaillement de chaque camp.
 export function loadMap(data) {
   const terrain = new Map();
@@ -804,6 +804,6 @@ export function loadMap(data) {
   }
   const objectives = Array.isArray(data.objectives)
     ? data.objectives.filter((k) => terrain.has(k))
-    : [...terrain.entries()].filter(([, t]) => t === 'town').map(([k]) => k);
+    : [...terrain.entries()].filter(([, t]) => t === 'depot').map(([k]) => k);
   return { terrain, hexes, objectives };
 }

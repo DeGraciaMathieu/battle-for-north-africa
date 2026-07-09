@@ -49,7 +49,7 @@ test('quelle que soit la seed : au moins 4 objectifs et les deux bases sont reli
   const passable = (terrain, k) => terrain.has(k) && TERRAIN[terrain.get(k)].cost !== Infinity;
   for (const seed of SEEDS) {
     const { terrain, objectives } = generateMap(seed);
-    assert.ok(objectives.length >= 3, `seed ${seed} : ${objectives.length} objectifs (villes)`);
+    assert.ok(objectives.length >= 3, `seed ${seed} : ${objectives.length} objectifs`);
 
     const a = offsetToAxial(...BASES.blue), b = offsetToAxial(...BASES.red);
     const seen = new Set([key(a.q, a.r)]);
@@ -65,45 +65,45 @@ test('quelle que soit la seed : au moins 4 objectifs et les deux bases sont reli
   }
 });
 
-test('quelle que soit la seed : aucun peuplement n\'est entouré d\'eau', () => {
+test('quelle que soit la seed : aucun dépôt n\'est entouré d\'eau', () => {
   const WATER = new Set(['river', 'bank']);
   for (const seed of SEEDS) {
     const { terrain } = generateMap(seed);
     for (const [k, t] of terrain) {
-      if (t !== 'town' && t !== 'village') continue;
+      if (t !== 'depot' && t !== 'dump') continue;
       const [q, r] = k.split(',').map(Number);
       const dry = DIRS.some(([dq, dr]) => {
         const nt = terrain.get(key(q + dq, r + dr));
-        return nt && !WATER.has(nt);           // voisin terre / route / peuplement
+        return nt && !WATER.has(nt);           // voisin terre / route / dépôt
       });
-      assert.ok(dry, `seed ${seed} : peuplement ${k} entouré d'eau`);
+      assert.ok(dry, `seed ${seed} : dépôt ${k} entouré d'eau`);
     }
   }
 });
 
-test('quelle que soit la seed : deux villes ne sont jamais adjacentes', () => {
+test('quelle que soit la seed : deux grands dépôts ne sont jamais adjacents', () => {
   for (const seed of SEEDS) {
     const { terrain } = generateMap(seed);
     for (const [k, t] of terrain) {
-      if (t !== 'town') continue;
+      if (t !== 'depot') continue;
       const [q, r] = k.split(',').map(Number);
-      const collee = DIRS.some(([dq, dr]) => terrain.get(key(q + dq, r + dr)) === 'town');
-      assert.ok(!collee, `seed ${seed} : ville ${k} collée à une autre ville`);
+      const collee = DIRS.some(([dq, dr]) => terrain.get(key(q + dq, r + dr)) === 'depot');
+      assert.ok(!collee, `seed ${seed} : grand dépôt ${k} collé à un autre`);
     }
   }
 });
 
-test('en mode équitable : les peuplements sont espacés d\'au moins 3 hexes', () => {
+test('en mode équitable : les dépôts sont espacés d\'au moins 3 hexes', () => {
   for (const seed of SEEDS) {
     const { terrain } = generateMap(seed, { fair: true });
-    const settlements = [...terrain.entries()]
-      .filter(([, t]) => t === 'town' || t === 'village')
+    const depots = [...terrain.entries()]
+      .filter(([, t]) => t === 'depot' || t === 'dump')
       .map(([k]) => k.split(',').map(Number));
-    assert.ok(settlements.length > 0, `seed ${seed} : aucun peuplement équitable`);
-    for (let i = 0; i < settlements.length; i++) {
-      for (let j = i + 1; j < settlements.length; j++) {
-        const [aq, ar] = settlements[i], [bq, br] = settlements[j];
-        assert.ok(hexDistance(aq, ar, bq, br) >= 3, `seed ${seed} : peuplements ${i}/${j} trop proches`);
+    assert.ok(depots.length > 0, `seed ${seed} : aucun dépôt équitable`);
+    for (let i = 0; i < depots.length; i++) {
+      for (let j = i + 1; j < depots.length; j++) {
+        const [aq, ar] = depots[i], [bq, br] = depots[j];
+        assert.ok(hexDistance(aq, ar, bq, br) >= 3, `seed ${seed} : dépôts ${i}/${j} trop proches`);
       }
     }
   }

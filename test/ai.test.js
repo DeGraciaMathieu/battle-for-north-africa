@@ -46,7 +46,7 @@ test('tactique : l\'IA renonce à un combat défavorable', () => {
 
 test('stratégie : l\'IA marche vers un objectif non tenu', () => {
   const terrain = field();
-  terrain.set('8,0', 'town');                                   // objectif au loin
+  terrain.set('8,0', 'depot');                                   // objectif au loin
   const units = [makeUnit({ id: 1, side: 'blue', type: 'armor', q: 0, r: 0 })];
   const state = makeState({ terrain, units, objectives: ['8,0'] }); // non contrôlé → contesté
   const moves = aiMovePhase(state, 'blue');
@@ -188,10 +188,10 @@ test('ravitaillement : l\'IA prend un objectif à portée sans sortir du ravitai
   const coords = [];
   for (let q = -1; q <= 12; q++) for (let r = -3; r <= 3; r++) coords.push([q, r]);
   const terrain = fillTerrain(coords, 'plain');
-  terrain.set('0,0', 'town');                                    // source de ravito (portée 6)
+  terrain.set('0,0', 'depot');                                    // source de ravito (portée 6)
   const units = [makeUnit({ id: 1, side: 'blue', type: 'armor', q: 0, r: 0, mov: 10, mpLeft: 10 })];
   const state = makeState({ terrain, units, objectives: ['5,0'] }); // objectif dans la portée
-  state.objControl.set('0,0', 'blue');                          // ville tenue → source active
+  state.objControl.set('0,0', 'blue');                          // dépôt tenu → source active
   updateSupply(state);
   const supplied = suppliedHexes(state, 'blue');
   const m = aiMovePhase(state, 'blue').find((x) => x.id === 1);
@@ -253,22 +253,22 @@ test('score : menée au dernier tour, l\'IA force un 1:1 qu\'elle refusait', () 
 
 test('garnison : posté sur un objectif menacé, le pion tient sa position', () => {
   const terrain = field();
-  terrain.set('0,0', 'town');
+  terrain.set('0,0', 'depot');
   const units = [
     makeUnit({ id: 1, side: 'blue', type: 'inf', q: 0, r: 0 }),
-    makeUnit({ id: 2, side: 'red', type: 'armor', q: 6, r: 0 }),                 // peut fondre sur la ville
+    makeUnit({ id: 2, side: 'red', type: 'armor', q: 6, r: 0 }),                 // peut fondre sur le dépôt
   ];
   const state = makeState({ terrain, units, objectives: ['0,0'] });
   state.objControl.set('0,0', 'blue');
   const moves = aiMovePhase(state, 'blue');
-  assert.ok(!moves.some((m) => m.id === 1), 'la garnison ne déserte pas la ville menacée');
+  assert.ok(!moves.some((m) => m.id === 1), 'la garnison ne déserte pas le dépôt menacé');
 });
 
 test('garnison : un objectif tenu, vide et menacé rappelle une unité en garde', () => {
   const terrain = field();
-  terrain.set('0,0', 'town');
+  terrain.set('0,0', 'depot');
   const units = [
-    makeUnit({ id: 1, side: 'blue', type: 'inf', q: 4, r: 0 }),                  // à mi-chemin ville/ennemi
+    makeUnit({ id: 1, side: 'blue', type: 'inf', q: 4, r: 0 }),                  // à mi-chemin dépôt/ennemi
     makeUnit({ id: 2, side: 'red', type: 'armor', q: 8, r: 0 }),
   ];
   const state = makeState({ terrain, units, objectives: ['0,0'] });
@@ -276,7 +276,7 @@ test('garnison : un objectif tenu, vide et menacé rappelle une unité en garde'
   const m = aiMovePhase(state, 'blue').find((x) => x.id === 1);
   assert.ok(m, 'l\'unité bouge');
   const [q, r] = m.to.split(',').map(Number);
-  assert.ok(hexDistance(q, r, 0, 0) < 4, 'elle rentre couvrir la ville au lieu d\'avancer sur l\'ennemi');
+  assert.ok(hexDistance(q, r, 0, 0) < 4, 'elle rentre couvrir le dépôt au lieu d\'avancer sur l\'ennemi');
 });
 
 test('armes combinées : blindé + à pied préféré à deux blindés pour la colonne', () => {
@@ -328,8 +328,8 @@ test('assaut monté : deux unités convergent pour créer le 2:1 au même tour',
 
 test('hystérésis : le but du tour précédent est conservé à distance quasi égale', () => {
   const terrain = field();
-  terrain.set('8,0', 'town');
-  terrain.set('0,8', 'town');
+  terrain.set('8,0', 'depot');
+  terrain.set('0,8', 'depot');
   const units = [makeUnit({ id: 1, side: 'blue', type: 'armor', q: 0, r: 0, mov: 3, mpLeft: 3 })];
   const state = makeState({ terrain, units, objectives: ['8,0', '0,8'] }); // deux buts à égale distance
   state.aiMemo = { blue: { goals: new Map([[1, '0,8']]), lastPos: new Map() } };

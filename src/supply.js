@@ -1,9 +1,9 @@
 // ===========================================================================
 //  Ravitaillement (flood-fill depuis les sources).
 //
-//  Sources d'un camp : son camp de base (hexe `base`, voir BASES) + ses villes
-//  et villages tenus. Chaque source a sa PROPRE portée (`TERRAIN[t].supply` :
-//  base 8, ville 6, village 4). Le ravitaillement se propage d'hex en hex tant
+//  Sources d'un camp : son camp de base (hexe `base`, voir BASES) + ses dépôts
+//  de ravitaillement tenus. Chaque source a sa PROPRE portée (`TERRAIN[t].supply`
+//  : base 8, grand dépôt 6, petit dépôt 4). Il se propage d'hex en hex tant
 //  qu'il ne traverse ni la mer, ni un hex ennemi, ni une ZOC ennemie (sauf sur
 //  un hex occupé par une unité amie, qui annule la ZOC), dans la limite de la
 //  portée de la source. Une unité sur un hex atteint est ravitaillée.
@@ -17,8 +17,8 @@ import { zocOf } from './movement.js';
 export function supplySources(state, side) {
   const { terrain, objControl } = state;
   const src = new Set();
-  for (const [k, t] of terrain) {                                          // villes/villages/oasis tenus
-    if ((t === 'town' || t === 'village' || t === 'oasis') && objControl.get(k) === side) src.add(k);
+  for (const [k, t] of terrain) {                                          // dépôts/oasis tenus
+    if ((t === 'depot' || t === 'dump' || t === 'oasis') && objControl.get(k) === side) src.add(k);
   }
   const { q, r } = offsetToAxial(...BASES[side]);                          // camp de base
   const k = key(q, r);

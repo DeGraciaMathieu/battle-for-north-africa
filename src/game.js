@@ -65,15 +65,15 @@ function relocateOffWater(state) {
   }
 }
 
-// Met à jour le contrôle des peuplements (villes ET villages) selon l'occupant.
-// Le contrôle sert au ravitaillement ; la victoire (objCount) ne compte que les
-// villes (state.objectives).
+// Met à jour le contrôle des dépôts de ravitaillement (grands ET petits) selon
+// l'occupant. Le contrôle sert au ravitaillement ; la victoire (objCount) ne
+// compte que les objectifs (state.objectives).
 export function updateObjectives(state) {
-  // Contrôle suivi pour les peuplements (sources de ravitaillement) ET les
+  // Contrôle suivi pour les dépôts (sources de ravitaillement) ET les
   // objectifs de victoire, ces derniers pouvant être sur n'importe quel terrain.
   const tracked = new Set(state.objectives);
   for (const [k, t] of state.terrain) {
-    if (t === 'town' || t === 'village' || t === 'oasis') tracked.add(k);
+    if (t === 'depot' || t === 'dump' || t === 'oasis') tracked.add(k);
   }
   for (const k of tracked) {
     const [q, r] = k.split(',').map(Number);
