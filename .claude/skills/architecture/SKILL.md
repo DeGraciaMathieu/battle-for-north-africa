@@ -21,7 +21,7 @@ Deux couches strictement séparées : `src/` (règles, testables) et `render/` (
 | `src/supply.js` | `supplySources`, `suppliedHexes`, `updateSupply` (flood-fill) | config, geometry, units, movement |
 | `src/combat.js` | `oddsIndex`, `resolveCombat`, `hitUnit`, `retreatOrDie` | config, geometry, units, movement |
 | `src/game.js` | `createGame`, `endPhase`, objectifs, `checkElimination/TurnEnd`, `endGame` | tous les `src/` ci-dessus |
-| `src/ai.js` | IA adverse : `aiMovePhase`/`aiAttackPhase` renvoient des INTENTIONS (`{id,to}` / `{atk,def}`). Planificateur PUR : lit l'état, consomme les règles, ne les modifie jamais | config, geometry, units, movement, supply, combat |
+| `src/ai.js` | IA adverse : `aiMovePhase`/`aiAttackPhase`/`aiReorderPhase` renvoient des INTENTIONS (`{id,to}` / `{atk,def}` / `{ids}`). Planificateur PUR : lit l'état, consomme les règles, ne les modifie jamais (seule une mémoire d'hystérésis `state.aiMemo` persiste). S'adapte au tour et au score (`victoryScore`) | config, geometry, units, movement, supply, combat, game |
 | `render/app.js` | Point d'entrée : assemble session + scène + modules, câble le bus règles → rendu, lance la partie | tout `render/`, `src/game.js` |
 | `render/session.js` | Paramètres d'URL, lobby réseau, handshake P2P, RNG — renvoie l'objet `session` (rôle, seed, armées, `send`, `netLost`) | config, map, net |
 | `render/stage.js` | Scène PixiJS : `app`, couches (`layers`), rendu à la demande (`draw`), caméra (`zoomAt`, `fitView`, `panToHex`, `onViewChanged`) | geometry |
