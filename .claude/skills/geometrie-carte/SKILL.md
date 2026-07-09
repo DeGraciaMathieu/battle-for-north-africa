@@ -26,7 +26,7 @@ Grille hexagonale en coordonnées **axiales** `(q, r)`. Fonctions de géométrie
 
 ## Terrain (`src/config.js` → `TERRAIN`)
 
-`river` (infranchissable, « Rivière »/lac/étang), `bank` (berge, coût 2), `plain`/`plain2` (plaine, coût 1), `hill` (coteau, coût 3, +2 déf), `depot` (grand dépôt de ravitaillement, +2 déf, ravito 6), `dump` (petit dépôt, relais de ravito 4, +2 déf), `forest` (bois, coût 2, +1 déf), `road` (route, coût 0,5, −1 déf), `base` (camp de base, source de ravitaillement — posé via `BASES`, voir skill `ravitaillement`).
+`river` (infranchissable, « Rivière »/lac/étang), `bank` (berge, coût 2), `plain`/`plain2` (plaine, coût 1), `hill` (coteau, coût 3, +2 déf), `depot` (grand dépôt de ravitaillement, ravito 6), `dump` (petit dépôt, relais de ravito 4), `forest` (bois, coût 2, +1 déf), `road` (route, coût 0,5, −1 déf), `base` (camp de base, source de ravitaillement — posé via `BASES`, voir skill `ravitaillement`).
 
 ## Génération (`src/map.js` → `generateMap(seed)`)
 

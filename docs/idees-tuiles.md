@@ -11,7 +11,7 @@ au cœur (comme l'ont été **montagne**, **marais**, **plateau**).
 
 Terrains existants : `river` (∞), `bank` (2), `marsh` (3, −1), `plain`/`plain2` (1),
 `plateau` (1, +1), `hill` (3, +2), `mountain` (4, +3), `forest` (2, +1), `road` (½, −1),
-`depot`/`dump`/`urban` (1, +2), `base`.
+`depot`/`dump` (1), `urban` (1, +2), `base`.
 
 ---
 
