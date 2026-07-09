@@ -1364,6 +1364,14 @@ const PIXI = window.PIXI;
       p.delete('map');                                                     // carte aléatoire fraîche
       location.href = 'game' + (p.toString() ? `?${p.toString()}` : '');   // URL propre (garde la query)
     };
+    $('bannerView').onclick = () => {                                     // masque l'écran de fin pour inspecter la carte
+      $('banner').style.display = 'none';
+      $('btnResult').style.display = '';                                  // bouton pour rouvrir le résultat
+    };
+    $('btnResult').onclick = () => {                                      // rouvre l'écran de fin
+      $('banner').style.display = 'flex';
+      $('btnResult').style.display = 'none';
+    };
     $('bannerHome').onclick = () => { location.href = '/'; };              // retour à l'accueil
     $('btnConfirmMove').onclick = confirmMove;
     $('btnSelectMove').onclick = selectPendingUnit;
