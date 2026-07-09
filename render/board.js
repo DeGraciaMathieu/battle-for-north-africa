@@ -21,12 +21,63 @@ const TERRAIN_TILES = ['plain', 'plain2', 'bank', 'river'];
 const FOREST_TILES = ['foret-deep', 'foret-dense', 'foret-grove'];
 const FOREST_WEIGHTS = [1, 3, 2]; // deep raréfié au profit de dense
 const FOREST_TOTAL = FOREST_WEIGHTS.reduce((a, b) => a + b, 0);
+// Bruit 0..1 déterministe par hexe (salt s : plusieurs tirages indépendants).
+const hash01 = (q, r, s = 0) => {
+  const n = Math.sin(q * 91.7 + r * 47.3 + s * 13.131) * 43758.5453;
+  return n - Math.floor(n);
+};
 const forestPick = (q, r) => {
-  const n = Math.sin(q * 91.7 + r * 47.3) * 43758.5453;
-  let t = (n - Math.floor(n)) * FOREST_TOTAL;
+  let t = hash01(q, r) * FOREST_TOTAL;
   for (let i = 0; i < FOREST_WEIGHTS.length; i++) if ((t -= FOREST_WEIGHTS[i]) < 0) return i;
   return FOREST_WEIGHTS.length - 1;
 };
+
+// Tissu urbain : variantes d'îlots bâtis [dx, dy, w, h] en repère quartier —
+// damier, grand-place (place dégagée + monument), faubourg en barres, vieux
+// centre serré. Chaque hexe tire sa variante, son orientation, une gigue et
+// des teintes de toits qui lui sont propres : deux hexes ne se ressemblent
+// jamais. Purement visuel, aucune règle ne dépend de ces formes.
+const URBAN_VARIANTS = [
+  { blds: [[-7, -8, 8, 7], [8, -7, 8, 6], [-8, 7, 9, 6], [7, 7, 7, 7], [13, 0, 4, 3]] },
+  { square: [0, 0, 6.5], blds: [[-9, -6, 6, 5], [7, -8, 8, 5], [11, 3, 5, 6], [-1, -11, 7, 4], [-10, 5, 6, 6], [2, 10, 8, 4]] },
+  { blds: [[-7, -8, 10, 3], [5, -9, 8, 3], [-1, -3, 12, 3], [-6, 8, 8, 4], [7, 7, 6, 4]] },
+  { blds: [[-4, -9, 4, 4], [4, -10, 5, 3], [-9, -2, 4, 5], [9, -1, 4, 4], [-5, 7, 5, 4], [6, 8, 4, 4], [12, -6, 3, 3], [-11, 6, 3, 3]] },
+];
+const ROOF_FILLS = [0x494a54, 0x3c3d46, 0x5a4a41]; // ardoise, sombre, tuile brune
+const URBAN_STREET = { width: 2.2, color: 0xc0c0c7, alpha: 0.75 };
+const URBAN_K = 1.25; // agrandissement du bâti (specs en repère compact)
+
+// Dessine le tissu urbain d'un hexe : rues vers les bords reliés (voisins
+// bâtis ou routiers) puis îlots de la variante, le tout tourné d'un bloc.
+// Les îlots portent une ombre pour se détacher de l'aplat.
+function drawUrban(g, x, y, q, r, mids) {
+  for (const m of mids) g.moveTo(x, y).lineTo(m.x, m.y).stroke(URBAN_STREET);
+  const A = (hash01(q, r, 9) - 0.5) * 0.6; // orientation du quartier (±17°)
+  const cosA = Math.cos(A), sinA = Math.sin(A);
+  const at = (px, py) => [x + px * cosA - py * sinA, y + px * sinA + py * cosA];
+  if (!mids.length) { // quartier isolé : une ruelle traversante tout de même
+    const [ax, ay] = at(-14, 9), [bx, by] = at(14, -9);
+    g.moveTo(ax, ay).lineTo(bx, by).stroke(URBAN_STREET);
+  }
+  const v = URBAN_VARIANTS[Math.floor(hash01(q, r, 5) * URBAN_VARIANTS.length)];
+  if (v.square) { // place dégagée et son monument
+    const [sx, sy] = at(v.square[0] * URBAN_K, v.square[1] * URBAN_K);
+    g.circle(sx, sy, v.square[2] * URBAN_K).fill(0xb7b7be);
+    g.circle(sx, sy, 1.6).fill(0x2e2f36);
+  }
+  v.blds.forEach((b, i) => {
+    const cx = b[0] * URBAN_K + (hash01(q, r, 20 + i) - 0.5) * 3;
+    const cy = b[1] * URBAN_K + (hash01(q, r, 40 + i) - 0.5) * 3;
+    const w = Math.max(3, b[2] * URBAN_K + (hash01(q, r, 60 + i) - 0.5) * 2.5);
+    const h = Math.max(3, b[3] * URBAN_K + (hash01(q, r, 80 + i) - 0.5) * 2.5);
+    const pts = [];
+    for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) pts.push(...at(cx + (sx * w) / 2, cy + (sy * h) / 2));
+    const shadow = pts.map((p, j) => p + (j % 2 ? 1.2 : 0.9)); // ombre portée
+    g.poly(shadow).fill({ color: 0x14110c, alpha: 0.3 });
+    g.poly(pts).fill(ROOF_FILLS[Math.floor(hash01(q, r, 100 + i) * ROOF_FILLS.length)])
+      .stroke({ width: 0.8, color: 0x1e1f24, alpha: 0.5 });
+  });
+}
 
 // Étagement d'altitude (palier par type de terrain) → teinte hypsométrique
 // et courbes de niveau, à la manière d'une carte topographique. Palette
@@ -113,11 +164,23 @@ export async function buildBoard(state, stage) {
     // Villes et villages : pas de marqueur statique ici — leur drapeau de
     // contrôle (drawFlag, dans l'overlay) fait office de repère.
     if (type === 'urban') {
-      // zone urbaine : semis de petits bâtiments (bâti plus dense qu'un village).
-      decoLayer.rect(x - 7, y - 6, 5, 5).fill(0x40414a).stroke({ width: 1, color: 0xc7c7cf });
-      decoLayer.rect(x - 1, y - 7, 5, 5).fill(0x40414a).stroke({ width: 1, color: 0xc7c7cf });
-      decoLayer.rect(x + 3, y + 1, 5, 5).fill(0x40414a).stroke({ width: 1, color: 0xc7c7cf });
-      decoLayer.rect(x - 4, y + 2, 5, 5).fill(0x40414a).stroke({ width: 1, color: 0xc7c7cf });
+      // zone urbaine : rues reliées aux entrées (route/ville/base) et à une
+      // partie des voisins urbains — arêtes élaguées par un hash SYMÉTRIQUE
+      // (les deux hexes décident pareil), sinon les grappes denses deviennent
+      // une toile de rues. Puis îlots bâtis variés par-dessus.
+      const mids = [];
+      for (const [dq, dr] of DIRS) {
+        const nq = q + dq, nr = r + dr;
+        const nt = state.terrain.get(key(nq, nr));
+        const open = nt === 'urban'
+          ? hash01(q + nq, r + nr, 3) < 0.55
+          : nt === 'road' || nt === 'town' || nt === 'village' || nt === 'base';
+        if (open) {
+          const np = axialToPixel(nq, nr);
+          mids.push({ x: (x + np.x) / 2, y: (y + np.y) / 2 });
+        }
+      }
+      drawUrban(decoLayer, x, y, q, r, mids);
     } else if (type === 'hill') {
       // coteau : deux bosses.
       decoLayer.poly([x - 9, y + 4, x - 3, y - 5, x + 3, y + 4]).fill(0x6e6c5e).stroke({ width: 1, color: 0xb0ac96 });
@@ -158,21 +221,24 @@ export async function buildBoard(state, stage) {
       decoLayer.moveTo(x - 6, y - 3).quadraticCurveTo(x - 3, y - 5, x, y - 3).quadraticCurveTo(x + 3, y - 1, x + 6, y - 3).stroke({ width: 1, color: 0xaed3e2, alpha: 0.5 });
       decoLayer.moveTo(x - 6, y + 4).quadraticCurveTo(x - 3, y + 2, x, y + 4).quadraticCurveTo(x + 3, y + 6, x + 6, y + 4).stroke({ width: 1, color: 0xaed3e2, alpha: 0.5 });
     } else if (type === 'road') {
-      // route : ruban reliant les voisins carrossables (route/ville/base). Tracé
-      // en courbes passant par le centre → rendu organique plutôt qu'en segments droits.
-      const mids = [];
+      // route : ruban reliant les voisins carrossables (route/ville/base) en
+      // courbes passant par le centre → rendu organique plutôt qu'en segments
+      // droits. Vers un voisin URBAIN le tronçon est droit (style rue) — la rue
+      // urbaine tend vers le même milieu d'arête : jonction nette, sans rosace.
+      const mids = [], urbMids = [];
       for (const [dq, dr] of DIRS) {
         const nt = state.terrain.get(key(q + dq, r + dr));
-        if (nt === 'road' || nt === 'town' || nt === 'base') {
+        if (nt === 'road' || nt === 'town' || nt === 'base' || nt === 'urban') {
           const np = axialToPixel(q + dq, r + dr);
-          mids.push({ x: (x + np.x) / 2, y: (y + np.y) / 2 });
+          (nt === 'urban' ? urbMids : mids).push({ x: (x + np.x) / 2, y: (y + np.y) / 2 });
         }
       }
       const RSTROKE = { width: 3, color: 0x8a7550 };
       const n = Math.sin(q * 127.1 + r * 311.7) * 43758.5453;
       const wig = (n - Math.floor(n) - 0.5) * 5; // gigue déterministe par hex (±2.5px)
+      for (const m of urbMids) decoLayer.moveTo(x, y).lineTo(m.x, m.y).stroke(RSTROKE);
       if (mids.length === 0) {
-        decoLayer.circle(x, y, 2.5).fill(0x8a7550);
+        if (!urbMids.length) decoLayer.circle(x, y, 2.5).fill(0x8a7550);
       } else if (mids.length === 2) {
         // traversée : une seule courbe d'un bord à l'autre, incurvée via le centre.
         const [a, b] = mids;
