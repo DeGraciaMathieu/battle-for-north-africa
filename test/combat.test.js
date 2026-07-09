@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { oddsIndex, resolveCombat, combatPlan } from '../src/combat.js';
+import { oddsIndex, resolveCombat, combatPlan, advanceAfterCombat } from '../src/combat.js';
 import { hexDistance } from '../src/geometry.js';
 import { makeState, fillTerrain, makeUnit } from './helpers.js';
 
@@ -85,18 +85,32 @@ test('les armes combinées décalent la colonne de +1', () => {
   assert.equal(col, '3:1');
 });
 
-test('« Défenseur éliminé » retire le pion et fait avancer l\'attaquant', () => {
+test('« Défenseur éliminé » propose la percée sans l\'appliquer ; advanceAfterCombat l\'applique', () => {
   const terrain = fillTerrain([[0, 0], [1, 0]]);
   const attacker = makeUnit({ id: 0, side: 'blue', type: 'armor', q: 0, r: 0, atk: 8 });
   const defender = makeUnit({ id: 1, side: 'red', type: 'inf', q: 1, r: 0, reduced: true, rdef: 1 });
   const state = makeState({ terrain, units: [attacker, defender], rng: () => 0 });
   let removed = null;
   state.bus.on('unitRemoved', (u) => { removed = u; });
-  const { res } = resolveCombat(state, [attacker], defender);
-  assert.equal(res, 'DE');
+  const summary = resolveCombat(state, [attacker], defender);
+  assert.equal(summary.res, 'DE');
   assert.equal(removed, defender, 'événement unitRemoved émis pour le défenseur');
   assert.ok(!state.units.includes(defender), 'défenseur retiré de l\'état');
-  assert.deepEqual([attacker.q, attacker.r], [1, 0], 'attaquant avance sur l\'hex libéré');
+  assert.deepEqual([attacker.q, attacker.r], [0, 0], 'l\'attaquant n\'avance PAS automatiquement');
+  assert.deepEqual(summary.advance, { id: 0, name: attacker.fullName ?? attacker.name, to: { q: 1, r: 0 } },
+    'la percée est proposée dans le résumé');
+  assert.ok(advanceAfterCombat(state, summary.advance.id, summary.advance.to), 'percée acceptée');
+  assert.deepEqual([attacker.q, attacker.r], [1, 0], 'l\'attaquant avance sur l\'hex libéré');
+});
+
+test('advanceAfterCombat revalide : hexe redevenu ennemi ou pile pleine → refus', () => {
+  const terrain = fillTerrain([[0, 0], [1, 0]]);
+  const attacker = makeUnit({ id: 0, side: 'blue', q: 0, r: 0 });
+  const enemy = makeUnit({ id: 1, side: 'red', q: 1, r: 0 });
+  const state = makeState({ terrain, units: [attacker, enemy] });
+  assert.ok(!advanceAfterCombat(state, 0, { q: 1, r: 0 }), 'ennemi présent → pas d\'avance');
+  assert.ok(!advanceAfterCombat(state, 99, { q: 1, r: 0 }), 'unité disparue → pas d\'avance');
+  assert.deepEqual([attacker.q, attacker.r], [0, 0]);
 });
 
 test('le résumé de combat narre les conséquences', () => {
@@ -109,7 +123,6 @@ test('le résumé de combat narre les conséquences', () => {
   resolveCombat(state, [attacker], defender);
   assert.ok(Array.isArray(summary.effects) && summary.effects.length, 'effets présents');
   assert.match(summary.effects.join(' '), /éliminé/, 'défenseur réduit → éliminé narré');
-  assert.match(summary.effects.join(' '), /avance/, 'avance après combat narrée');
 });
 
 test('un « Défenseur repoussé » (DR) éloigne le défenseur de l\'attaquant', () => {

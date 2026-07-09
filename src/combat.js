@@ -66,7 +66,8 @@ export function retreatOrDie(state, unit, awayQ, awayR) {
 }
 
 // Résout un combat : calcule la colonne (odds + décalages), tire le dé,
-// applique le résultat CRT, gère l'avance après combat. Renvoie { col, die, res }.
+// applique le résultat CRT et propose la percée éventuelle (`summary.advance`).
+// Renvoie le résumé complet (col, die, res, effets, percée proposée…).
 // Plan de combat : tout le déterministe AVANT le dé (aucune mutation, aucun jet).
 // Permet d'afficher forces, décalages et colonne pour décider d'engager ou non.
 export function combatPlan(state, attackers, defender) {
@@ -146,15 +147,17 @@ export function resolveCombat(state, attackers, defender) {
     }
   }
 
-  // Avance après combat : si l'hex du défenseur est libéré, un attaquant y entre.
+  // Percée : si l'hex du défenseur est libéré, le plus fort attaquant adjacent
+  // PEUT s'y installer — proposition exposée dans le résumé, l'avance n'est
+  // plus automatique. C'est `advanceAfterCombat` qui l'applique, sur décision
+  // de l'attaquant (joueur, IA ou rejeu d'un message distant).
+  summary.advance = null;
   if ((res === 'DE' || res === 'DR') && unitsAt(state.units, defHex.q, defHex.r).length === 0) {
     const adv = attackers
       .filter((a) => state.units.includes(a) && hexDistance(a.q, a.r, defHex.q, defHex.r) === 1)
       .sort((a, b) => eAtk(b) - eAtk(a))[0];
     if (adv && stackCount(state.units, defHex.q, defHex.r, adv.side) < STACK_MAX) {
-      adv.q = defHex.q;
-      adv.r = defHex.r;
-      effects.push(`${nm(adv)} avance sur la position conquise.`);
+      summary.advance = { id: adv.id, name: nm(adv), to: { ...defHex } };
     }
   }
   if (!effects.length) effects.push('Aucune perte.');
@@ -169,5 +172,19 @@ export function resolveCombat(state, attackers, defender) {
   const modStr = mods.length ? ` (${mods.join(', ')})` : '';
   bus.emit('log', `<b>${col}</b>${modStr}, dé ${die} → ${RESULT_FR[res]}`);
   bus.emit('combatResolved', summary);
-  return { col, die, res };
+  return summary;
+}
+
+// Percée : installe l'unité désignée sur l'hexe conquis. Revalidé au moment de
+// l'application (l'ordre peut être rejoué côté distant après d'autres actions) :
+// hexe libre d'ennemis et empilement autorisé. Renvoie true si l'avance a eu lieu.
+export function advanceAfterCombat(state, id, to) {
+  const u = state.units.find((x) => x.id === id);
+  if (!u) return false;
+  if (enemyAt(state.units, to.q, to.r, u.side)) return false;
+  if (stackCount(state.units, to.q, to.r, u.side) >= STACK_MAX) return false;
+  u.q = to.q;
+  u.r = to.r;
+  state.bus.emit('log', `<b>${u.fullName ?? u.name}</b> avance sur la position conquise (percée).`);
+  return true;
 }
