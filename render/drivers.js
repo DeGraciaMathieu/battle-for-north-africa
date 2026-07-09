@@ -8,6 +8,7 @@
 // ===========================================================================
 
 import { key } from '../src/geometry.js';
+import { reorderStack } from '../src/units.js';
 import { computeReachable, moveUnit } from '../src/movement.js';
 import { endPhase } from '../src/game.js';
 import { aiMovePhase, aiAttackPhase } from '../src/ai.js';
@@ -82,6 +83,9 @@ export function createDrivers({ state, stage, ui, session, hud, overlay, combatM
         const atk = m.atk.map(byId).filter(Boolean);
         const def = byId(m.def);
         if (atk.length && def) combatModal.remoteCombat(atk, def);
+      } else if (m.t === 'reorder') {
+        reorderStack(state.units, m.ids);
+        hud.refresh();
       } else if (m.t === 'phase') {
         endPhase(state); // phaseChanged → clearSel + refresh (bus)
       }

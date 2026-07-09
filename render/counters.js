@@ -9,7 +9,7 @@ import { key, axialToPixel } from '../src/geometry.js';
 import { FILL, mixDark } from './gfx.js';
 
 const PIXI = window.PIXI;
-const CS = 50;
+export const CS = 50; // côté d'un pion (px monde), partagé avec l'éventail de pile
 
 const drawSymbol = (g, type, x, y, w, h, color) => {
   const cx = x + w / 2, cy = y + h / 2, line = { width: 1.6, color };
@@ -24,6 +24,7 @@ export function createCounters(state, stage) {
   const unitLayer = stage.layers.unit;
   const counters = new Map();
   let beforeRebuild = null;
+  const rebuildListeners = []; // notifiés après chaque reconstruction (état muté)
 
   // Construit le pion pour une FACE donnée (recto = reduced false, verso = true) ;
   // ne l'enregistre pas — sert au rendu courant comme à l'animation de flip.
@@ -79,6 +80,7 @@ export function createCounters(state, stage) {
     counters.clear();
     unitLayer.removeChildren();
     state.units.forEach(makeCounter);
+    rebuildListeners.forEach((fn) => fn());
   }
 
   function layout() {
@@ -105,5 +107,6 @@ export function createCounters(state, stage) {
     buildCounterSprite, rebuild, layout,
     get: (id) => counters.get(id),
     setBeforeRebuild: (fn) => { beforeRebuild = fn; },
+    onRebuild: (fn) => rebuildListeners.push(fn),
   };
 }

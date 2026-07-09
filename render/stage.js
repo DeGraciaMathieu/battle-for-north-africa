@@ -36,10 +36,10 @@ export async function createStage() {
   const layers = {
     tile: new PIXI.Container(), map: new PIXI.Graphics(), deco: new PIXI.Graphics(),
     overlay: new PIXI.Graphics(), obj: new PIXI.Container(), unit: new PIXI.Container(),
-    stats: new PIXI.Container(), fx: new PIXI.Graphics(),
+    stats: new PIXI.Container(), fx: new PIXI.Graphics(), fan: new PIXI.Container(),
   };
-  // médailles au-dessus des surbrillances, sous les pions
-  world.addChild(layers.tile, layers.map, layers.deco, layers.overlay, layers.obj, layers.unit, layers.stats, layers.fx);
+  // médailles au-dessus des surbrillances, sous les pions ; éventail de pile au sommet
+  world.addChild(layers.tile, layers.map, layers.deco, layers.overlay, layers.obj, layers.unit, layers.stats, layers.fx, layers.fan);
   app.stage.addChild(world);
 
   const viewListeners = [];

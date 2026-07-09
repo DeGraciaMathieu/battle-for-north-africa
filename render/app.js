@@ -16,6 +16,7 @@ import { createFx } from './fx.js';
 import { createOverlay } from './overlay.js';
 import { createHud } from './hud.js';
 import { createCombatModal } from './combatModal.js';
+import { createStackFan } from './stackFan.js';
 import { createInput } from './input.js';
 import { createDrivers } from './drivers.js';
 import { sideLabel } from './html.js';
@@ -51,7 +52,8 @@ import { sideLabel } from './html.js';
     const overlay = await createOverlay(state, stage, ui);
     const hud = createHud({ state, stage, ui, session, myTurn, counters, overlay });
     const combatModal = createCombatModal({ state, stage, ui, session, fx, hud, overlay });
-    createInput({ state, stage, ui, session, myTurn, hud, overlay, combatModal, counters });
+    const stackFan = createStackFan({ state, stage, ui, session, myTurn, counters, hud });
+    createInput({ state, stage, ui, session, myTurn, hud, overlay, combatModal, counters, stackFan });
     const drivers = createDrivers({ state, stage, ui, session, hud, overlay, combatModal });
 
     // La vue a bougé (zoom, pan, resize) : repositionne la bulle de confirmation.
@@ -65,11 +67,13 @@ import { sideLabel } from './html.js';
     state.bus.on('unitRemoved', (u) => fx.fxQueue.push({ q: u.q, r: u.r, kind: 'kill' }));
     state.bus.on('combatResolved', combatModal.runRoll);
     state.bus.on('phaseChanged', () => {
+      stackFan.close();
       ui.clearSel();
       hud.refresh();
       drivers.maybeRunAI(); // enchaîne le tour de l'IA si c'est à elle
     });
     state.bus.on('gameOver', ({ side, reason }) => {
+      stackFan.close();
       ui.clearSel();
       overlay.drawOverlay();
       stage.draw();

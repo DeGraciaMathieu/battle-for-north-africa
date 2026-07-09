@@ -13,7 +13,7 @@ import { endPhase } from '../src/game.js';
 
 const $ = (id) => document.getElementById(id);
 
-export function createInput({ state, stage, ui, session, myTurn, hud, overlay, combatModal, counters }) {
+export function createInput({ state, stage, ui, session, myTurn, hud, overlay, combatModal, counters, stackFan }) {
   const { app, world } = stage;
   const byId = (id) => state.units.find((u) => u.id === id);
 
@@ -112,15 +112,18 @@ export function createInput({ state, stage, ui, session, myTurn, hud, overlay, c
   let hoverKey = null;
   function handleHover(e) {
     if (state.G.over || (ptr && ptr.moved)) { hoverKey = null; hud.hexTip.hide(); setArtyHover(null); return; }
+    if (stackFan.hovering(e.global)) { hoverKey = null; hud.hexTip.hide(); return; } // l'éventail reste déployé
     const p = world.toLocal(e.global);
     const { q, r } = pixelToAxial(p.x, p.y);
     const k = key(q, r);
     hud.hexTip.move({ x: e.global.x, y: e.global.y });
-    if (!state.terrain.has(k)) { hoverKey = null; hud.hexTip.hide(); setArtyHover(null); return; }
+    if (!state.terrain.has(k)) { hoverKey = null; hud.hexTip.hide(); setArtyHover(null); stackFan.hoverHex(null); return; }
     if (k === hoverKey) return; // même hexe : laisser le minuteur courir
     hoverKey = k;
     setArtyHover(q, r); // aperçu de l'appui d'artillerie sur la cible survolée
-    hud.hexTip.schedule(k);
+    if (stackFan.openKey() === k) hud.hexTip.hide(); // éventail déjà déployé : pas de bulle par-dessus
+    else hud.hexTip.schedule(k);
+    stackFan.hoverHex(k, q, r); // programme le déploiement de l'éventail de pile
   }
 
   // -- Pointeur : glisser = pan, clic bref = action, molette/boutons = zoom --
@@ -130,6 +133,7 @@ export function createInput({ state, stage, ui, session, myTurn, hud, overlay, c
   app.stage.on('pointerdown', (e) => {
     hoverKey = null;
     hud.hexTip.hide();
+    stackFan.close(); // un appui sur l'éventail est stoppé avant d'arriver ici
     ptr = { sx: e.global.x, sy: e.global.y, wx: world.x, wy: world.y, moved: false };
     // Saisir une unité amie déplaçable → glisser-déposer (au lieu de paner).
     if (!state.G.over && state.G.phase === 'move' && myTurn()) {
@@ -139,7 +143,9 @@ export function createInput({ state, stage, ui, session, myTurn, hud, overlay, c
         ? unitsAt(state.units, q, r).filter((u) => u.side === state.G.player) : [];
       if (own.length) {
         ui.clearPending();
-        ui.sel = { unit: own[own.length - 1], ...computeReachable(state, own[own.length - 1]) };
+        // L'unité déjà sélectionnée (choisie dans l'éventail) prime sur le dessus de pile.
+        const grabbed = ui.sel && own.includes(ui.sel.unit) ? ui.sel.unit : own[own.length - 1];
+        ui.sel = { unit: grabbed, ...computeReachable(state, grabbed) };
         ptr.dragUnit = ui.sel.unit;
         ui.dragOverKey = null;
         hud.refresh(); // reconstruit les pions
@@ -189,7 +195,7 @@ export function createInput({ state, stage, ui, session, myTurn, hud, overlay, c
     hud.hexTip.hide();
   });
   app.stage.on('pointerupoutside', () => { if (ptr) { ptr = null; ui.dragOverKey = null; hud.refresh(); } });
-  app.canvas.addEventListener('pointerleave', () => { hoverKey = null; hud.hexTip.hide(); });
+  app.canvas.addEventListener('pointerleave', () => { hoverKey = null; hud.hexTip.hide(); stackFan.close(); });
 
   // -- Caméra : molette, boutons, clavier ------------------------------------
   app.canvas.addEventListener('wheel', (e) => {
