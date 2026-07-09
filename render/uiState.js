@@ -10,6 +10,7 @@ export function createUiState() {
     pending: null, // { key, q, r, hasOwn } — déplacement en attente de confirmation
     dragOverKey: null, // hexe survolé pendant un glisser d'unité (drag & drop)
     pendingCombat: null, // { atkUnits, defender } — combat en attente de décision
+    pendingAdvance: null, // { id, name, to } — percée proposée après le combat
     showSupply: false, // overlay de la zone ravitaillée du camp actif
     showLegend: false, // panneau de légende (coin bas-droit)
     showStats: false, // filtre : PM & défense de chaque hexe
@@ -25,6 +26,8 @@ export function createUiState() {
       ui.sel = null;
       ui.attackers.clear();
       ui.artyPreview = [];
+      ui.pendingAdvance = null; // percée non saisie = déclinée
+      document.getElementById('advanceTip').style.display = 'none';
       ui.clearPending();
     },
   };

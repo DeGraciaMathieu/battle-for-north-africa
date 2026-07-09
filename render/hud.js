@@ -21,20 +21,31 @@ export function createHud({ state, stage, ui, session, myTurn, counters, overlay
     $('logBody').innerHTML = logLines.map((l) => `<div class="line">${l}</div>`).join('');
   }
 
-  // -- Bulle de confirmation de déplacement (ancrée à l'hexe visé) ----------
-  function positionMoveTooltip() {
-    if (!ui.pending) return;
-    const { x, y } = axialToPixel(ui.pending.q, ui.pending.r);
+  // -- Bulles ancrées à un hexe (confirmation de déplacement, percée) --------
+  function positionTooltipAt(id, q, r) {
+    const { x, y } = axialToPixel(q, r);
     const g = stage.world.toGlobal(new PIXI.Point(x, y));
     const rc = stage.app.canvas.getBoundingClientRect();
-    const el = $('moveConfirm');
+    const el = $(id);
     el.style.left = rc.left + g.x + 'px';
     el.style.top = rc.top + g.y + 'px';
+  }
+  function positionMoveTooltip() {
+    if (ui.pending) positionTooltipAt('moveConfirm', ui.pending.q, ui.pending.r);
   }
   function showMoveTooltip() {
     $('btnSelectMove').style.display = ui.pending.hasOwn ? '' : 'none';
     $('moveConfirm').style.display = 'flex';
     positionMoveTooltip();
+  }
+  // Percée proposée après un combat : bulle sur l'hexe conquis.
+  function positionAdvanceTooltip() {
+    if (ui.pendingAdvance) positionTooltipAt('advanceTip', ui.pendingAdvance.to.q, ui.pendingAdvance.to.r);
+  }
+  function showAdvanceTooltip() {
+    $('advanceTipLabel').innerHTML = `Percée : <b>${ui.pendingAdvance.name}</b> peut avancer ici.`;
+    $('advanceTip').style.display = 'flex';
+    positionAdvanceTooltip();
   }
 
   function refresh() {
@@ -45,6 +56,8 @@ export function createHud({ state, stage, ui, session, myTurn, counters, overlay
     overlay.drawOverlay();
     if (state.G.phase === 'move' && ui.pending) showMoveTooltip();
     else $('moveConfirm').style.display = 'none';
+    if (state.G.phase === 'combat' && ui.pendingAdvance) showAdvanceTooltip();
+    else $('advanceTip').style.display = 'none';
     $('turnNum').textContent = state.G.turn;
     const sb = $('badgeSide');
     sb.textContent = sideLabel(state.G.player);
@@ -117,5 +130,5 @@ export function createHud({ state, stage, ui, session, myTurn, counters, overlay
   };
   $('bannerHome').onclick = () => { location.href = '/'; }; // retour à l'accueil
 
-  return { log, refresh, positionMoveTooltip, hexTip, showGameOver };
+  return { log, refresh, positionMoveTooltip, positionAdvanceTooltip, hexTip, showGameOver };
 }

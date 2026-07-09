@@ -5,7 +5,7 @@
 //  ligne, IA) — le RNG semé garantit un dé identique des deux côtés.
 // ===========================================================================
 
-import { resolveCombat, combatPlan } from '../src/combat.js';
+import { resolveCombat, combatPlan, advanceAfterCombat } from '../src/combat.js';
 import { combatCalcHtml, crtTableHtml } from './html.js';
 
 const $ = (id) => document.getElementById(id);
@@ -16,11 +16,15 @@ export function createCombatModal({ state, stage, ui, session, fx, hud, overlay 
   let combatTimers = [];
   const clearCombatTimers = () => { combatTimers.forEach(clearTimeout); combatTimers = []; };
   const at = (fn, ms) => combatTimers.push(setTimeout(fn, ms));
+  let isSpectator = false; // spectateur : la décision de percée vient d'ailleurs (IA, distant)
 
   // Aperçu AVANT le dé : stats, colonne, issues possibles, et décision.
   function showCombatPreview(atkUnits, defender, spectator = false) {
     if (state.G.over) return;
     clearCombatTimers();
+    isSpectator = spectator;
+    ui.pendingAdvance = null; // engager un autre combat périme la percée en attente
+    $('advanceTip').style.display = 'none';
     const p = combatPlan(state, atkUnits, defender);
     ui.pendingCombat = { atkUnits, defender };
     $('combatBody').innerHTML = combatCalcHtml(p);
@@ -76,8 +80,36 @@ export function createCombatModal({ state, stage, ui, session, fx, hud, overlay 
       d.textContent = '• ' + e;
       box.appendChild(d);
     }, 300 * (i + 1)));
-    at(() => { $('combatBtn').style.display = 'block'; $('combatBtn').style.visibility = 'visible'; },
-      300 * (p.effects.length + 1));
+    at(() => {
+      // Percée possible pour l'attaquant local : mémorisée ici, la bulle ancrée
+      // sur l'hexe conquis apparaît à la fermeture de la modale (hud.refresh).
+      // En spectateur, la décision arrive par message (réseau) ou du pilote IA.
+      if (p.advance && !isSpectator) ui.pendingAdvance = p.advance;
+      $('combatBtn').style.display = 'block';
+      $('combatBtn').style.visibility = 'visible';
+    }, 300 * (p.effects.length + 1));
+  }
+
+  // Bulle de percée (ancrée sur l'hexe conquis, hors modale) : avancer ou non.
+  $('btnDoAdvance').onclick = () => {
+    const a = ui.pendingAdvance;
+    ui.pendingAdvance = null;
+    if (a && advanceAfterCombat(state, a.id, a.to)) session.send({ t: 'advance', id: a.id, to: a.to });
+    hud.refresh();
+  };
+  $('btnSkipAdvance').onclick = () => {
+    ui.pendingAdvance = null;
+    hud.refresh();
+  };
+
+  // Narre une percée décidée ailleurs (IA, joueur distant) dans la modale si
+  // elle est encore ouverte.
+  function noteAdvance(name) {
+    if ($('combatModal').style.display === 'none') return;
+    const line = document.createElement('div');
+    line.className = 'fx';
+    line.textContent = `• ${name} avance sur la position conquise (percée).`;
+    $('combatEffects').appendChild(line);
   }
 
   function closeCombat() {
@@ -115,14 +147,16 @@ export function createCombatModal({ state, stage, ui, session, fx, hud, overlay 
 
   // Rejoue le combat de l'adversaire (en ligne ou IA) pour que le spectateur
   // voie le même dé : le RNG semé garantit un résultat identique côté distant.
+  // Renvoie le résumé (dont la percée proposée, décidée par l'auteur du combat).
   function remoteCombat(atkUnits, defender) {
     showCombatPreview(atkUnits, defender, true);
     fx.fxQueue.length = 0;
-    resolveCombat(state, atkUnits, defender); // → combatResolved → runRoll (anime la colonne)
+    const summary = resolveCombat(state, atkUnits, defender); // → combatResolved → runRoll (anime la colonne)
     ui.attackers.clear();
     // synchro du plateau différée à closeCombat pour ne rien dévoiler avant la fin du dé
     if (state.G.over) { $('combatModal').style.display = 'none'; hud.refresh(); }
+    return summary;
   }
 
-  return { showCombatPreview, runRoll, closeCombat, remoteCombat };
+  return { showCombatPreview, runRoll, closeCombat, remoteCombat, noteAdvance };
 }

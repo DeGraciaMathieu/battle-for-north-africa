@@ -172,6 +172,7 @@ export function createInput({ state, stage, ui, session, myTurn, hud, overlay, c
       world.position.set(ptr.wx + dx, ptr.wy + dy);
       stage.draw();
       if (ui.pending) hud.positionMoveTooltip();
+      if (ui.pendingAdvance) hud.positionAdvanceTooltip();
     }
   });
   app.stage.on('pointerup', (e) => {

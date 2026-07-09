@@ -10,6 +10,7 @@
 import { key } from '../src/geometry.js';
 import { reorderStack, unitsAt } from '../src/units.js';
 import { computeReachable, moveUnit } from '../src/movement.js';
+import { advanceAfterCombat } from '../src/combat.js';
 import { endPhase } from '../src/game.js';
 import { aiMovePhase, aiAttackPhase, aiReorderPhase } from '../src/ai.js';
 
@@ -52,8 +53,13 @@ export function createDrivers({ state, stage, ui, session, hud, overlay, combatM
         await stage.panToHex(def.q, def.r); // amène le combat au centre de l'écran
         await wait(AI_AIM_MS); // laisse le temps de voir OÙ ça se joue
         if (state.G.over) return; // le finally nettoie le projecteur
-        combatModal.remoteCombat(atk, def);
+        const summary = combatModal.remoteCombat(atk, def);
         await wait(AI_COMBAT_MS);
+        // L'IA saisit toujours la percée (comportement historique de l'avance).
+        if (summary?.advance && advanceAfterCombat(state, summary.advance.id, summary.advance.to)) {
+          combatModal.noteAdvance(summary.advance.name);
+          await wait(AI_STEP_MS);
+        }
         combatModal.closeCombat(); // ferme la modale + joue explosions/flips (au centre)
         await wait(AI_IMPACT_MS); // laisse le temps de voir l'impact
         ui.combatSpotlight = null;
@@ -87,6 +93,10 @@ export function createDrivers({ state, stage, ui, session, hud, overlay, combatM
         const atk = m.atk.map(byId).filter(Boolean);
         const def = byId(m.def);
         if (atk.length && def) combatModal.remoteCombat(atk, def);
+      } else if (m.t === 'advance') {
+        const u = byId(m.id);
+        if (u && advanceAfterCombat(state, m.id, m.to)) combatModal.noteAdvance(u.fullName ?? u.name);
+        hud.refresh();
       } else if (m.t === 'reorder') {
         reorderStack(state.units, m.ids);
         hud.refresh();

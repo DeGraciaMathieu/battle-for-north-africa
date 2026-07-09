@@ -56,8 +56,11 @@ import { sideLabel } from './html.js';
     createInput({ state, stage, ui, session, myTurn, hud, overlay, combatModal, counters, stackFan });
     const drivers = createDrivers({ state, stage, ui, session, hud, overlay, combatModal });
 
-    // La vue a bougé (zoom, pan, resize) : repositionne la bulle de confirmation.
-    stage.onViewChanged(() => { if (ui.pending) hud.positionMoveTooltip(); });
+    // La vue a bougé (zoom, pan, resize) : repositionne les bulles ancrées.
+    stage.onViewChanged(() => {
+      if (ui.pending) hud.positionMoveTooltip();
+      if (ui.pendingAdvance) hud.positionAdvanceTooltip();
+    });
 
     // -- Abonnements au bus : le rendu réagit aux événements des règles -------
     state.bus.on('log', hud.log);
