@@ -630,6 +630,7 @@ const PIXI = window.PIXI;
     let showStats = false;        // filtre : PM & défense de chaque hexe
     let showZoc = false;          // zone d'influence (ZOC) des unités du camp actif
     const attackers = new Set();  // ids des unités attaquantes       (phase combat)
+    let combatSpotlight = null;   // { atk: Set<key>, def: key } — met en évidence le combat que l'IA joue
     function clearPending() {
       pending = null;
       $('moveConfirm').style.display = 'none';
@@ -804,6 +805,18 @@ const PIXI = window.PIXI;
           if (u) drawHexOutline(key(u.q, u.r), 0x6f9a5c, 3, 0.95);
         }
         for (const { from, to } of artyPreview) drawArtyArrow(from, to); // appui d'artillerie du combat en aperçu
+      }
+      // Projecteur sur le combat que l'IA est en train de jouer : attaquants
+      // (vert), défenseur (rouge appuyé) et flèches, pour situer l'action.
+      if (combatSpotlight) {
+        for (const k of combatSpotlight.atk) {
+          drawHexOutline(k, 0x6f9a5c, 3, 0.95);
+          const [aq, ar] = k.split(',').map(Number);
+          const [dq, dr] = combatSpotlight.def.split(',').map(Number);
+          drawArtyArrow({ q: aq, r: ar }, { q: dq, r: dr });
+        }
+        fillHex(combatSpotlight.def, 0xcc4433, 0.28);
+        drawHexOutline(combatSpotlight.def, 0xcc4433, 3.5, 1);
       }
     }
 
@@ -1059,6 +1072,26 @@ const PIXI = window.PIXI;
       const rc = app.canvas.getBoundingClientRect();
       zoomAt(e.deltaY < 0 ? 1.12 : 0.89, e.clientX - rc.left, e.clientY - rc.top);
     }, { passive: false });
+    // Recentre en douceur la caméra sur un hexe (zoom inchangé) : sert à amener
+    // au centre de l'écran le combat que l'IA va jouer. Résout à la fin du pan.
+    function panToHex(q, r, ms = 500) {
+      const { x, y } = axialToPixel(q, r);
+      const s = world.scale.x;
+      const x0 = world.x, y0 = world.y;
+      const dx = (app.screen.width / 2 - x * s) - x0, dy = (app.screen.height / 2 - y * s) - y0;
+      if (Math.hypot(dx, dy) < 1) return Promise.resolve();
+      return new Promise((res) => {
+        const t0 = performance.now();
+        const step = (now) => {
+          const p = Math.min(1, (now - t0) / ms);
+          const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2; // easeInOutQuad
+          world.position.set(x0 + dx * e, y0 + dy * e);
+          app.render();
+          if (p < 1) requestAnimationFrame(step); else res();
+        };
+        requestAnimationFrame(step);
+      });
+    }
     function fitView() {
       const b = mapLayer.getLocalBounds();
       const s = clamp(Math.min(app.screen.width / b.width, app.screen.height / b.height) * 0.9, 0.32, 2.6);
@@ -1407,6 +1440,7 @@ const PIXI = window.PIXI;
     // rester lisible. Le planificateur ne mute jamais l'état ; c'est ici qu'on
     // applique moves/combats sur l'état réel et qu'on anime.
     const AI_MOVE_MS = 420, AI_STEP_MS = 360, AI_COMBAT_MS = 2200;
+    const AI_AIM_MS = 850, AI_IMPACT_MS = 1300;      // pauses pour situer le combat puis voir l'impact
     const wait = (ms) => new Promise((res) => setTimeout(res, ms));
     let aiRunning = false;
     async function runAiTurn() {
@@ -1430,15 +1464,24 @@ const PIXI = window.PIXI;
           if (state.G.over) return;
           const atk = a.atk.map(byId).filter(Boolean), def = byId(a.def);
           if (!atk.length || !def) continue;
+          combatSpotlight = { atk: new Set(atk.map((u) => key(u.q, u.r))), def: key(def.q, def.r) };
+          drawOverlay(); draw();                            // marque attaquants/défenseur
+          await panToHex(def.q, def.r);                     // amène le combat au centre de l'écran
+          await wait(AI_AIM_MS);                            // laisse le temps de voir OÙ ça se joue
+          if (state.G.over) return;                         // le finally nettoie le projecteur
           remoteCombat(atk, def);
           await wait(AI_COMBAT_MS);
-          closeCombat();                                    // ferme la modale + joue explosions/flips
+          closeCombat();                                    // ferme la modale + joue explosions/flips (au centre)
+          await wait(AI_IMPACT_MS);                         // laisse le temps de voir l'impact
+          combatSpotlight = null;
+          drawOverlay(); draw();
           await wait(AI_STEP_MS);
         }
         if (state.G.over) return;
         endPhase(state);                                    // combat → tour du joueur humain
       } finally {
         aiRunning = false;
+        if (combatSpotlight) { combatSpotlight = null; drawOverlay(); draw(); }
       }
     }
     const maybeRunAI = () => {
