@@ -9,10 +9,10 @@ auto_invoke: true
 ## Commande
 
 ```
-npm test          # node --test test/*.test.js
+source ~/.nvm/nvm.sh && nvm use 22 && npm test          # node --test test/*.test.js
 ```
 
-Runner intégré à Node (`node:test` + `node:assert/strict`), zéro dépendance. Les tests importent uniquement `src/` (règles pures) — jamais `render/` (qui exige un navigateur et `window.PIXI`).
+Runner intégré à Node (`node:test` + `node:assert/strict`), zéro dépendance. Les tests importent `src/` (règles pures) et les deux modules PURS de la couche rendu — `render/html.js` (fragments HTML) et `render/gfx.js` (couleurs) — qui ne touchent ni au DOM ni à PixiJS. Ne jamais importer un autre module `render/` (ils exigent un navigateur et `window.PIXI`).
 
 ## Philosophie : tests macro
 
@@ -33,6 +33,7 @@ Helpers de test dans `test/helpers.js` : `makeState`, `fillTerrain`, `makeUnit` 
 | `test/combat.test.js` | odds, échange, armes combinées, élimination + avance | `src/combat.js` |
 | `test/supply.test.js` | coupure de ravitaillement par ZOC | `src/supply.js` |
 | `test/game.test.js` | séquence IGO-UGO, victoire (anéantissement, objectifs) | `src/game.js` |
+| `test/render-html.test.js` | contenu fonctionnel des panneaux (récap d'hexe, inspecteur, table CRT, récap de fin) | `render/html.js` |
 
 ## Où placer un nouveau test
 
