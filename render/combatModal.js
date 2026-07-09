@@ -25,8 +25,8 @@ export function createCombatModal({ state, stage, ui, session, fx, hud, overlay 
     ui.pendingCombat = { atkUnits, defender };
     $('combatBody').innerHTML = combatCalcHtml(p);
     $('combatTable').innerHTML =
-      `<div class="sub" style="margin-top:6px">Table de combat — ta colonne <b>${p.col}</b> surlignée (droite = plus favorable à l'attaquant) :</div>`
-      + crtTableHtml(p.col, -1);
+      `<div class="sub" style="margin-top:6px">Table de combat — ${p.baseCol !== p.col ? `base <b>${p.baseCol}</b> en pointillés, ` : ''}ta colonne <b>${p.col}</b> surlignée (droite = plus favorable à l'attaquant) :</div>`
+      + crtTableHtml(p.col, -1, p.baseCol);
     $('combatRes').textContent = '';
     $('combatRes').style.background = 'transparent';
     $('combatEffects').innerHTML = '';

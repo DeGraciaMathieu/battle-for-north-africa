@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { makeState, fillTerrain, makeUnit } from './helpers.js';
 import {
   sideLabel, hexRecapHtml, inspectorHtml, objbarHtml, phaseBtnLabel,
-  modsList, combatCalcHtml, crtTableHtml, recapHtml,
+  combatCalcHtml, crtTableHtml, recapHtml,
 } from '../render/html.js';
 
 test('le récap d’hexe donne le terrain, le ravitaillement et le total de la pile', () => {
@@ -61,26 +61,51 @@ test('l’inspecteur affiche un vide explicite sans sélection', () => {
   assert.match(inspectorHtml(st, null, new Set()), /Aucune sélection/);
 });
 
-test('la table CRT surligne la colonne active et la case du dé', () => {
-  const html = crtTableHtml('3:1', 2); // dé 3 (index 2)
+test('la table CRT surligne la colonne active, la case du dé et pointille la base', () => {
+  const html = crtTableHtml('3:1', 2, '2:1'); // dé 3 (index 2), base avant décalages
   assert.match(html, /<th class="colon">3:1<\/th>/); // seule colonne active
   assert.equal(html.match(/th class="colon"/g).length, 1);
   assert.match(html, /colon hit/); // case (colonne × dé) mise en évidence
+  assert.match(html, /<th class="basecol">2:1<\/th>/); // colonne de base pointillée
+  // base = colonne finale → pas de double marquage
+  assert.doesNotMatch(crtTableHtml('3:1', -1, '3:1'), /basecol/);
 });
 
-test('l’aperçu du combat déroule rapport, décalages et colonne finale', () => {
+test('l’aperçu du combat trace chaque nombre : réductions, ravito, décalages nommés', () => {
   const p = {
-    atk: 8, def: 4, defender: 'Div. X', breakdown: [{ name: '21 Pz', atk: 8, reduced: true }],
-    defReduced: false, defSupplied: false, combined: 1, arty: 2, terr: 1,
-    baseCol: '2:1', col: '4:1',
+    atk: 5, def: 2, defender: 'Div. X',
+    breakdown: [{ name: '21 Pz', atk: 5, raw: 8, reduced: true }],
+    defFull: 7, defBase: 4, defReduced: true, defSupplied: false,
+    combined: 1, arty: 2, artyCount: 3, terr: 2, terrName: 'Coteau',
+    baseCol: '2:1', idx: 4, col: '3:1',
   };
   const html = combatCalcHtml(p);
-  assert.match(html, /8 ÷ 4 ≈ 2,0/); // rapport, décimale à la française
-  assert.match(html, /÷2 hors ravito/); // défense hors ravitaillement
-  assert.match(html, /réd\./); // attaquant réduit signalé
-  assert.match(html, /combiné \+1, artillerie \+2, terrain −1 → net \+2/);
-  assert.match(html, /<b class="finalcol">4:1<\/b>/);
-  assert.equal(modsList({ combined: 0, arty: 0, terr: 0 }), 'aucun');
+  assert.match(html, /5 ÷ 2 ≈ 2,5/); // rapport, décimale à la française
+  assert.match(html, /<s>8<\/s> <b>5<\/b>/); // recto barré de l'attaquant réduit
+  assert.match(html, /réduite : <s>7<\/s> → 4/); // défense : palier explicité
+  assert.match(html, /hors ravito : 4 ÷ 2 → 2/); // défense : malus de ravito calculé
+  assert.match(html, /blindé \+ infanterie/); // cause des armes combinées
+  assert.match(html, /3 pièces à portée \(plafond \+2\)/); // artillerie détaillée
+  assert.match(html, /terrain du défenseur — Coteau/); // terrain nommé
+  assert.match(html, /−2 colonnes/); // décalage terrain en colonnes
+  assert.match(html, /décalée de <b>\+1<\/b>/); // net lisible
+  assert.match(html, /<b class="finalcol">3:1<\/b>/);
+});
+
+test('l’aperçu signale la butée de table et l’absence de décalage', () => {
+  const base = {
+    atk: 3, def: 4, defender: 'Div. X', breakdown: [{ name: 'Inf', atk: 3, raw: 3, reduced: false }],
+    defFull: 4, defBase: 4, defReduced: false, defSupplied: true,
+    combined: 0, arty: 0, artyCount: 0,
+  };
+  // terrain −3 depuis 1:2 : la table s'arrête à 1:3 → décalage tronqué signalé
+  const clamped = combatCalcHtml({ ...base, terr: 3, terrName: 'Montagne', baseCol: '1:2', idx: 0, col: '1:3' });
+  assert.match(clamped, /terrain du défenseur — Montagne/);
+  assert.match(clamped, /butée de table/);
+  // aucun modificateur → pas de fausse ligne de décalage
+  const flat = combatCalcHtml({ ...base, terr: 0, terrName: 'Plaine', baseCol: '1:2', idx: 1, col: '1:2' });
+  assert.match(flat, /aucun décalage/);
+  assert.doesNotMatch(flat, /class="shift (up|down)"/);
 });
 
 test('le récap de fin compte éliminés et réduits par camp et marque le vainqueur', () => {

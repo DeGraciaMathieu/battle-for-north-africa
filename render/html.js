@@ -92,49 +92,58 @@ export function phaseBtnLabel(G) {
 }
 
 // -- Modale de combat --------------------------------------------------------
-export const modsList = (p) => {
-  const m = [];
-  if (p.combined) m.push('combiné +1');
-  if (p.arty) m.push(`artillerie +${p.arty}`);
-  if (p.terr) m.push(p.terr > 0 ? `terrain −${p.terr}` : `terrain +${-p.terr}`); // <0 = malus attaquant
-  return m.length ? m.join(', ') : 'aucun';
-};
-
-// Version visuelle du calcul (aperçu, avant décision) : duel Attaque/Défense.
+// Version visuelle du calcul (aperçu, avant décision) : duel Attaque/Défense,
+// chaque nombre est traçable — recto barré des pions réduits, chaîne de calcul
+// de la défense, puis un décalage de colonne par ligne avec sa cause.
 export const combatCalcHtml = (p) => {
   const chips = p.breakdown
-    .map((b) => `<span class="chip">${b.name} <b>${b.atk}</b>${b.reduced ? ' <span class="rd">réd.</span>' : ''}</span>`)
+    .map((b) => `<span class="chip">${b.name} ${b.reduced ? `<s>${b.raw}</s> ` : ''}<b>${b.atk}</b>${b.reduced ? ' <span class="rd">réd.</span>' : ''}</span>`)
     .join('');
+  // Défense : une ligne par malus, avec l'arithmétique (recto → verso, ÷2).
   const dn = [];
-  if (p.defReduced) dn.push('réduite');
-  if (!p.defSupplied) dn.push('÷2 hors ravito');
-  const defNote = dn.length ? `<span class="dn">${dn.join(' · ')}</span>` : '';
+  if (p.defReduced) dn.push(`réduite : <s>${p.defFull}</s> → ${p.defBase}`);
+  if (!p.defSupplied) dn.push(`hors ravito : ${p.defBase} ÷ 2 → ${p.def}`);
+  const defNote = dn.length ? `<span class="dn">${dn.join('<br>')}</span>` : '';
   const ratio = (p.atk / p.def).toFixed(1).replace('.', ',');
+  // Décalages de colonne : une ligne par cause (vert = vers la droite,
+  // favorable à l'attaquant ; rouge = vers la gauche).
+  const cols = (n) => `${n > 0 ? '+' : '−'}${Math.abs(n)} colonne${Math.abs(n) > 1 ? 's' : ''}`;
+  const row = (n, label) => `<div class="shift ${n > 0 ? 'up' : 'down'}"><b>${cols(n)}</b><span>${label}</span></div>`;
+  const shifts = [];
+  if (p.combined) shifts.push(row(1, 'armes combinées — blindé + infanterie ensemble'));
+  if (p.arty) shifts.push(row(p.arty, `appui d'artillerie — ${p.artyCount} pièce${p.artyCount > 1 ? 's' : ''} à portée${p.artyCount > 2 ? ' (plafond +2)' : ''}`));
+  if (p.terr) shifts.push(row(-p.terr, `terrain du défenseur — ${p.terrName}${p.terr < 0 ? ' (exposé)' : ''}`));
+  // Butée : la table s'arrête à 1:3 / 6:1, le décalage réel peut être tronqué.
   const net = p.combined + p.arty - p.terr;
-  const shift = modsList(p) === 'aucun' ? 'aucun décalage' : `${modsList(p)} → net ${net > 0 ? '+' : ''}${net}`;
+  const applied = p.idx - ODDS.indexOf(p.baseCol);
+  const clampNote = shifts.length && applied !== net ? ' <span class="sub">(butée de table)</span>' : '';
+  const final = shifts.length
+    ? `<div class="shift total"><b>${p.baseCol}</b><span>décalée de <b>${net > 0 ? '+' : ''}${net}</b> → colonne <b class="finalcol">${p.col}</b>${clampNote}</span></div>`
+    : `<div class="shift total"><span>aucun décalage → colonne <b class="finalcol">${p.col}</b></span></div>`;
   return `<div class="duel">`
     + `<div class="side atk"><div class="lab">Attaque</div><div class="big">${p.atk}</div><div class="chips">${chips}</div></div>`
     + `<div class="vs">contre</div>`
     + `<div class="side def"><div class="lab">Défense</div><div class="big">${p.def}</div><div class="chips"><span class="chip">${p.defender}</span></div>${defNote}</div>`
     + `</div>`
     + `<div class="flow"><span>Rapport <b>${p.atk} ÷ ${p.def} ≈ ${ratio}</b></span>`
-    + `<span>→ base <b>${p.baseCol}</b></span>`
-    + `<span class="sub">${shift}</span>`
-    + `<span>→ colonne <b class="finalcol">${p.col}</b></span></div>`;
+    + `<span>→ colonne de base <b>${p.baseCol}</b></span></div>`
+    + `<div class="shifts">${shifts.join('')}${final}</div>`;
 };
 
 // Table de combat complète : colonne active surlignée ; si `dieIdx >= 0`, la
-// case (colonne active × dé) est mise en évidence.
-export const crtTableHtml = (activeCol, dieIdx) => {
+// case (colonne active × dé) est mise en évidence. `baseCol` (optionnelle)
+// pointille la colonne d'avant décalages pour visualiser le glissement.
+export const crtTableHtml = (activeCol, dieIdx, baseCol = null) => {
+  const marks = (c) => `${c === activeCol ? ' colon' : ''}${c === baseCol && baseCol !== activeCol ? ' basecol' : ''}`;
   let html = '<table class="crt"><tr><th>dé</th>';
-  for (const c of ODDS) html += `<th class="${c === activeCol ? 'colon' : ''}">${c}</th>`;
+  for (const c of ODDS) html += `<th class="${marks(c).trim()}">${c}</th>`;
   html += '</tr>';
   for (let d = 0; d < 6; d++) {
     html += `<tr><th>${d + 1}</th>`;
     for (const c of ODDS) {
       const active = c === activeCol;
       const code = CRT[c][d];
-      html += `<td class="r-${code}${active ? ' colon' : ''}${active && d === dieIdx ? ' hit' : ''}">${code}</td>`;
+      html += `<td class="r-${code}${marks(c)}${active && d === dieIdx ? ' hit' : ''}">${code}</td>`;
     }
     html += '</tr>';
   }

@@ -43,5 +43,5 @@ Résolution des combats dans `src/combat.js` ; table (`CRT`, `ODDS`) dans `src/c
 ## Ajouter un modificateur de combat
 
 1. Nouvelle colonne / résultat : `ODDS` / `CRT` dans `src/config.js`.
-2. Nouveau décalage : l'intégrer au calcul de `idx` dans `resolveCombat`, et l'ajouter au tableau `mods` (message de journal).
+2. Nouveau décalage : l'intégrer au calcul de `idx` dans `resolveCombat`, l'ajouter au tableau `mods` (message de journal) et lui donner sa ligne explicative dans `combatCalcHtml` (`render/html.js`).
 3. Test macro dans `test/combat.test.js` avec `rng: () => k` pour fixer le dé.

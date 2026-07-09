@@ -9,7 +9,7 @@
 
 import { STACK_MAX, TERRAIN, ODDS, CRT, RESULT_FR, ARTY_RANGE, DIRS } from './config.js';
 import { key, hexDistance, clamp } from './geometry.js';
-import { eAtk, eDef, other, unitsAt, enemyAt, stackCount, isArmor, isFoot } from './units.js';
+import { eAtk, eDef, eDefBase, other, unitsAt, enemyAt, stackCount, isArmor, isFoot } from './units.js';
 import { zocOf } from './movement.js';
 
 // Colonne d'odds (index dans ODDS) à partir du rapport atk/def.
@@ -88,14 +88,19 @@ export function combatPlan(state, attackers, defender) {
   const idx = clamp(oddsIndex(atk, def) + combined + arty - terr, 0, 7);
   return {
     attackers: attackers.map((a) => a.fullName ?? a.name),
-    breakdown: attackers.map((a) => ({ name: a.fullName ?? a.name, atk: eAtk(a), reduced: a.reduced })),
+    // `raw` = attaque recto : permet d'afficher « 8 → 5 » quand le pion est réduit.
+    breakdown: attackers.map((a) => ({ name: a.fullName ?? a.name, atk: eAtk(a), raw: a.atk, reduced: a.reduced })),
     atk,
     defender: defender.fullName ?? defender.name,
     def,
+    defFull: defender.def,                                  // défense recto (avant réduction)
+    defBase: eDefBase(defender),                            // face courante, avant malus de ravito
     defReduced: defender.reduced,
     defSupplied: defender.supplied,
     baseCol: ODDS[oddsIndex(atk, def)],                     // colonne avant décalages
     combined, arty, terr,
+    terrName: TERRAIN[terrain.get(key(defender.q, defender.r))].name,
+    artyCount: artyFrom.length,                             // pièces en appui (le bonus plafonne à +2)
     artyFrom, target: { q: defender.q, r: defender.r },     // appui d'artillerie → tir courbe (rendu)
     idx, col: ODDS[idx],                                    // colonne finale
   };
