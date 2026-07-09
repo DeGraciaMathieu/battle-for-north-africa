@@ -90,3 +90,23 @@ export const stackCount = (units, q, r, side) =>
 
 export const isArmor = (u) => u.type === 'armor';
 export const isFoot = (u) => u.type === 'inf' || u.type === 'mech';
+
+// -- Ordre de pile ------------------------------------------------------------
+// L'ordre relatif des unités d'un même hexe dans `units` définit la pile : la
+// dernière est l'unité du dessus (celle que cible un combat). Réordonne une
+// pile entière : les unités listées (bas → haut) reprennent, dans cet ordre,
+// les positions qu'elles occupaient dans `units` — les autres unités ne
+// bougent pas. Refuse (false) si un id est inconnu, dupliqué, si les unités ne
+// partagent pas le même hexe ou si la pile n'est pas listée en entier.
+export function reorderStack(units, orderedIds) {
+  const byId = new Map(units.map((u) => [u.id, u]));
+  const stack = orderedIds.map((id) => byId.get(id));
+  if (!stack.length || stack.some((u) => !u)) return false;
+  const { q, r } = stack[0];
+  if (!stack.every((u) => u.q === q && u.r === r)) return false;
+  const slots = [];
+  for (let i = 0; i < units.length; i++) if (orderedIds.includes(units[i].id)) slots.push(i);
+  if (slots.length !== stack.length || slots.length !== unitsAt(units, q, r).length) return false;
+  slots.forEach((pos, j) => { units[pos] = stack[j]; });
+  return true;
+}
