@@ -30,7 +30,7 @@ const mulberry32 = (seed) => {
 // Clé axiale depuis des coordonnées offset (col, row) — même convention que le moteur.
 const K = (c, rw) => { const { q, r } = offsetToAxial(c, rw); return key(q, r); };
 const passable = (terrain, k) => { const t = terrain.get(k); return t && TERRAIN[t].cost !== Infinity; };
-const isSettle = (t) => t === 'base' || t === 'town' || t === 'village';
+const isHub = (t) => t === 'base' || t === 'depot' || t === 'dump';
 
 // Ensemble des clés valides (grille complète) + carte initiale (plaine bicolore).
 function blankMap(rng) {
@@ -66,7 +66,7 @@ function grow(terrain, valid, rng, startKey, size, type, allow) {
 }
 
 // Trace une route/digue en diagonale de a → b (coordonnées offset). Traverse
-// l'eau si `overWater`. N'écrase jamais un peuplement ni une base.
+// l'eau si `overWater`. N'écrase jamais un dépôt ni une base.
 function trail(terrain, aOff, bOff, { overWater = true } = {}) {
   let [c, rw] = aOff;
   const [tc, trw] = bOff;
@@ -75,7 +75,7 @@ function trail(terrain, aOff, bOff, { overWater = true } = {}) {
     if (rw < trw) rw++; else if (rw > trw) rw--;
     const k = K(c, rw);
     const t = terrain.get(k);
-    if (isSettle(t)) continue;
+    if (isHub(t)) continue;
     if (t === 'river' && !overWater) continue;
     terrain.set(k, 'road');
   }
@@ -93,7 +93,7 @@ function ensureDeployLand(terrain) {
         const { q, r } = offsetToAxial(cc, rr);
         if (hexDistance(base.q, base.r, q, r) > 2) continue;
         const k = key(q, r);
-        if (!isSettle(terrain.get(k)) && !passable(terrain, k)) terrain.set(k, 'plain');
+        if (!isHub(terrain.get(k)) && !passable(terrain, k)) terrain.set(k, 'plain');
       }
     }
   }
@@ -178,7 +178,7 @@ function arc(terrain, baseOff, radius, type, nGaps, gapType) {
     for (let d = -1; d <= 1; d++) gaps.add((center + d + ring.length) % ring.length);
   }
   ring.forEach((cell, i) => {
-    if (isSettle(terrain.get(cell.k))) return;
+    if (isHub(terrain.get(cell.k))) return;
     terrain.set(cell.k, gaps.has(i) ? gapType : type);
   });
 }
@@ -221,11 +221,11 @@ function greatForest(seed) {
     grow(terrain, valid, rng, K(2 + Math.floor(rng() * (COLS - 4)), 2 + Math.floor(rng() * (ROWS - 4))),
       3 + Math.floor(rng() * 5), 'hill', (t) => t === 'forest' || t === 'plain' || t === 'plain2');
   }
-  // Clairières habitées : villages dans une trouée de plaine.
+  // Clairières : petits dépôts dans une trouée de plaine.
   const clearings = [[8, 5], [15, 12], [22, 6], [12, 16], [20, 15]];
   clearings.forEach(([c, rw], i) => {
     grow(terrain, valid, rng, K(c, rw), 4, 'plain', (t) => t === 'forest');
-    terrain.set(K(c, rw), i % 3 === 0 ? 'town' : 'village');
+    terrain.set(K(c, rw), i % 3 === 0 ? 'depot' : 'dump');
   });
   // Sentiers : gués sur les rivières et liaison des bases aux clairières.
   trail(terrain, BASES.blue, [12, 16], { overWater: true });
@@ -235,7 +235,7 @@ function greatForest(seed) {
 }
 
 // Le Débarquement : mer dans l'angle bas-gauche, plage (berges) et zones
-// inondées (marais), bocage épars, hauteurs et ville fortifiée à l'intérieur.
+// inondées (marais), bocage épars, hauteurs et dépôt fortifié à l'intérieur.
 function dDay(seed) {
   const rng = mulberry32(seed);
   const { terrain, valid } = blankMap(rng);
@@ -264,13 +264,13 @@ function dDay(seed) {
     grow(terrain, valid, rng, K(6 + Math.floor(rng() * (COLS - 10)), 4 + Math.floor(rng() * (ROWS - 6))),
       2 + Math.floor(rng() * 4), 'forest', (t) => t === 'plain' || t === 'plain2');
   }
-  // Hauteurs tenues à l'intérieur (côté rouge) + ville fortifiée (objectif exit).
+  // Hauteurs tenues à l'intérieur (côté rouge) + dépôt fortifié (objectif exit).
   for (let i = 0; i < 4; i++) {
     grow(terrain, valid, rng, K(18 + Math.floor(rng() * 8), 2 + Math.floor(rng() * 8)),
       4 + Math.floor(rng() * 5), 'hill', (t) => t === 'plain' || t === 'plain2' || t === 'forest');
   }
-  terrain.set(K(21, 9), 'town');
-  terrain.set(K(14, 13), 'village');
+  terrain.set(K(21, 9), 'depot');
+  terrain.set(K(14, 13), 'dump');
   // Routes de sortie de plage vers l'intérieur.
   trail(terrain, BASES.blue, [14, 13], { overWater: false });
   trail(terrain, [14, 13], [21, 9], { overWater: false });
@@ -291,8 +291,8 @@ function archipelago(seed) {
     // relief sur l'île
     grow(terrain, valid, rng, K(c, rw), 3 + Math.floor(rng() * 4), i % 2 ? 'hill' : 'forest',
       (t) => t === 'plain' || t === 'plain2');
-    if (i === 2 || i === 5) terrain.set(K(c, rw), 'town');
-    else if (i % 2 === 0) terrain.set(K(c, rw), 'village');
+    if (i === 2 || i === 5) terrain.set(K(c, rw), 'depot');
+    else if (i % 2 === 0) terrain.set(K(c, rw), 'dump');
   });
   // Digues : chaîne d'îles reliée de la base bleue à la base rouge.
   const chain = [BASES.blue, [9, 12], [15, 15], [21, 10], [24, 4], BASES.red];
@@ -327,9 +327,9 @@ function mountainPass(seed) {
     grow(terrain, valid, rng, K(2 + Math.floor(rng() * (COLS - 4)), 2 + Math.floor(rng() * (ROWS - 4))),
       3 + Math.floor(rng() * 4), 'forest', (t) => t === 'plain' || t === 'plain2');
   }
-  // Villages de vallée + routes par les passes.
-  terrain.set(K(7, 5), 'village');
-  terrain.set(K(22, 13), 'village');
+  // Dépôts de vallée + routes par les passes.
+  terrain.set(K(7, 5), 'dump');
+  terrain.set(K(22, 13), 'dump');
   trail(terrain, BASES.blue, [10, 13], { overWater: false });  // vers la passe basse
   trail(terrain, [10, 13], [18, 5], { overWater: false });     // vers la passe haute
   trail(terrain, [18, 5], BASES.red, { overWater: false });
@@ -381,29 +381,29 @@ function theGap(seed) {
       else if (band > 5.5) terrain.set(K(c, rw), rng() < 0.6 ? 'plateau' : 'hill');
     }
   }
-  // Quelques bois et un village dans le couloir pour l'intérêt tactique.
+  // Quelques bois et un petit dépôt dans le couloir pour l'intérêt tactique.
   for (let i = 0; i < 5; i++) grow(terrain, valid, rng, K(6 + Math.floor(rng() * (COLS - 12)), 4 + Math.floor(rng() * (ROWS - 8))), 3, 'forest', (t) => t === 'plain' || t === 'plain2');
-  terrain.set(K(14, 10), 'village');
+  terrain.set(K(14, 10), 'dump');
   trail(terrain, BASES.blue, BASES.red, { overWater: false });
   return finalize(terrain, rng, 5);
 }
 
-// La Forteresse : une grande ville tentaculaire au centre (ville + zone urbaine
+// La Forteresse : une agglomération tentaculaire au centre (dépôt + zone urbaine
 // dense), à prendre et tenir → combat urbain, défense partout.
 function fortress(seed) {
   const rng = mulberry32(seed);
   const { terrain, valid } = blankMap(rng);
   // Cœur urbain dense autour du centre.
   grow(terrain, valid, rng, K(14, 10), 34, 'urban', (t) => t === 'plain' || t === 'plain2');
-  // Noyaux bâtis (villes/objectifs) dans la nappe urbaine.
-  for (const [c, rw] of [[14, 10], [12, 8], [16, 12], [15, 7], [11, 12]]) terrain.set(K(c, rw), 'town');
-  // Faubourgs urbains autour des villes.
+  // Noyaux bâtis (dépôts/objectifs) dans la nappe urbaine.
+  for (const [c, rw] of [[14, 10], [12, 8], [16, 12], [15, 7], [11, 12]]) terrain.set(K(c, rw), 'depot');
+  // Faubourgs urbains autour des dépôts.
   for (const [k, t] of [...terrain]) {
-    if (t !== 'town') continue;
+    if (t !== 'depot') continue;
     const [q, r] = k.split(',').map(Number);
     for (const [dq, dr] of DIRS) { const nk = key(q + dq, r + dr); if (terrain.get(nk) === 'plain' || terrain.get(nk) === 'plain2') terrain.set(nk, 'urban'); }
   }
-  // Approches : quelques bois et coteaux, routes rayonnant vers la ville.
+  // Approches : quelques bois et coteaux, routes rayonnant vers le centre.
   for (let i = 0; i < 6; i++) grow(terrain, valid, rng, K(3 + Math.floor(rng() * (COLS - 6)), 2 + Math.floor(rng() * (ROWS - 4))), 4, 'forest', (t) => t === 'plain' || t === 'plain2');
   for (let i = 0; i < 3; i++) grow(terrain, valid, rng, K(3 + Math.floor(rng() * (COLS - 6)), 2 + Math.floor(rng() * (ROWS - 4))), 4, 'hill', (t) => t === 'plain' || t === 'plain2');
   trail(terrain, BASES.blue, [14, 10], { overWater: false });
@@ -419,8 +419,8 @@ function steppe(seed) {
   // Rares reliefs isolés et bosquets.
   for (let i = 0; i < 3; i++) grow(terrain, valid, rng, K(4 + Math.floor(rng() * (COLS - 8)), 3 + Math.floor(rng() * (ROWS - 6))), 3, 'hill', (t) => t === 'plain' || t === 'plain2');
   for (let i = 0; i < 3; i++) grow(terrain, valid, rng, K(4 + Math.floor(rng() * (COLS - 8)), 3 + Math.floor(rng() * (ROWS - 6))), 2, 'forest', (t) => t === 'plain' || t === 'plain2');
-  terrain.set(K(10, 8), 'village');
-  terrain.set(K(19, 11), 'village');
+  terrain.set(K(10, 8), 'dump');
+  terrain.set(K(19, 11), 'dump');
   trail(terrain, BASES.blue, BASES.red, { overWater: false });
   return finalize(terrain, rng, 6);
 }
@@ -437,8 +437,8 @@ function bocage(seed) {
     }
   }
   // Chemins creux (routes) et hameaux.
-  terrain.set(K(9, 6), 'village');
-  terrain.set(K(20, 13), 'village');
+  terrain.set(K(9, 6), 'dump');
+  terrain.set(K(20, 13), 'dump');
   trail(terrain, BASES.blue, [9, 6], { overWater: false });
   trail(terrain, [9, 6], [20, 13], { overWater: false });
   trail(terrain, [20, 13], BASES.red, { overWater: false });
@@ -458,7 +458,7 @@ function marshland(seed) {
     for (; rw < ROWS; rw++) { terrain.set(K(c, rw), 'river'); if (rng() < 0.5) c += rng() < 0.5 ? -1 : 1; c = Math.max(1, Math.min(COLS - 2, c)); }
   }
   // Îlots de terre ferme habités.
-  for (const [c, rw] of [[8, 6], [15, 11], [21, 7]]) { grow(terrain, valid, rng, K(c, rw), 4, 'plain', (t) => t === 'marsh'); terrain.set(K(c, rw), 'village'); }
+  for (const [c, rw] of [[8, 6], [15, 11], [21, 7]]) { grow(terrain, valid, rng, K(c, rw), 4, 'plain', (t) => t === 'marsh'); terrain.set(K(c, rw), 'dump'); }
   // Digues (routes) reliant les bases par la terre ferme.
   trail(terrain, BASES.blue, [8, 6], { overWater: true });
   trail(terrain, [8, 6], [15, 11], { overWater: true });
@@ -536,7 +536,7 @@ function bridgehead(seed) {
   // Au-delà du fleuve : terrain contesté, reliefs et bois tenus par le rouge.
   for (let i = 0; i < 5; i++) grow(terrain, valid, rng, K(12 + Math.floor(rng() * (COLS - 14)), 2 + Math.floor(rng() * (ROWS - 4))), 4, 'hill', (t) => t === 'plain' || t === 'plain2');
   for (let i = 0; i < 7; i++) grow(terrain, valid, rng, K(8 + Math.floor(rng() * (COLS - 10)), 2 + Math.floor(rng() * (ROWS - 4))), 3, 'forest', (t) => t === 'plain' || t === 'plain2');
-  terrain.set(K(18, 8), 'village');
+  terrain.set(K(18, 8), 'dump');
   trail(terrain, BASES.blue, [18, 8], { overWater: true });
   trail(terrain, [18, 8], BASES.red, { overWater: false });
   return finalize(terrain, rng, 5);
