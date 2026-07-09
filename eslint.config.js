@@ -5,6 +5,9 @@ export default [
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
+      globals: {
+        URL: 'readonly',
+      },
     },
     rules: {
       'no-unused-vars': 'warn',
@@ -28,6 +31,8 @@ export default [
         URLSearchParams: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
+        requestAnimationFrame: 'readonly',
+        performance: 'readonly',
       },
     },
     rules: {
