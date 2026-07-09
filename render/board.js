@@ -111,11 +111,90 @@ function drawUrban(g, x, y, q, r, mids) {
   }
 }
 
+// Dépôt de ravitaillement : une cour en terre battue desservie par des pistes,
+// où s'organisent rangées de caisses et de bâches, tentes et fûts de carburant
+// — le grand dépôt aligne deux rangées, deux tentes et quatre fûts, le petit
+// une rangée, une tente et trois fûts. Comme le tissu urbain, la trame est
+// tournée et perturbée par hexe : deux dépôts ne se ressemblent jamais.
+const DEPOT_PAD = { fill: 0xd0bd8d, stroke: { width: 1, color: 0x8a7550, alpha: 0.65 } };
+const DEPOT_TRACK = { width: 3, color: 0x8a7550 };
+const DEPOT_STACKS = [
+  { fill: 0x8a6f42, stroke: { width: 0.8, color: 0x54431f, alpha: 0.95 } }, // caisses bois
+  { fill: 0x9d7f4a, stroke: { width: 0.8, color: 0x54431f, alpha: 0.95 } }, // bois clair
+  { fill: 0x6b7052, stroke: { width: 0.8, color: 0x43482e, alpha: 0.95 } }, // bâche olive
+];
+const DEPOT_DRUMS = [
+  { fill: 0x57603f, stroke: { width: 0.8, color: 0x333a24, alpha: 0.95 } }, // fût olive
+  { fill: 0x7d5136, stroke: { width: 0.8, color: 0x462c1a, alpha: 0.95 } }, // fût rouillé
+];
+const DEPOT_TENT = { fill: 0x9c874e, stroke: { width: 1, color: 0x5c4e29, alpha: 0.95 } };
+
+function drawDepot(g, x, y, q, r, big, mids) {
+  const A = (hash01(q, r, 7) - 0.5) * 0.8; // orientation de la cour (±23°)
+  const cosA = Math.cos(A), sinA = Math.sin(A);
+  const at = (px, py) => [x + px * cosA - py * sinA, y + px * sinA + py * cosA];
+  const rectAt = (cx, cy, w, h) => {
+    const pts = [];
+    for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) pts.push(...at(cx + (sx * w) / 2, cy + (sy * h) / 2));
+    return pts;
+  };
+  // Pistes d'accès vers les voisins reliés — tracées sous la cour, elles
+  // meurent à sa lisière et prolongent les rubans routiers voisins.
+  for (const m of mids) g.moveTo(x, y).lineTo(m.x, m.y).stroke(DEPOT_TRACK);
+  // Cour en terre battue : octogone aux sommets gigués.
+  const R = big ? 29 : 20;
+  const pad = [];
+  for (let i = 0; i < 8; i++) {
+    const a = A + (i / 8) * Math.PI * 2;
+    const rr = R * (0.92 + hash01(q, r, 40 + i) * 0.16);
+    pad.push(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+  }
+  g.poly(pad).fill(DEPOT_PAD.fill).stroke(DEPOT_PAD.stroke);
+  // Rangées de caisses et de bâches au nord de la cour, sangle sur la longueur.
+  const stacks = big
+    ? [[-15, -13.5], [-4, -13.5], [7, -13.5], [-15, -5.5], [-4, -5.5], [7, -5.5]]
+    : [[-9.5, -8], [1.5, -8]];
+  stacks.forEach(([sx, sy], i) => {
+    const s = DEPOT_STACKS[Math.floor(hash01(q, r, 60 + i) * DEPOT_STACKS.length)];
+    const cx = sx + (hash01(q, r, 80 + i) - 0.5) * 2, cy = sy + (hash01(q, r, 100 + i) - 0.5) * 2;
+    g.poly(rectAt(cx, cy, 10, 7)).fill(s.fill).stroke(s.stroke);
+    const [ax, ay] = at(cx - 4.2, cy), [bx, by] = at(cx + 4.2, cy);
+    g.moveTo(ax, ay).lineTo(bx, by).stroke({ width: 0.7, color: s.stroke.color, alpha: 0.5 });
+  });
+  // Tentes au sud-ouest : toile kaki, faîte marqué, versant sud ombré.
+  const tents = big ? [[-13.5, 8], [2, 10]] : [[5.5, 5.5]];
+  tents.forEach(([tx, ty], i) => {
+    const cx = tx + (hash01(q, r, 120 + i) - 0.5) * 2, cy = ty + (hash01(q, r, 140 + i) - 0.5) * 2;
+    g.poly(rectAt(cx, cy, 13, 9)).fill(DEPOT_TENT.fill).stroke(DEPOT_TENT.stroke);
+    g.poly(rectAt(cx, cy + 2.25, 13, 4.5)).fill({ color: 0x000000, alpha: 0.18 });
+    const [ax, ay] = at(cx - 6.5, cy), [bx, by] = at(cx + 6.5, cy);
+    g.moveTo(ax, ay).lineTo(bx, by).stroke({ width: 1, color: 0x5c4e29, alpha: 0.95 });
+  });
+  // Fûts de carburant au sud-est, en quinconce.
+  const drums = big ? [[15, 3], [20.5, 5.5], [15.5, 9], [20, 11.5]] : [[-8, 4.5], [-11.5, 8]];
+  drums.forEach(([dx, dy], i) => {
+    const d = DEPOT_DRUMS[Math.floor(hash01(q, r, 160 + i) * DEPOT_DRUMS.length)];
+    const [cx, cy] = at(dx, dy);
+    g.circle(cx, cy, 3).fill(d.fill).stroke(d.stroke);
+    g.circle(cx, cy, 0.9).fill({ color: 0x1f2416, alpha: 0.55 }); // bonde du fût
+  });
+  // Camion à l'entrée du grand dépôt : garé sur la première piste d'accès,
+  // cabine tournée vers la cour.
+  if (big && mids.length) {
+    const ang = Math.atan2(mids[0].y - y, mids[0].x - x);
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    const tAt = (u, v) => [x + u * ca - v * sa, y + u * sa + v * ca];
+    const box = (u0, u1, hw) => [...tAt(u0, -hw), ...tAt(u1, -hw), ...tAt(u1, hw), ...tAt(u0, hw)];
+    g.poly(box(31, 36.5, 1.7)).fill(0x6a7052).stroke({ width: 0.8, color: 0x3a3f2a, alpha: 0.95 }); // benne bâchée
+    g.poly(box(28.6, 31, 1.4)).fill(0x515741).stroke({ width: 0.8, color: 0x3a3f2a, alpha: 0.95 }); // cabine
+  }
+}
+
 // Étagement d'altitude (palier par type de terrain) → teinte hypsométrique
 // et courbes de niveau, à la manière d'une carte topographique. Palette
 // sombre : vert foncé dans les bas-fonds → gris-vert → gris pierre en altitude.
 // Purement visuel : aucune règle ne dépend de ces valeurs.
-const ELEV = { river: 0, bank: 0, beach: 1, marsh: 1, wadi: 1, plain: 2, plain2: 2, desert: 2, dunes: 2, oasis: 2, snow: 2, forest: 2, road: 2, town: 2, village: 2, urban: 2, ruins: 2, base: 2, plateau: 3, rough: 3, hill: 4, mountain: 5 };
+const ELEV = { river: 0, bank: 0, beach: 1, marsh: 1, wadi: 1, plain: 2, plain2: 2, desert: 2, dunes: 2, oasis: 2, snow: 2, forest: 2, road: 2, depot: 2, dump: 2, urban: 2, ruins: 2, base: 2, plateau: 3, rough: 3, hill: 4, mountain: 5 };
 const WATER_R = new Set(['river', 'bank']);
 const bandNoise = (q, r) => { // 0..1 déterministe, deux fréquences
   const a = Math.sin(q * 12.9898 + r * 78.233) * 43758.5453;
@@ -193,10 +272,21 @@ export async function buildBoard(state, stage) {
         if (myB > (ELEV[nt] ?? 2)) strokeEdge(decoLayer, cc, DIR_TO_EDGE[d], 0x161c12, 0.4, 1.6);
       }
     }
-    // Villes et villages : pas de marqueur statique ici — leur drapeau de
-    // contrôle (drawFlag, dans l'overlay) fait office de repère.
-    if (type === 'urban') {
-      // zone urbaine : rues reliées aux entrées (route/ville/base) et à une
+    if (type === 'depot' || type === 'dump') {
+      // dépôt de ravitaillement : pistes d'accès vers les voisins carrossables,
+      // puis cour et matériel par-dessus (drawDepot). Le drapeau de contrôle
+      // (drawFlag, dans l'overlay) signale le camp qui le tient.
+      const mids = [];
+      for (const [dq, dr] of DIRS) {
+        const nt = state.terrain.get(key(q + dq, r + dr));
+        if (nt === 'road' || nt === 'urban' || nt === 'base' || nt === 'depot' || nt === 'dump') {
+          const np = axialToPixel(q + dq, r + dr);
+          mids.push({ x: (x + np.x) / 2, y: (y + np.y) / 2 });
+        }
+      }
+      drawDepot(decoLayer, x, y, q, r, type === 'depot', mids);
+    } else if (type === 'urban') {
+      // zone urbaine : rues reliées aux entrées (route/dépôt/base) et à une
       // partie des voisins urbains — arêtes élaguées par un hash SYMÉTRIQUE
       // (les deux hexes décident pareil), sinon les grappes denses deviennent
       // une toile de rues. Puis îlots bâtis variés par-dessus.
@@ -206,7 +296,7 @@ export async function buildBoard(state, stage) {
         const nt = state.terrain.get(key(nq, nr));
         const open = nt === 'urban'
           ? hash01(q + nq, r + nr, 3) < 0.45
-          : nt === 'road' || nt === 'town' || nt === 'village' || nt === 'base';
+          : nt === 'road' || nt === 'depot' || nt === 'dump' || nt === 'base';
         if (open) {
           const np = axialToPixel(nq, nr);
           mids.push({ x: (x + np.x) / 2, y: (y + np.y) / 2 });
@@ -253,14 +343,14 @@ export async function buildBoard(state, stage) {
       decoLayer.moveTo(x - 6, y - 3).quadraticCurveTo(x - 3, y - 5, x, y - 3).quadraticCurveTo(x + 3, y - 1, x + 6, y - 3).stroke({ width: 1, color: 0xaed3e2, alpha: 0.5 });
       decoLayer.moveTo(x - 6, y + 4).quadraticCurveTo(x - 3, y + 2, x, y + 4).quadraticCurveTo(x + 3, y + 6, x + 6, y + 4).stroke({ width: 1, color: 0xaed3e2, alpha: 0.5 });
     } else if (type === 'road') {
-      // route : ruban reliant les voisins carrossables (route/ville/base) en
+      // route : ruban reliant les voisins carrossables (route/dépôt/base) en
       // courbes passant par le centre → rendu organique plutôt qu'en segments
       // droits. Vers un voisin URBAIN le tronçon est droit (style rue) — la rue
       // urbaine tend vers le même milieu d'arête : jonction nette, sans rosace.
       const mids = [], urbMids = [];
       for (const [dq, dr] of DIRS) {
         const nt = state.terrain.get(key(q + dq, r + dr));
-        if (nt === 'road' || nt === 'town' || nt === 'base' || nt === 'urban') {
+        if (nt === 'road' || nt === 'depot' || nt === 'dump' || nt === 'base' || nt === 'urban') {
           const np = axialToPixel(q + dq, r + dr);
           (nt === 'urban' ? urbMids : mids).push({ x: (x + np.x) / 2, y: (y + np.y) / 2 });
         }

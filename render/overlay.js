@@ -31,12 +31,12 @@ export async function createOverlay(state, stage, ui) {
     (async () => { medalTex.red = await PIXI.Assets.load(asset('medal_red.png')); })(),
   ]);
 
-  // Peuplements tenus (villes + villages, relais de ravito) : précalculés une
+  // Dépôts tenus (grands + petits, relais de ravito) : précalculés une
   // fois pour le liseré de contrôle. Les objectifs, notion distincte, sont
   // dessinés à part (grande médaille) et retirés d'ici pour éviter le doublon.
   const objSet = new Set(state.objectives);
-  const settlementKeys = [...state.terrain]
-    .filter(([k, t]) => (t === 'town' || t === 'village' || t === 'oasis') && !objSet.has(k))
+  const depotKeys = [...state.terrain]
+    .filter(([k, t]) => (t === 'depot' || t === 'dump' || t === 'oasis') && !objSet.has(k))
     .map(([k]) => k);
 
   const drawHexOutline = (k, color, width, alpha = 1) => {
@@ -119,9 +119,9 @@ export async function createOverlay(state, stage, ui) {
     }
   }
 
-  // Peuplement (ville/village) : petit fanion triangulaire planté sur un mât
-  // court, dans la couleur du camp tenant (translucide si neutre) — repère de
-  // source de ravitaillement.
+  // Dépôt de ravitaillement (grand/petit) : petit fanion triangulaire planté sur
+  // un mât court, dans la couleur du camp tenant (translucide si neutre) —
+  // repère de source de ravitaillement.
   const drawFlag = (k) => {
     const [q, r] = k.split(',').map(Number);
     const { x, y } = axialToPixel(q, r);
@@ -151,10 +151,10 @@ export async function createOverlay(state, stage, ui) {
   function drawOverlay() {
     overlay.clear();
     objLayer.removeChildren();
-    // Contrôle des peuplements. Rejoué à chaque refresh (le contrôle évolue) —
+    // Contrôle des dépôts. Rejoué à chaque refresh (le contrôle évolue) —
     // d'où le tracé ici plutôt que dans le décor statique.
     for (const k of state.objectives) drawObjective(k); // objectifs de victoire (médaille)
-    for (const k of settlementKeys) drawFlag(k); // peuplements (fanion de ravito)
+    for (const k of depotKeys) drawFlag(k); // dépôts (fanion de ravito)
     if (ui.showSupply) drawSupplyLines();
     if (ui.showZoc) { // zone d'influence (ZOC) du camp actif
       const zone = zocOf(state.units, state.G.player, state.terrain);
