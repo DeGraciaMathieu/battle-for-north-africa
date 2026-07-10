@@ -74,8 +74,9 @@ export function inspectorHtml(state, sel, attackers) {
 
 // -- Barre d'objectifs et textes de phase -----------------------------------
 export function objbarHtml(state) {
-  return `<div class="kv"><span>Objectifs</span>`
-    + `<span><b>${objCount(state, 'blue')}</b> ${sideLabel('blue')} · <b>${objCount(state, 'red')}</b> ${sideLabel('red')} · ${state.objectives.length} au total</span></div>`
+  return `<div class="objtitle">Objectifs</div>`
+    + `<div class="objline"><span class="blue"><b>${objCount(state, 'blue')}</b> ${sideLabel('blue')}</span> · `
+    + `<span class="red"><b>${objCount(state, 'red')}</b> ${sideLabel('red')}</span> · ${state.objectives.length} au total</div>`
     + `<div class="sub">Le camp contrôlant le plus d'objectifs au tour ${MAX_TURNS} l'emporte.</div>`;
 }
 

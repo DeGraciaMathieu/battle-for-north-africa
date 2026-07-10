@@ -132,5 +132,5 @@ test('libellés de phase et de camp', () => {
   assert.equal(phaseBtnLabel({ phase: 'combat', player: 'red', turn: 4 }), 'Fin du tour 4 ▸');
   const st = makeState({ objectives: ['0,0', '1,0'] });
   st.objControl.set('0,0', 'red');
-  assert.match(objbarHtml(st), /<b>0<\/b> BLEU · <b>1<\/b> ROUGE · 2 au total/);
+  assert.match(objbarHtml(st), /<b>0<\/b> BLEU<\/span> · <span class="red"><b>1<\/b> ROUGE<\/span> · 2 au total/);
 });
