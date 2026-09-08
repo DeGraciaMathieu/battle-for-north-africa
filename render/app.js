@@ -19,6 +19,7 @@ import { createCombatModal } from './combatModal.js';
 import { createStackFan } from './stackFan.js';
 import { createInput } from './input.js';
 import { createDrivers } from './drivers.js';
+import { audio } from './audio.js';
 import { sideLabel } from './html.js';
 
 (async () => {
@@ -50,7 +51,7 @@ import { sideLabel } from './html.js';
     const counters = createCounters(state, stage);
     const fx = createFx(state, stage, counters);
     const overlay = await createOverlay(state, stage, ui);
-    const hud = createHud({ state, stage, ui, session, myTurn, counters, overlay });
+    const hud = createHud({ state, stage, ui, session, myTurn, counters, overlay, audio });
     const combatModal = createCombatModal({ state, stage, ui, session, fx, hud, overlay });
     const stackFan = createStackFan({ state, stage, ui, session, myTurn, counters, hud });
     createInput({ state, stage, ui, session, myTurn, hud, overlay, combatModal, counters, stackFan });
@@ -68,14 +69,16 @@ import { sideLabel } from './html.js';
     // à la fermeture de la modale, synchronisée avec le résultat du dé.
     state.bus.on('unitReduced', (u) => fx.fxQueue.push({ q: u.q, r: u.r, kind: 'hit', id: u.id }));
     state.bus.on('unitRemoved', (u) => fx.fxQueue.push({ q: u.q, r: u.r, kind: 'kill' }));
-    state.bus.on('combatResolved', combatModal.runRoll);
+    state.bus.on('combatResolved', (summary) => { audio.dice(); combatModal.runRoll(summary); });
     state.bus.on('phaseChanged', () => {
+      audio.endTurn();
       stackFan.close();
       ui.clearSel();
       hud.refresh();
       drivers.maybeRunAI(); // enchaîne le tour de l'IA si c'est à elle
     });
     state.bus.on('gameOver', ({ side, reason }) => {
+      audio.capture(); // flourish de victoire (réutilise le carillon de capture)
       stackFan.close();
       ui.clearSel();
       overlay.drawOverlay();

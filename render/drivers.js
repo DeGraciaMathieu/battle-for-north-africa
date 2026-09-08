@@ -13,6 +13,7 @@ import { computeReachable, moveUnit } from '../src/movement.js';
 import { advanceAfterCombat } from '../src/combat.js';
 import { endPhase } from '../src/game.js';
 import { aiMovePhase, aiAttackPhase, aiReorderPhase } from '../src/ai.js';
+import { audio } from './audio.js';
 
 export function createDrivers({ state, stage, ui, session, hud, overlay, combatModal }) {
   const byId = (id) => state.units.find((u) => u.id === id);
@@ -34,6 +35,7 @@ export function createDrivers({ state, stage, ui, session, hud, overlay, combatM
         const { dist, eZOC } = computeReachable(state, u);
         if (!dist[m.to]) continue; // destination devenue invalide
         moveUnit(u, m.to, dist, eZOC);
+        audio.move();
         hud.refresh();
         await wait(AI_MOVE_MS);
       }
@@ -86,7 +88,7 @@ export function createDrivers({ state, stage, ui, session, hud, overlay, combatM
       if (session.netLost) return;
       if (m.t === 'move') {
         const u = byId(m.id);
-        if (u) { const { dist, eZOC } = computeReachable(state, u); moveUnit(u, m.to, dist, eZOC); }
+        if (u) { const { dist, eZOC } = computeReachable(state, u); moveUnit(u, m.to, dist, eZOC); audio.move(); }
         ui.clearSel();
         hud.refresh();
       } else if (m.t === 'combat') {

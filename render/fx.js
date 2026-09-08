@@ -9,6 +9,7 @@
 import { SIZE } from '../src/config.js';
 import { axialToPixel } from '../src/geometry.js';
 import { lerpColor } from './gfx.js';
+import { audio } from './audio.js';
 
 export function createFx(state, stage, counters) {
   const { app, draw } = stage;
@@ -88,6 +89,7 @@ export function createFx(state, stage, counters) {
   const startAnim = () => { if (!app.ticker.started) { app.ticker.add(animTick); app.ticker.start(); } };
 
   function spawnFx(q, r, kind) {
+    audio.combat(); // impact sonore synchronisé avec l'effet visuel
     const { x, y } = axialToPixel(q, r);
     const rad = SIZE * 0.5; // distance des foyers depuis le centre
     const dur = kind === 'kill' ? 520 : 420;
