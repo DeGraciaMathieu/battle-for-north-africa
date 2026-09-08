@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { loadMap } from '../src/map.js';
 import { createGame } from '../src/game.js';
-import { BASES, DIRS, TERRAIN } from '../src/config.js';
+import { DIRS, TERRAIN } from '../src/config.js';
 import { offsetToAxial, key } from '../src/geometry.js';
 
 // Cartes livrées : chaque preset du manifeste doit rester jouable.
@@ -27,8 +27,9 @@ for (const { file, name } of manifest) {
     assert.ok(map.objectives.length >= 1, `${file} : aucun objectif`);
     for (const k of map.objectives) assert.ok(passable(map.terrain, k), `${file} : objectif ${k} infranchissable`);
 
-    // Les deux bases sont reliées par voie terrestre.
-    const a = offsetToAxial(...BASES.blue), b = offsetToAxial(...BASES.red);
+    // Les deux bases sont reliées par voie terrestre. Chaque carte porte sa
+    // propre taille (méta cols/rows) et donc ses propres positions de base.
+    const a = offsetToAxial(...map.bases.blue), b = offsetToAxial(...map.bases.red);
     const seen = new Set([key(a.q, a.r)]);
     const stack = [[a.q, a.r]];
     while (stack.length) {

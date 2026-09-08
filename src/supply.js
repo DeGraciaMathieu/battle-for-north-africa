@@ -20,7 +20,7 @@ export function supplySources(state, side) {
   for (const [k, t] of terrain) {                                          // dépôts/oasis tenus
     if ((t === 'depot' || t === 'dump' || t === 'oasis') && objControl.get(k) === side) src.add(k);
   }
-  const { q, r } = offsetToAxial(...BASES[side]);                          // camp de base
+  const { q, r } = offsetToAxial(...(state.bases ?? BASES)[side]);         // camp de base
   const k = key(q, r);
   if (terrain.has(k)) src.add(k);
   return src;

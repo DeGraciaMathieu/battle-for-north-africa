@@ -7,7 +7,7 @@
 //  unités tombées dans l'eau repoussées à terre (voir game.js).
 // ===========================================================================
 
-import { COLS, ROWS, BASES, DIRS, TERRAIN } from './config.js';
+import { COLS, ROWS, BASES, basesFor, DIRS, TERRAIN } from './config.js';
 import { key, offsetToAxial, clamp, hexDistance } from './geometry.js';
 
 // PRNG déterministe seedé : même seed → même suite de nombres [0, 1).
@@ -36,7 +36,8 @@ export const BIOMES = {
 };
 
 export function generateMap(seed = 1, { fair = false, biome = 'tempere' } = {}) {
-  return (BIOMES[biome] ?? BIOMES.tempere).gen(seed, { fair });
+  const res = (BIOMES[biome] ?? BIOMES.tempere).gen(seed, { fair });
+  return { ...res, cols: COLS, rows: ROWS, bases: BASES };
 }
 
 // Biome TEMPÉRÉ : plaines bicolores, hydrographie (fleuve transversal ou réseau
@@ -791,6 +792,11 @@ function generateTropical(seed = 1, { fair = false } = {}) {
 // retombe sur les grands dépôts. Les bases priment (positions fixées par le moteur),
 // garantissant les sources de ravitaillement de chaque camp.
 export function loadMap(data) {
+  // Taille et bases propres à la carte : les scénarios livrés déclarent leur
+  // taille en méta (cols/rows). À défaut (anciennes cartes), on retombe sur le
+  // global procédural.
+  const cols = data.cols ?? COLS, rows = data.rows ?? ROWS;
+  const bases = basesFor(cols, rows);
   const terrain = new Map();
   const hexes = [];
   for (const [k, t] of Object.entries(data.terrain ?? {})) {
@@ -798,12 +804,12 @@ export function loadMap(data) {
     const [q, r] = k.split(',').map(Number);
     hexes.push({ q, r });
   }
-  for (const [c, rw] of Object.values(BASES)) {
+  for (const [c, rw] of Object.values(bases)) {
     const { q, r } = offsetToAxial(c, rw);
     terrain.set(key(q, r), 'base');
   }
   const objectives = Array.isArray(data.objectives)
     ? data.objectives.filter((k) => terrain.has(k))
     : [...terrain.entries()].filter(([, t]) => t === 'depot').map(([k]) => k);
-  return { terrain, hexes, objectives };
+  return { terrain, hexes, objectives, cols, rows, bases };
 }

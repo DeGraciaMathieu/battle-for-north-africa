@@ -5,8 +5,8 @@
 // ===========================================================================
 
 export const SIZE = 46;          // rayon d'un hex en pixels (rendu + géométrie)
-export const COLS = 30;          // largeur de la carte en colonnes offset
-export const ROWS = 20;          // hauteur de la carte en lignes offset
+export const COLS = 20;          // largeur de la carte en colonnes offset
+export const ROWS = 14;          // hauteur de la carte en lignes offset
 export const SQRT3 = Math.sqrt(3);
 export const STACK_MAX = 3;      // limite d'empilement par hex et par camp
 export const MAX_TURNS = 10;     // durée de la partie (objectifs comptés à la fin)
@@ -15,7 +15,10 @@ export const SUPPLY_RANGE = 8;   // longueur max d'une route de ravitaillement (
 
 // Camp de base : hexe source du ravitaillement de chaque camp (col, row offset).
 // Bleu (blue, joueur 1) démarre en bas-gauche, Rouge (red) en haut-droite.
-export const BASES = { blue: [1, ROWS - 3], red: [COLS - 2, 2] };
+// Dérivé de la taille de la carte : les cartes procédurales utilisent le global
+// COLS/ROWS, les scénarios chargés fournissent leur propre taille (voir loadMap).
+export const basesFor = (cols, rows) => ({ blue: [1, rows - 3], red: [cols - 2, 2] });
+export const BASES = basesFor(COLS, ROWS);
 
 // Voisinage axial (6 directions).
 export const DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
@@ -23,28 +26,28 @@ export const DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
 // Terrain : couleur (fill/stroke), coût de mouvement (PM) et décalage défensif
 // (nombre de colonnes retirées à l'attaquant sur la CRT).
 export const TERRAIN = {
-  river:   { name: 'Rivière',      fill: 0x336d94, stroke: 0x1f4c6e, cost: Infinity, def: 0 },
-  bank:    { name: 'Berge',        fill: 0x77aec2, stroke: 0x437a92, cost: 2, def: 0 },
-  beach:   { name: 'Plage',        fill: 0xe8d7a0, stroke: 0xc0a86e, cost: 2, def: -1 },
-  marsh:   { name: 'Marais',       fill: 0x4b5540, stroke: 0x333c2a, cost: 3, def: -1 },
-  wadi:    { name: 'Oued',         fill: 0xac9866, stroke: 0x6f5f38, cost: 2, def: 1 },
-  plain:   { name: 'Plaine',       fill: 0x93b957, stroke: 0x67863a, cost: 1, def: 0 },
-  plain2:  { name: 'Plaine',       fill: 0xaacb69, stroke: 0x67863a, cost: 1, def: 0 },
-  desert:  { name: 'Désert',       fill: 0xd9c48f, stroke: 0xa8935f, cost: 1, def: 0 },
-  dunes:   { name: 'Dunes',        fill: 0xc9b06f, stroke: 0x93783f, cost: 2, def: 0 },
-  oasis:   { name: 'Oasis',        fill: 0x3f8f5a, stroke: 0x27633b, cost: 1, def: 1, supply: 4 },
-  snow:    { name: 'Neige',        fill: 0xdfe4ea, stroke: 0xa8b0b8, cost: 2, def: 0 },
-  plateau: { name: 'Plateau',      fill: 0x676c5b, stroke: 0x454a3a, cost: 1, def: 1 },
-  rough:   { name: 'Rocaille',     fill: 0x8a8274, stroke: 0x5c554a, cost: 2, def: 1 },
-  hill:    { name: 'Coteau',       fill: 0x7c7a6c, stroke: 0x4f4d42, cost: 3, def: 2 },
-  mountain:{ name: 'Montagne',     fill: 0x888890, stroke: 0x56565e, cost: 4, def: 3 },
-  depot:   { name: 'Grand dépôt',  fill: 0xbaa971, stroke: 0x7a6a3f, cost: 1, def: 0, supply: 6 },
-  dump:    { name: 'Petit dépôt',  fill: 0xa8977a, stroke: 0x6e6042, cost: 1, def: 0, supply: 4 },
-  urban:   { name: 'Zone urbaine', fill: 0xc4c3bd, stroke: 0x94938e, cost: 1, def: 2 },
-  ruins:   { name: 'Ruines',       fill: 0x8f8a86, stroke: 0x585450, cost: 1, def: 2 },
-  forest:  { name: 'Bois',         fill: 0x468236, stroke: 0x2c5622, cost: 2, def: 1 },
-  road:    { name: 'Route',        fill: 0xc2ab7a, stroke: 0x8a7550, cost: 0.5, def: -1 },
-  base:    { name: 'Camp de base', fill: 0x5c7649, stroke: 0x33422a, cost: 1, def: 0, supply: SUPPLY_RANGE },
+  river:   { name: 'Rivière',      fill: 0x3d8fc4, stroke: 0x2b6d99, cost: Infinity, def: 0 },
+  bank:    { name: 'Berge',        fill: 0x86bcd9, stroke: 0x5b95b6, cost: 2, def: 0 },
+  beach:   { name: 'Plage',        fill: 0xecd9a3, stroke: 0xcbb474, cost: 2, def: -1 },
+  marsh:   { name: 'Marais',       fill: 0x6f8158, stroke: 0x51603f, cost: 3, def: -1 },
+  wadi:    { name: 'Oued',         fill: 0xc3a86c, stroke: 0x9a7f45, cost: 2, def: 1 },
+  plain:   { name: 'Plaine',       fill: 0xa9d67f, stroke: 0x83b459, cost: 1, def: 0 },
+  plain2:  { name: 'Plaine',       fill: 0x98cc6e, stroke: 0x74a94c, cost: 1, def: 0 },
+  desert:  { name: 'Désert',       fill: 0xe6d29a, stroke: 0xc7ac6f, cost: 1, def: 0 },
+  dunes:   { name: 'Dunes',        fill: 0xd8bd7a, stroke: 0xb3954f, cost: 2, def: 0 },
+  oasis:   { name: 'Oasis',        fill: 0x3fa85f, stroke: 0x2b8046, cost: 1, def: 1, supply: 4 },
+  snow:    { name: 'Neige',        fill: 0xeef1f5, stroke: 0xc4ccd5, cost: 2, def: 0 },
+  plateau: { name: 'Plateau',      fill: 0x8f8d78, stroke: 0x6d6b57, cost: 1, def: 1 },
+  rough:   { name: 'Rocaille',     fill: 0xa89f8d, stroke: 0x847b69, cost: 2, def: 1 },
+  hill:    { name: 'Coteau',       fill: 0xb6a98f, stroke: 0x8f8264, cost: 3, def: 2 },
+  mountain:{ name: 'Montagne',     fill: 0x9a97a0, stroke: 0x726f7a, cost: 4, def: 3 },
+  depot:   { name: 'Grand dépôt',  fill: 0xc9b884, stroke: 0x9c8a58, cost: 1, def: 0, supply: 6 },
+  dump:    { name: 'Petit dépôt',  fill: 0xbda98a, stroke: 0x8f7d5e, cost: 1, def: 0, supply: 4 },
+  urban:   { name: 'Zone urbaine', fill: 0xcfccc4, stroke: 0xa6a299, cost: 1, def: 2 },
+  ruins:   { name: 'Ruines',       fill: 0xb3ada6, stroke: 0x8a847d, cost: 1, def: 2 },
+  forest:  { name: 'Bois',         fill: 0x4f9d5a, stroke: 0x367840, cost: 2, def: 1 },
+  road:    { name: 'Route',        fill: 0xa9d67f, stroke: 0x83b459, cost: 0.5, def: -1 },
+  base:    { name: 'Camp de base', fill: 0x6f9a5c, stroke: 0x4f7540, cost: 1, def: 0, supply: SUPPLY_RANGE },
 };
 
 // Table de résolution des combats (CRT) indexée par rapport de force (ODDS).

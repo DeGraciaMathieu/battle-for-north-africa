@@ -4,7 +4,7 @@
 //  les objectifs et les conditions de victoire.
 // ===========================================================================
 
-import { MAX_TURNS, TERRAIN, DIRS } from './config.js';
+import { MAX_TURNS, TERRAIN, DIRS, COLS, ROWS, BASES } from './config.js';
 import { createUnits, eMov, unitsAt } from './units.js';
 import { generateMap } from './map.js';
 import { createBus } from './events.js';
@@ -17,13 +17,17 @@ import { key } from './geometry.js';
 // (optionnelle) fournit une carte déjà construite (chargée depuis un fichier) et
 // prime alors sur la génération par seed.
 export function createGame(rng = Math.random, seed, composition, map, mapOptions) {
-  const { terrain, hexes, objectives } = map ?? generateMap(seed, mapOptions);
+  const built = map ?? generateMap(seed, mapOptions);
+  const { terrain, hexes, objectives, cols = COLS, rows = ROWS, bases = BASES } = built;
   const state = {
     terrain,
     hexes,
     objectives,
+    cols,
+    rows,
+    bases,                        // camps de base propres à la carte (procédural vs scénario)
     objControl: new Map(),        // key -> 'blue' | 'red' (dernier occupant)
-    units: createUnits(composition),
+    units: createUnits(composition, { cols, rows, bases }),
     G: { turn: 1, player: 'blue', phase: 'move', over: false },
     bus: createBus(),
     rng,

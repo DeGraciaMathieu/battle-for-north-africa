@@ -23,12 +23,12 @@ const DEPLOY_RANGE = 3;
 // N positions de déploiement pour un camp : les hexes à ≤ DEPLOY_RANGE de son
 // camp de base, du plus proche au plus loin. Si l'armée dépasse le nombre
 // d'hexes disponibles, on empile (cycle). L'eau éventuelle est gérée par game.js.
-function deployPositions(side, n) {
-  const [bc, br] = BASES[side];
+function deployPositions(side, n, cols, rows, bases) {
+  const [bc, br] = bases[side];
   const base = offsetToAxial(bc, br);
   const cand = [];
-  for (let c = 0; c < COLS; c++) {
-    for (let rw = 0; rw < ROWS; rw++) {
+  for (let c = 0; c < cols; c++) {
+    for (let rw = 0; rw < rows; rw++) {
       const { q, r } = offsetToAxial(c, rw);
       const d = hexDistance(base.q, base.r, q, r);
       if (d <= DEPLOY_RANGE) cand.push({ col: c, row: rw, d });
@@ -39,12 +39,12 @@ function deployPositions(side, n) {
 }
 
 // Construit un roster depuis une composition { blue:{type:n}, red:{type:n} }.
-function rosterFrom(composition) {
+function rosterFrom(composition, cols, rows, bases) {
   const specs = [];
   for (const side of ['blue', 'red']) {
     const counts = composition[side] || {};
     const total = CATALOG_ORDER.reduce((s, t) => s + (counts[t] || 0), 0);
-    const pos = deployPositions(side, total);
+    const pos = deployPositions(side, total, cols, rows, bases);
     let i = 0;
     for (const t of CATALOG_ORDER) {
       const tpl = UNIT_CATALOG[t];
@@ -62,8 +62,8 @@ function rosterFrom(composition) {
 
 // Instancie les unités de jeu (état mutable par pion). Sans composition, on
 // utilise le roster par défaut ; les pions se déploient à ≤ 3 hexes de leur base.
-export function createUnits(composition) {
-  return rosterFrom(composition ?? DEFAULT_COMPOSITION).map((u, i) => {
+export function createUnits(composition, { cols = COLS, rows = ROWS, bases = BASES } = {}) {
+  return rosterFrom(composition ?? DEFAULT_COMPOSITION, cols, rows, bases).map((u, i) => {
     const { q, r } = offsetToAxial(u.col, u.row);
     return { id: i, ...u, q, r, mpLeft: u.mov, hasFought: false, reduced: false, supplied: true };
   });
