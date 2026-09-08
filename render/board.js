@@ -1,217 +1,130 @@
 // ===========================================================================
-//  Plateau statique : tuiles de terrain, décors vectoriels, camps de base et
-//  couche « stats » (heatmap PM/défense). Construit une fois à l'init, puis
-//  rasterisé — le terrain ne change jamais en cours de partie.
+//  Plateau statique : tuiles de terrain en aplats, icônes de décor et couche
+//  « stats » (heatmap PM/défense). Construit une fois à l'init, puis rasterisé
+//  — le terrain ne change jamais en cours de partie.
+//
+//  Style « moderne épuré » : chaque hexe est un aplat propre bordé d'un trait
+//  net, surmonté d'une icône vectorielle simple (arbres, montagne, dépôt…).
+//  Aucune texture, aucun relief chargé — la lisibilité prime, façon jeu de
+//  plateau. Purement visuel : aucune règle ne vit ici.
 // ===========================================================================
 
-import { TERRAIN, BASES, DIRS, SIZE, SQRT3 } from '../src/config.js';
+import { TERRAIN, BASES, DIRS } from '../src/config.js';
 import { key, axialToPixel, offsetToAxial, hexCorners } from '../src/geometry.js';
-import { FILL, DIR_TO_EDGE, UPPER_EDGES, LOWER_EDGES, strokeEdge, lerpColor } from './gfx.js';
+import { FILL, lerpColor } from './gfx.js';
 
 const PIXI = window.PIXI;
 
-// Tuiles de terrain (dossier assets/). Un terrain sans texture (route) reste
-// tracé en vectoriel. Les pions, eux, restent entièrement vectoriels.
-// URL résolue depuis ce module (import.meta) : robuste à l'URL propre /game
-// et à un déploiement en sous-dossier.
-const asset = (f) => new URL(`../assets/${f}`, import.meta.url).href;
-const TERRAIN_TILES = ['plain', 'plain2', 'bank', 'river'];
-// Variantes de forêt (type 'forest') : purement visuelles, pour varier les
-// environnements. Une variante est choisie par hex de façon déterministe.
-const FOREST_TILES = ['foret-deep', 'foret-dense', 'foret-grove'];
-const FOREST_WEIGHTS = [1, 3, 2]; // deep raréfié au profit de dense
-const FOREST_TOTAL = FOREST_WEIGHTS.reduce((a, b) => a + b, 0);
-// Bruit 0..1 déterministe par hexe (salt s : plusieurs tirages indépendants).
+// Bruit 0..1 déterministe par hexe : gigue légère du ruban routier.
 const hash01 = (q, r, s = 0) => {
   const n = Math.sin(q * 91.7 + r * 47.3 + s * 13.131) * 43758.5453;
   return n - Math.floor(n);
 };
-const forestPick = (q, r) => {
-  let t = hash01(q, r) * FOREST_TOTAL;
-  for (let i = 0; i < FOREST_WEIGHTS.length; i++) if ((t -= FOREST_WEIGHTS[i]) < 0) return i;
-  return FOREST_WEIGHTS.length - 1;
+
+// Décor vectoriel par terrain : couleur d'encre + type d'icône. Les terrains
+// absents (plaine, désert, neige, plateau, berge, camp) restent en aplat nu.
+const DECOR = {
+  river:   { ink: 0xffffff, icon: 'water' },
+  beach:   { ink: 0xc7a86a, icon: 'dots' },
+  marsh:   { ink: 0x3f4d2f, icon: 'reed' },
+  wadi:    { ink: 0x8a6f3c, icon: 'curve' },
+  dunes:   { ink: 0xa98944, icon: 'dune' },
+  oasis:   { ink: 0x1f6e3a, icon: 'palm' },
+  rough:   { ink: 0x6f6656, icon: 'rocks' },
+  hill:    { ink: 0x7c6f55, icon: 'bump' },
+  mountain:{ ink: 0x5c5964, icon: 'mount' },
+  depot:   { ink: 0x7a6a3f, icon: 'crate' },
+  dump:    { ink: 0x7a6a3f, icon: 'crateS' },
+  urban:   { ink: 0x8a877f, icon: 'blocks' },
+  ruins:   { ink: 0x6f6a63, icon: 'ruin' },
+  forest:  { ink: 0x2c6636, icon: 'trees' },
 };
 
-// Tissu urbain façon plan de ville : le fond clair de l'hexe fait office de
-// voirie ; on pose dessus des ÎLOTS (pâtés de maisons) gris pâle aux liserés
-// discrets, quelques bâtiments notables plus sombres, puis les axes blancs
-// vers les hexes voisins. Quatre trames — grille orthogonale, tissu radial,
-// boulevards obliques, place centrale — tournées et perturbées par hexe :
-// deux hexes ne se ressemblent jamais. Purement visuel, aucune règle ici.
-const URBAN_VARIANTS = [
-  { blocks: [ // damier : quatre gros îlots réguliers
-    [-26, -26, -2, -26, -2, -2, -26, -2],
-    [2, -26, 26, -26, 26, -2, 2, -2],
-    [-26, 2, -2, 2, -2, 26, -26, 26],
-    [2, 2, 26, 2, 26, 26, 2, 26],
-  ] },
-  { blocks: [ // rangées décalées : deux gros îlots au nord, trois au sud
-    [-26, -26, -2, -26, -2, -2, -26, -2],
-    [2, -26, 26, -26, 26, -2, 2, -2],
-    [-26, 2, -11, 2, -11, 26, -26, 26],
-    [-7, 2, 7, 2, 7, 26, -7, 26],
-    [11, 2, 26, 2, 26, 26, 11, 26],
-  ] },
-  { blocks: [ // boulevards : bandes traversantes parallèles
-    [-26, -26, 26, -26, 26, -10, -26, -10],
-    [-26, -6, 4, -6, 4, 6, -26, 6],
-    [8, -6, 26, -6, 26, 6, 8, 6],
-    [-26, 10, 26, 10, 26, 26, -26, 26],
-  ] },
-  { square: true, blocks: [ // place centrale dégagée, îlots en couronne
-    [-26, -26, 26, -26, 26, -11, -26, -11],
-    [-26, -7, -9, -7, -9, 26, -26, 26],
-    [9, -7, 26, -7, 26, 26, 9, 26],
-    [-5, 11, 5, 11, 5, 26, -5, 26],
-  ] },
-];
-const URBAN_BLOCK = { fill: 0xaaa9a3, stroke: { width: 0.8, color: 0x908f8a, alpha: 0.8 } };
-const URBAN_BLD = { fill: 0x8b8a85, stroke: { width: 0.7, color: 0x74736d, alpha: 0.9 } };
-const URBAN_STREET = { width: 2.4, color: 0xdeddd8, alpha: 0.9 };
+const tri = (g, x, y, s, color) =>
+  g.poly([x, y - s, x - s * 0.9, y + s * 0.7, x + s * 0.9, y + s * 0.7]).fill(color);
 
-// Dessine le plan de ville d'un hexe : îlots de la trame (sommets gigués),
-// bâtiments notables posés dessus, puis axes vers les bords reliés (voisins
-// bâtis ou routiers) — les avenues découpent le tissu, comme sur un plan.
-function drawUrban(g, x, y, q, r, mids) {
-  const A = (hash01(q, r, 9) - 0.5) * 0.6; // orientation du quartier (±17°)
-  const cosA = Math.cos(A), sinA = Math.sin(A);
-  const at = (px, py) => [x + px * cosA - py * sinA, y + px * sinA + py * cosA];
-  const v = URBAN_VARIANTS[Math.floor(hash01(q, r, 5) * URBAN_VARIANTS.length)];
-  v.blocks.forEach((poly, i) => {
-    const pts = [];
-    for (let j = 0; j < poly.length; j += 2) {
-      const jx = (hash01(q, r, 20 + i * 8 + j) - 0.5) * 2.4;
-      const jy = (hash01(q, r, 60 + i * 8 + j) - 0.5) * 2.4;
-      pts.push(...at(poly[j] + jx, poly[j + 1] + jy));
+// Dessine l'icône du terrain, centrée sur (x, y), sur le Graphics `g`.
+function drawDecor(g, x, y, def) {
+  const ink = def.ink;
+  switch (def.icon) {
+    case 'trees':
+      for (const [dx, dy] of [[-12, 4], [8, -3], [-1, 12]]) tri(g, x + dx, y + dy, 10, ink);
+      break;
+    case 'mount':
+      g.poly([x, y - 15, x - 18, y + 9, x + 18, y + 9]).fill(ink);
+      g.poly([x, y - 15, x - 6, y - 3, x + 6, y - 3]).fill(0xffffff);
+      break;
+    case 'bump':
+      g.moveTo(x - 13, y + 6).quadraticCurveTo(x - 4, y - 8, x + 2, y + 4)
+        .quadraticCurveTo(x + 8, y - 4, x + 14, y + 6).stroke({ width: 2.5, color: ink });
+      break;
+    case 'rocks':
+      for (const [dx, dy, rr] of [[-9, 3, 5], [6, 6, 5], [0, -4, 4]]) g.circle(x + dx, y + dy, rr).fill(ink);
+      break;
+    case 'palm':
+      g.moveTo(x, y + 11).lineTo(x, y - 5).stroke({ width: 2.5, color: ink });
+      for (const a of [-1.1, -0.4, 0.4, 1.1])
+        g.moveTo(x, y - 5).lineTo(x + Math.sin(a) * 13, y - 5 - Math.cos(a) * 10).stroke({ width: 2, color: ink });
+      break;
+    case 'dune':
+      g.moveTo(x - 15, y + 4).quadraticCurveTo(x - 4, y - 7, x + 3, y + 3)
+        .quadraticCurveTo(x + 10, y + 9, x + 16, y + 2).stroke({ width: 2.5, color: ink });
+      break;
+    case 'curve':
+      g.moveTo(x - 15, y - 4).quadraticCurveTo(x, y + 9, x + 15, y - 4).stroke({ width: 2.5, color: ink });
+      break;
+    case 'water':
+      for (const dy of [-7, 2, 11])
+        g.moveTo(x - 14, y + dy).quadraticCurveTo(x, y + dy - 6, x + 14, y + dy).stroke({ width: 1.6, color: ink, alpha: 0.6 });
+      break;
+    case 'reed':
+      for (const dx of [-10, 0, 10]) g.moveTo(x + dx, y + 11).lineTo(x + dx, y - 7).stroke({ width: 2, color: ink });
+      break;
+    case 'dots':
+      for (const [dx, dy] of [[-10, -4], [5, 3], [-2, 9], [11, -5]]) g.circle(x + dx, y + dy, 2).fill(ink);
+      break;
+    case 'blocks':
+      for (const [dx, dy, w, h] of [[-15, -2, 9, 15], [-3, -9, 9, 22], [9, -1, 9, 14]]) g.rect(x + dx, y + dy, w, h).fill(ink);
+      break;
+    case 'ruin':
+      for (const [dx, dy, w, h] of [[-14, 0, 7, 11], [-3, -4, 7, 15], [8, 3, 6, 8]]) g.rect(x + dx, y + dy, w, h).fill(ink);
+      break;
+    case 'crate':
+    case 'crateS': {
+      const s = def.icon === 'crate' ? 13 : 9;
+      g.rect(x - s, y - s, s * 2, s * 2).stroke({ width: 2, color: ink });
+      g.moveTo(x - s, y - s).lineTo(x + s, y + s).moveTo(x + s, y - s).lineTo(x - s, y + s).stroke({ width: 2, color: ink });
+      break;
     }
-    g.poly(pts).fill(URBAN_BLOCK.fill).stroke(URBAN_BLOCK.stroke);
-  });
-  // Bâtiments notables : 2-3 rectangles plus soutenus, posés sur des îlots.
-  const nb = 2 + Math.floor(hash01(q, r, 12) * 2);
-  for (let k = 0; k < nb; k++) {
-    const poly = v.blocks[Math.floor(hash01(q, r, 130 + k) * v.blocks.length)];
-    let cx = 0, cy = 0;
-    for (let j = 0; j < poly.length; j += 2) { cx += poly[j]; cy += poly[j + 1]; }
-    cx = cx / (poly.length / 2) + (hash01(q, r, 150 + k) - 0.5) * 4;
-    cy = cy / (poly.length / 2) + (hash01(q, r, 170 + k) - 0.5) * 4;
-    const w = 4.5 + hash01(q, r, 190 + k) * 3, h = 4 + hash01(q, r, 210 + k) * 3;
-    const pts = [];
-    for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) pts.push(...at(cx + (sx * w) / 2, cy + (sy * h) / 2));
-    g.poly(pts).fill(URBAN_BLD.fill).stroke(URBAN_BLD.stroke);
-  }
-  // Axes principaux : rues blanches vers les bords reliés ; isolé → ruelle.
-  for (const m of mids) g.moveTo(x, y).lineTo(m.x, m.y).stroke(URBAN_STREET);
-  if (!mids.length) {
-    const [ax, ay] = at(-26, 17), [bx, by] = at(26, -17);
-    g.moveTo(ax, ay).lineTo(bx, by).stroke(URBAN_STREET);
-  }
-  if (v.square) { // la place est le fond dégagé au centre ; son monument
-    const [sx, sy] = at(0, 0);
-    g.circle(sx, sy, 1.8).fill(0x6f6e69);
   }
 }
 
-// Dépôt de ravitaillement : une cour en terre battue desservie par des pistes,
-// où s'organisent rangées de caisses et de bâches, tentes et fûts de carburant
-// — le grand dépôt aligne deux rangées, deux tentes et quatre fûts, le petit
-// une rangée, une tente et trois fûts. Comme le tissu urbain, la trame est
-// tournée et perturbée par hexe : deux dépôts ne se ressemblent jamais.
-const DEPOT_PAD = { fill: 0xd0bd8d, stroke: { width: 1, color: 0x8a7550, alpha: 0.65 } };
-const DEPOT_TRACK = { width: 3, color: 0x8a7550 };
-const DEPOT_STACKS = [
-  { fill: 0x8a6f42, stroke: { width: 0.8, color: 0x54431f, alpha: 0.95 } }, // caisses bois
-  { fill: 0x9d7f4a, stroke: { width: 0.8, color: 0x54431f, alpha: 0.95 } }, // bois clair
-  { fill: 0x6b7052, stroke: { width: 0.8, color: 0x43482e, alpha: 0.95 } }, // bâche olive
-];
-const DEPOT_DRUMS = [
-  { fill: 0x57603f, stroke: { width: 0.8, color: 0x333a24, alpha: 0.95 } }, // fût olive
-  { fill: 0x7d5136, stroke: { width: 0.8, color: 0x462c1a, alpha: 0.95 } }, // fût rouillé
-];
-const DEPOT_TENT = { fill: 0x9c874e, stroke: { width: 1, color: 0x5c4e29, alpha: 0.95 } };
-
-function drawDepot(g, x, y, q, r, big, mids) {
-  const A = (hash01(q, r, 7) - 0.5) * 0.8; // orientation de la cour (±23°)
-  const cosA = Math.cos(A), sinA = Math.sin(A);
-  const at = (px, py) => [x + px * cosA - py * sinA, y + px * sinA + py * cosA];
-  const rectAt = (cx, cy, w, h) => {
-    const pts = [];
-    for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) pts.push(...at(cx + (sx * w) / 2, cy + (sy * h) / 2));
-    return pts;
-  };
-  // Pistes d'accès vers les voisins reliés — tracées sous la cour, elles
-  // meurent à sa lisière et prolongent les rubans routiers voisins.
-  for (const m of mids) g.moveTo(x, y).lineTo(m.x, m.y).stroke(DEPOT_TRACK);
-  // Cour en terre battue : octogone aux sommets gigués.
-  const R = big ? 29 : 20;
-  const pad = [];
-  for (let i = 0; i < 8; i++) {
-    const a = A + (i / 8) * Math.PI * 2;
-    const rr = R * (0.92 + hash01(q, r, 40 + i) * 0.16);
-    pad.push(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
-  }
-  g.poly(pad).fill(DEPOT_PAD.fill).stroke(DEPOT_PAD.stroke);
-  // Rangées de caisses et de bâches au nord de la cour, sangle sur la longueur.
-  const stacks = big
-    ? [[-15, -13.5], [-4, -13.5], [7, -13.5], [-15, -5.5], [-4, -5.5], [7, -5.5]]
-    : [[-9.5, -8], [1.5, -8]];
-  stacks.forEach(([sx, sy], i) => {
-    const s = DEPOT_STACKS[Math.floor(hash01(q, r, 60 + i) * DEPOT_STACKS.length)];
-    const cx = sx + (hash01(q, r, 80 + i) - 0.5) * 2, cy = sy + (hash01(q, r, 100 + i) - 0.5) * 2;
-    g.poly(rectAt(cx, cy, 10, 7)).fill(s.fill).stroke(s.stroke);
-    const [ax, ay] = at(cx - 4.2, cy), [bx, by] = at(cx + 4.2, cy);
-    g.moveTo(ax, ay).lineTo(bx, by).stroke({ width: 0.7, color: s.stroke.color, alpha: 0.5 });
-  });
-  // Tentes au sud-ouest : toile kaki, faîte marqué, versant sud ombré.
-  const tents = big ? [[-13.5, 8], [2, 10]] : [[5.5, 5.5]];
-  tents.forEach(([tx, ty], i) => {
-    const cx = tx + (hash01(q, r, 120 + i) - 0.5) * 2, cy = ty + (hash01(q, r, 140 + i) - 0.5) * 2;
-    g.poly(rectAt(cx, cy, 13, 9)).fill(DEPOT_TENT.fill).stroke(DEPOT_TENT.stroke);
-    g.poly(rectAt(cx, cy + 2.25, 13, 4.5)).fill({ color: 0x000000, alpha: 0.18 });
-    const [ax, ay] = at(cx - 6.5, cy), [bx, by] = at(cx + 6.5, cy);
-    g.moveTo(ax, ay).lineTo(bx, by).stroke({ width: 1, color: 0x5c4e29, alpha: 0.95 });
-  });
-  // Fûts de carburant au sud-est, en quinconce.
-  const drums = big ? [[15, 3], [20.5, 5.5], [15.5, 9], [20, 11.5]] : [[-8, 4.5], [-11.5, 8]];
-  drums.forEach(([dx, dy], i) => {
-    const d = DEPOT_DRUMS[Math.floor(hash01(q, r, 160 + i) * DEPOT_DRUMS.length)];
-    const [cx, cy] = at(dx, dy);
-    g.circle(cx, cy, 3).fill(d.fill).stroke(d.stroke);
-    g.circle(cx, cy, 0.9).fill({ color: 0x1f2416, alpha: 0.55 }); // bonde du fût
-  });
-  // Camion à l'entrée du grand dépôt : garé sur la première piste d'accès,
-  // cabine tournée vers la cour.
-  if (big && mids.length) {
-    const ang = Math.atan2(mids[0].y - y, mids[0].x - x);
-    const ca = Math.cos(ang), sa = Math.sin(ang);
-    const tAt = (u, v) => [x + u * ca - v * sa, y + u * sa + v * ca];
-    const box = (u0, u1, hw) => [...tAt(u0, -hw), ...tAt(u1, -hw), ...tAt(u1, hw), ...tAt(u0, hw)];
-    g.poly(box(31, 36.5, 1.7)).fill(0x6a7052).stroke({ width: 0.8, color: 0x3a3f2a, alpha: 0.95 }); // benne bâchée
-    g.poly(box(28.6, 31, 1.4)).fill(0x515741).stroke({ width: 0.8, color: 0x3a3f2a, alpha: 0.95 }); // cabine
-  }
-}
-
-// Étagement d'altitude (palier par type de terrain) → teinte hypsométrique
-// et courbes de niveau, à la manière d'une carte topographique. Palette
-// sombre : vert foncé dans les bas-fonds → gris-vert → gris pierre en altitude.
-// Purement visuel : aucune règle ne dépend de ces valeurs.
-const ELEV = { river: 0, bank: 0, beach: 1, marsh: 1, wadi: 1, plain: 2, plain2: 2, desert: 2, dunes: 2, oasis: 2, snow: 2, forest: 2, road: 2, depot: 2, dump: 2, urban: 2, ruins: 2, base: 2, plateau: 3, rough: 3, hill: 4, mountain: 5 };
-const WATER_R = new Set(['river', 'bank']);
-const bandNoise = (q, r) => { // 0..1 déterministe, deux fréquences
-  const a = Math.sin(q * 12.9898 + r * 78.233) * 43758.5453;
-  const b = Math.sin(q * 39.3468 - r * 11.135) * 24634.6345;
-  return (a - Math.floor(a)) * 0.6 + (b - Math.floor(b)) * 0.4;
-};
-const ELEV_RAMP = [[0, 0x2f3a2a], [0.3, 0x445040], [0.55, 0x666b5e], [0.78, 0x808079], [1, 0x9a9a95]];
-const elevColor = (a) => {
-  a = Math.max(0, Math.min(1, a));
-  for (let i = 1; i < ELEV_RAMP.length; i++) {
-    if (a <= ELEV_RAMP[i][0]) {
-      const [a0, c0] = ELEV_RAMP[i - 1], [a1, c1] = ELEV_RAMP[i];
-      return lerpColor(c0, c1, (a - a0) / (a1 - a0));
+// Ruban routier : relie les voisins carrossables (route/dépôt/base/urbain) par
+// des courbes passant par le centre → tracé organique plutôt qu'en segments
+// droits. Donne au réseau routier un vrai poids visuel de plateau.
+function drawRoad(g, state, q, r, x, y) {
+  const mids = [];
+  for (const [dq, dr] of DIRS) {
+    const nt = state.terrain.get(key(q + dq, r + dr));
+    if (nt === 'road' || nt === 'depot' || nt === 'dump' || nt === 'base' || nt === 'urban') {
+      const np = axialToPixel(q + dq, r + dr);
+      mids.push({ x: (x + np.x) / 2, y: (y + np.y) / 2 });
     }
   }
-  return ELEV_RAMP[ELEV_RAMP.length - 1][1];
-};
+  const RSTROKE = { width: 5, color: 0xc9ad66 };
+  const wig = (hash01(q, r, 1) - 0.5) * 5; // gigue déterministe (±2.5px)
+  if (mids.length === 0) {
+    g.circle(x, y, 3).fill(0xc9ad66);
+  } else if (mids.length === 2) {
+    const [a, b] = mids;
+    g.moveTo(a.x, a.y).quadraticCurveTo(x + wig, y - wig, b.x, b.y).stroke(RSTROKE);
+  } else {
+    for (const m of mids) {
+      const cx = (x + m.x) / 2 - (m.y - y) * 0.25, cy = (y + m.y) / 2 + (m.x - x) * 0.25;
+      g.moveTo(x, y).quadraticCurveTo(cx, cy, m.x, m.y).stroke(RSTROKE);
+    }
+  }
+}
 
 // Échelle de défense −1..+3 → rouge → jaune → vert (couche stats).
 const defColor = (d) => {
@@ -225,166 +138,27 @@ const statLabel = (s, sz) => {
 };
 
 export async function buildBoard(state, stage) {
-  const { tile: tileLayer, map: mapLayer, deco: decoLayer, stats: statsLayer } = stage.layers;
+  const { map: mapLayer, deco: decoLayer, stats: statsLayer } = stage.layers;
 
-  const terrainTex = {};
-  const forestTex = [];
-  await Promise.all([
-    ...TERRAIN_TILES.map(async (t) => { terrainTex[t] = await PIXI.Assets.load(asset(`terrain-${t}.png`)); }),
-    ...FOREST_TILES.map(async (f, i) => { forestTex[i] = await PIXI.Assets.load(asset(`terrain-${f}.png`)); }),
-  ]);
-
-  // Altitude continue d'un hex (palier + bruit doux) normalisée sur [0, 1].
-  const altAt = (q, r) => ((ELEV[state.terrain.get(key(q, r))] ?? 2) + (bandNoise(q, r) - 0.5) * 1.1) / 5;
+  // Aplats de terrain : remplissage plein + trait de bord net (effet « tuile »).
   for (const { q, r } of state.hexes) {
     const { x, y } = axialToPixel(q, r);
-    const type = state.terrain.get(key(q, r));
-    const c = hexCorners(x, y);
-    const tex = type === 'forest' ? forestTex[forestPick(q, r)] : terrainTex[type];
-    if (tex) { // tuile texturée : sprite flat-top
-      const sp = new PIXI.Sprite(tex);
-      sp.anchor.set(0.5);
-      sp.position.set(x, y);
-      sp.width = SIZE * 2; sp.height = SIZE * SQRT3;
-      // Ombrage d'altitude sur la terre (l'eau garde sa teinte propre).
-      if (type === 'plain' || type === 'plain2' || type === 'forest') sp.tint = lerpColor(0xffffff, elevColor(altAt(q, r)), 0.45);
-      tileLayer.addChild(sp);
-    } else { // terrain sans tuile (relief, peuplements, route) : aplat vectoriel
-      const t = TERRAIN[type];
-      mapLayer.poly(c).fill(t.fill).stroke({ width: 1, color: t.stroke, alpha: 0.4 });
-    }
-    // Relief : arêtes hautes éclairées, arêtes basses ombrées → profondeur.
-    // Biseau discret pour ne pas concurrencer les contours de zone.
-    for (const e of UPPER_EDGES) strokeEdge(mapLayer, c, e, 0xffffff, 0.05, 1.5);
-    for (const e of LOWER_EDGES) strokeEdge(mapLayer, c, e, 0x000000, 0.06, 1.5);
+    const t = TERRAIN[state.terrain.get(key(q, r))];
+    if (!t) continue;
+    mapLayer.poly(hexCorners(x, y)).fill(t.fill).stroke({ width: 1.4, color: t.stroke, alpha: 0.9 });
   }
+
+  // Décor : icône par terrain, ou ruban routier pour les routes.
   for (const { q, r } of state.hexes) {
     const type = state.terrain.get(key(q, r));
     const { x, y } = axialToPixel(q, r);
-    // Courbe de niveau : trait fin sur l'arête franchie entre deux paliers
-    // d'altitude. Tracée du seul côté amont → un seul trait par frontière.
-    if (!WATER_R.has(type)) {
-      const cc = hexCorners(x, y);
-      const myB = ELEV[type] ?? 2;
-      for (let d = 0; d < 6; d++) {
-        const nt = state.terrain.get(key(q + DIRS[d][0], r + DIRS[d][1]));
-        if (!nt || WATER_R.has(nt)) continue;
-        if (myB > (ELEV[nt] ?? 2)) strokeEdge(decoLayer, cc, DIR_TO_EDGE[d], 0x161c12, 0.4, 1.6);
-      }
-    }
-    if (type === 'depot' || type === 'dump') {
-      // dépôt de ravitaillement : pistes d'accès vers les voisins carrossables,
-      // puis cour et matériel par-dessus (drawDepot). Le drapeau de contrôle
-      // (drawFlag, dans l'overlay) signale le camp qui le tient.
-      const mids = [];
-      for (const [dq, dr] of DIRS) {
-        const nt = state.terrain.get(key(q + dq, r + dr));
-        if (nt === 'road' || nt === 'urban' || nt === 'base' || nt === 'depot' || nt === 'dump') {
-          const np = axialToPixel(q + dq, r + dr);
-          mids.push({ x: (x + np.x) / 2, y: (y + np.y) / 2 });
-        }
-      }
-      drawDepot(decoLayer, x, y, q, r, type === 'depot', mids);
-    } else if (type === 'urban') {
-      // zone urbaine : rues reliées aux entrées (route/dépôt/base) et à une
-      // partie des voisins urbains — arêtes élaguées par un hash SYMÉTRIQUE
-      // (les deux hexes décident pareil), sinon les grappes denses deviennent
-      // une toile de rues. Puis îlots bâtis variés par-dessus.
-      const mids = [];
-      for (const [dq, dr] of DIRS) {
-        const nq = q + dq, nr = r + dr;
-        const nt = state.terrain.get(key(nq, nr));
-        const open = nt === 'urban'
-          ? hash01(q + nq, r + nr, 3) < 0.45
-          : nt === 'road' || nt === 'depot' || nt === 'dump' || nt === 'base';
-        if (open) {
-          const np = axialToPixel(nq, nr);
-          mids.push({ x: (x + np.x) / 2, y: (y + np.y) / 2 });
-        }
-      }
-      drawUrban(decoLayer, x, y, q, r, mids);
-    } else if (type === 'hill') {
-      // coteau : deux bosses.
-      decoLayer.poly([x - 9, y + 4, x - 3, y - 5, x + 3, y + 4]).fill(0x6e6c5e).stroke({ width: 1, color: 0xb0ac96 });
-      decoLayer.poly([x + 1, y + 5, x + 6, y - 3, x + 10, y + 5]).fill(0x7b7869).stroke({ width: 1, color: 0xb0ac96 });
-    } else if (type === 'mountain') {
-      // montagne : pic marqué, versant éclairé et arête sommitale claire.
-      decoLayer.poly([x - 11, y + 6, x, y - 9, x + 11, y + 6]).fill(0x6f6f77).stroke({ width: 1, color: 0xb9b9c2 });
-      decoLayer.poly([x, y - 9, x + 5, y - 1, x - 1, y + 1]).fill(0x9a9aa2);
-      decoLayer.moveTo(x - 3, y - 3).lineTo(x, y - 9).lineTo(x + 3, y - 3).stroke({ width: 1, color: 0xe6e6ec, alpha: 0.75 });
-    } else if (type === 'marsh') {
-      // marais : touffes de roseaux et flaques.
-      decoLayer.moveTo(x - 7, y + 3).lineTo(x - 3, y + 3).stroke({ width: 1, color: 0x8fa07a, alpha: 0.7 });
-      decoLayer.moveTo(x + 1, y - 1).lineTo(x + 6, y - 1).stroke({ width: 1, color: 0x8fa07a, alpha: 0.7 });
-      decoLayer.moveTo(x - 2, y + 6).lineTo(x + 4, y + 6).stroke({ width: 1, color: 0x6f88b0, alpha: 0.6 });
-    } else if (type === 'dunes') {
-      // dunes : crêtes de sable ondulantes.
-      decoLayer.moveTo(x - 8, y + 2).quadraticCurveTo(x - 3, y - 3, x + 1, y + 1).quadraticCurveTo(x + 5, y + 4, x + 9, y - 1).stroke({ width: 1, color: 0xe7d6a6, alpha: 0.8 });
-      decoLayer.moveTo(x - 7, y + 6).quadraticCurveTo(x - 2, y + 2, x + 3, y + 6).stroke({ width: 1, color: 0xb59a5c, alpha: 0.7 });
-    } else if (type === 'oasis') {
-      // oasis : point d'eau cerné de palmes.
-      decoLayer.circle(x, y + 2, 3).fill({ color: 0x4aa6c9 }).stroke({ width: 1, color: 0xcfeaf2 });
-      for (const dx of [-6, 0, 6]) decoLayer.moveTo(x + dx, y - 1).lineTo(x + dx, y - 8).stroke({ width: 1, color: 0x2f7d47 });
-    } else if (type === 'rough') {
-      // rocaille : éclats de roche épars.
-      decoLayer.poly([x - 8, y + 3, x - 5, y - 2, x - 2, y + 3]).fill(0x6f6a5e);
-      decoLayer.poly([x + 1, y + 5, x + 5, y - 1, x + 9, y + 5]).fill(0x7d786a);
-      decoLayer.circle(x - 1, y - 3, 1.6).fill(0x60594d);
-    } else if (type === 'ruins') {
-      // ruines : pans de murs brisés.
-      decoLayer.rect(x - 8, y - 4, 4, 6).fill(0x5f5b57).stroke({ width: 1, color: 0x2f2c29 });
-      decoLayer.rect(x - 1, y - 6, 4, 8).fill(0x6b6763).stroke({ width: 1, color: 0x2f2c29 });
-      decoLayer.rect(x + 5, y - 1, 3, 4).fill(0x565350).stroke({ width: 1, color: 0x2f2c29 });
-    } else if (type === 'wadi') {
-      // oued : lit asséché sinueux.
-      decoLayer.moveTo(x - 8, y - 2).quadraticCurveTo(x - 2, y + 3, x + 2, y - 1).quadraticCurveTo(x + 6, y - 4, x + 9, y + 1).stroke({ width: 2, color: 0x8a7846, alpha: 0.8 });
-    } else if (type === 'river') {
-      // rivière : rides.
-      decoLayer.moveTo(x - 6, y - 3).quadraticCurveTo(x - 3, y - 5, x, y - 3).quadraticCurveTo(x + 3, y - 1, x + 6, y - 3).stroke({ width: 1, color: 0xaed3e2, alpha: 0.5 });
-      decoLayer.moveTo(x - 6, y + 4).quadraticCurveTo(x - 3, y + 2, x, y + 4).quadraticCurveTo(x + 3, y + 6, x + 6, y + 4).stroke({ width: 1, color: 0xaed3e2, alpha: 0.5 });
-    } else if (type === 'road') {
-      // route : ruban reliant les voisins carrossables (route/dépôt/base) en
-      // courbes passant par le centre → rendu organique plutôt qu'en segments
-      // droits. Vers un voisin URBAIN le tronçon est droit (style rue) — la rue
-      // urbaine tend vers le même milieu d'arête : jonction nette, sans rosace.
-      const mids = [], urbMids = [];
-      for (const [dq, dr] of DIRS) {
-        const nt = state.terrain.get(key(q + dq, r + dr));
-        if (nt === 'road' || nt === 'depot' || nt === 'dump' || nt === 'base' || nt === 'urban') {
-          const np = axialToPixel(q + dq, r + dr);
-          (nt === 'urban' ? urbMids : mids).push({ x: (x + np.x) / 2, y: (y + np.y) / 2 });
-        }
-      }
-      const RSTROKE = { width: 3, color: 0x8a7550 };
-      const n = Math.sin(q * 127.1 + r * 311.7) * 43758.5453;
-      const wig = (n - Math.floor(n) - 0.5) * 5; // gigue déterministe par hex (±2.5px)
-      for (const m of urbMids) decoLayer.moveTo(x, y).lineTo(m.x, m.y).stroke(RSTROKE);
-      if (mids.length === 0) {
-        if (!urbMids.length) decoLayer.circle(x, y, 2.5).fill(0x8a7550);
-      } else if (mids.length === 2) {
-        // traversée : une seule courbe d'un bord à l'autre, incurvée via le centre.
-        const [a, b] = mids;
-        decoLayer.moveTo(a.x, a.y).quadraticCurveTo(x + wig, y - wig, b.x, b.y).stroke(RSTROKE);
-      } else {
-        // extrémité ou carrefour : une courbe du centre vers chaque bord relié.
-        for (const m of mids) {
-          const cx = (x + m.x) / 2 - (m.y - y) * 0.25, cy = (y + m.y) / 2 + (m.x - x) * 0.25;
-          decoLayer.moveTo(x, y).quadraticCurveTo(cx, cy, m.x, m.y).stroke(RSTROKE);
-        }
-      }
-    }
-    // Rivage : arête entre eau et terre soulignée d'écume.
-    if (type === 'river') {
-      const c = hexCorners(x, y);
-      for (let d = 0; d < 6; d++) {
-        const nt = state.terrain.get(key(q + DIRS[d][0], r + DIRS[d][1]));
-        if (nt && nt !== 'river') strokeEdge(decoLayer, c, DIR_TO_EDGE[d], 0xcde7ef, 0.6, 1.5);
-      }
-    }
+    if (type === 'road') drawRoad(decoLayer, state, q, r, x, y);
+    else if (DECOR[type]) drawDecor(decoLayer, x, y, DECOR[type]);
   }
+
   // Camps de base : encadré + fanion à la couleur du camp.
   for (const s of ['blue', 'red']) {
-    const [c, rw] = BASES[s];
+    const [c, rw] = (state.bases ?? BASES)[s];
     const { q, r } = offsetToAxial(c, rw);
     const { x, y } = axialToPixel(q, r);
     const col = FILL[s];
@@ -393,11 +167,9 @@ export async function buildBoard(state, stage) {
     decoLayer.poly([x + 1, y - 10, x + 8, y - 8, x + 1, y - 6]).fill(col);
   }
 
-  // Aplatissement des couches statiques : le terrain vectoriel (mapLayer) et
-  // les décors (decoLayer) ne changent JAMAIS après l'init → on les rasterise
-  // chacun en une texture. Des milliers d'opérations de tracé (biseaux, courbes
-  // de niveau, décors) deviennent un seul quad par rendu. Résolution 2 pour
-  // rester net à un zoom modéré ; léger flou au zoom maximal (compromis assumé).
+  // Aplatissement des couches statiques : terrain (mapLayer) et décors
+  // (decoLayer) ne changent JAMAIS après l'init → on les rasterise chacun en
+  // une texture. Résolution 2 pour rester net à un zoom modéré.
   mapLayer.cacheAsTexture({ resolution: 2, antialias: true });
   decoLayer.cacheAsTexture({ resolution: 2, antialias: true });
 

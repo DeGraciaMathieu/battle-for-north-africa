@@ -8,12 +8,13 @@
 import { axialToPixel } from '../src/geometry.js';
 import { updateSupply } from '../src/supply.js';
 import { updateObjectives } from '../src/game.js';
-import { sideLabel, hexRecapHtml, inspectorHtml, objbarHtml, hintHtml, phaseBtnLabel, recapHtml } from './html.js';
+import { MAX_TURNS } from '../src/config.js';
+import { sideLabel, hexRecapHtml, inspectorHtml, objbarHtml, hintHtml, phaseBtnLabel, phaseSeqHtml, recapHtml } from './html.js';
 
 const PIXI = window.PIXI;
 const $ = (id) => document.getElementById(id);
 
-export function createHud({ state, stage, ui, session, myTurn, counters, overlay }) {
+export function createHud({ state, stage, ui, session, myTurn, counters, overlay, audio }) {
   const logLines = [];
   function log(s) {
     logLines.unshift(s);
@@ -58,15 +59,13 @@ export function createHud({ state, stage, ui, session, myTurn, counters, overlay
     else $('moveConfirm').style.display = 'none';
     if (state.G.phase === 'combat' && ui.pendingAdvance) showAdvanceTooltip();
     else $('advanceTip').style.display = 'none';
-    $('turnNum').textContent = state.G.turn;
-    const sb = $('badgeSide');
-    sb.textContent = sideLabel(state.G.player);
-    sb.className = 'badge ' + state.G.player;
-    $('badgePhase').textContent = state.G.phase === 'move' ? 'MOUVEMENT' : 'COMBAT';
+    $('turnNum').textContent = `${state.G.turn} / ${MAX_TURNS}`;
+    $('phaseSeq').innerHTML = phaseSeqHtml(state.G);
     $('hint').innerHTML = hintHtml(state);
     $('btnPhase').textContent = phaseBtnLabel(state.G);
     $('inspBody').innerHTML = inspectorHtml(state, ui.sel, ui.attackers);
     $('objbar').innerHTML = objbarHtml(state);
+    audio.checkCaptures(state); // son de capture si un objectif a basculé depuis le dernier refresh
     if (session.isOnline) {
       const mine = myTurn();
       $('btnPhase').disabled = !mine;

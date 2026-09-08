@@ -92,6 +92,20 @@ export function phaseBtnLabel(G) {
     : G.player === 'blue' ? 'Fin de tour Bleu → Rouge ▸' : `Fin du tour ${G.turn} ▸`;
 }
 
+// Séquence IGO-UGO d'un tour : Bleu mvt → Bleu combat → Rouge mvt → Rouge
+// combat. Les 4 étapes en pastilles, l'étape courante mise en avant (camp +
+// nom de phase) → le joueur situe où il en est dans le tour d'un coup d'œil.
+export function phaseSeqHtml(G) {
+  const steps = [['blue', 'move'], ['blue', 'combat'], ['red', 'move'], ['red', 'combat']];
+  return steps.map(([side, phase], i) => {
+    const on = side === G.player && phase === G.phase;
+    const glyph = phase === 'move' ? '➤' : '⚔';
+    const label = on ? ` ${sideLabel(side)} · ${phase === 'move' ? 'Mouvement' : 'Combat'}` : '';
+    const sep = i ? '<span class="seqsep">›</span>' : '';
+    return `${sep}<span class="seqstep ${side}${on ? ' on' : ''}">${glyph}<b>${label}</b></span>`;
+  }).join('');
+}
+
 // -- Modale de combat --------------------------------------------------------
 // Version visuelle du calcul (aperçu, avant décision) : duel Attaque/Défense,
 // chaque nombre est traçable — recto barré des pions réduits, chaîne de calcul

@@ -10,6 +10,7 @@ import { unitsAt } from '../src/units.js';
 import { computeReachable, moveUnit } from '../src/movement.js';
 import { combatPlan } from '../src/combat.js';
 import { endPhase } from '../src/game.js';
+import { audio } from './audio.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -46,6 +47,7 @@ export function createInput({ state, stage, ui, session, myTurn, hud, overlay, c
     if (!ui.sel || !ui.pending) return;
     const id = ui.sel.unit.id, to = ui.pending.key;
     moveUnit(ui.sel.unit, to, ui.sel.dist, ui.sel.eZOC);
+    audio.place();
     session.send({ t: 'move', id, to });
     ui.sel = ui.sel.unit.mpLeft > 0 ? { unit: ui.sel.unit, ...computeReachable(state, ui.sel.unit) } : null;
     ui.clearPending();
@@ -108,15 +110,34 @@ export function createInput({ state, stage, ui, session, myTurn, hud, overlay, c
     }
   }
 
+  // Curseur contextuel : indique d'un coup d'œil ce qui est actionnable sous le
+  // pointeur (main = unité saisissable, pointeur = hex atteignable, viseur =
+  // cible attaquable). Le glisser/pan bascule sur « grabbing » (géré à part).
+  function cursorFor(q, r, k) {
+    if (state.G.over || !myTurn() || !state.terrain.has(k)) return 'default';
+    if (state.G.phase === 'move') {
+      const own = unitsAt(state.units, q, r).filter((u) => u.side === state.G.player);
+      if (own.length) return 'grab';
+      if (ui.sel && ui.sel.reachable.has(k)) return 'pointer';
+      return 'default';
+    }
+    const top = unitsAt(state.units, q, r).at(-1);
+    if (top && top.side !== state.G.player) return attackersFor(q, r).length ? 'crosshair' : 'default';
+    if (top && !top.hasFought && state.units.some((e) => e.side !== state.G.player && hexDistance(e.q, e.r, q, r) === 1)) return 'pointer';
+    return 'default';
+  }
+  const setCursor = (c) => { app.canvas.style.cursor = c; };
+
   // -- Survol : info-bulle d'hexe + aperçu d'artillerie ----------------------
   let hoverKey = null;
   function handleHover(e) {
-    if (state.G.over || (ptr && ptr.moved)) { hoverKey = null; hud.hexTip.hide(); setArtyHover(null); return; }
-    if (stackFan.hovering(e.global)) { hoverKey = null; hud.hexTip.hide(); return; } // l'éventail reste déployé
+    if (state.G.over || (ptr && ptr.moved)) { setCursor(ptr && ptr.moved ? 'grabbing' : 'default'); hoverKey = null; hud.hexTip.hide(); setArtyHover(null); return; }
+    if (stackFan.hovering(e.global)) { setCursor('pointer'); hoverKey = null; hud.hexTip.hide(); return; } // l'éventail reste déployé
     const p = world.toLocal(e.global);
     const { q, r } = pixelToAxial(p.x, p.y);
     const k = key(q, r);
     hud.hexTip.move({ x: e.global.x, y: e.global.y });
+    setCursor(cursorFor(q, r, k));
     if (!state.terrain.has(k)) { hoverKey = null; hud.hexTip.hide(); setArtyHover(null); stackFan.hoverHex(null); return; }
     if (k === hoverKey) return; // même hexe : laisser le minuteur courir
     hoverKey = k;
@@ -149,6 +170,7 @@ export function createInput({ state, stage, ui, session, myTurn, hud, overlay, c
         ptr.dragUnit = ui.sel.unit;
         ui.dragOverKey = null;
         hud.refresh(); // reconstruit les pions
+        setCursor('grabbing');
         const c = counters.get(ptr.dragUnit.id); // le pion saisi passe devant, se soulève et s'incline
         if (c) { stage.layers.unit.setChildIndex(c, stage.layers.unit.children.length - 1); c.scale.set(1.15); c.rotation = 0.14; stage.draw(); }
       }
@@ -183,6 +205,7 @@ export function createInput({ state, stage, ui, session, myTurn, hud, overlay, c
       if (ui.sel && ui.sel.reachable.has(k)) {
         const id = ui.sel.unit.id;
         moveUnit(ui.sel.unit, k, ui.sel.dist, ui.sel.eZOC);
+        audio.place();
         session.send({ t: 'move', id, to: k });
         ui.sel = ui.sel.unit.mpLeft > 0 ? { unit: ui.sel.unit, ...computeReachable(state, ui.sel.unit) } : null;
       }
@@ -194,9 +217,11 @@ export function createInput({ state, stage, ui, session, myTurn, hud, overlay, c
       ptr = null;
     }
     hud.hexTip.hide();
+    const rp = world.toLocal(e.global); const { q, r } = pixelToAxial(rp.x, rp.y); // curseur : réévalue sous le pointeur au relâchement
+    setCursor(cursorFor(q, r, key(q, r)));
   });
-  app.stage.on('pointerupoutside', () => { if (ptr) { ptr = null; ui.dragOverKey = null; hud.refresh(); } });
-  app.canvas.addEventListener('pointerleave', () => { hoverKey = null; hud.hexTip.hide(); stackFan.close(); });
+  app.stage.on('pointerupoutside', () => { if (ptr) { ptr = null; ui.dragOverKey = null; hud.refresh(); } setCursor('default'); });
+  app.canvas.addEventListener('pointerleave', () => { hoverKey = null; hud.hexTip.hide(); stackFan.close(); setCursor('default'); });
 
   // -- Caméra : molette, boutons, clavier ------------------------------------
   app.canvas.addEventListener('wheel', (e) => {
@@ -215,6 +240,12 @@ export function createInput({ state, stage, ui, session, myTurn, hud, overlay, c
     if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
     if (e.key === '+' || e.key === '=') { e.preventDefault(); stage.zoomIn(); }
     else if (e.key === '-') { e.preventDefault(); stage.zoomOut(); }
+    else if (e.key === ' ' && el.tagName !== 'BUTTON') { e.preventDefault(); advancePhase(); }
+    else if (e.key === 'Enter' && !state.G.over && myTurn() && ui.pending) { e.preventDefault(); confirmMove(); }
+    else if (e.key === 'Escape') {
+      if (ui.pending) { ui.clearPending(); hud.refresh(); }
+      else if (ui.sel) { ui.clearSel(); hud.refresh(); }
+    }
   });
 
   // -- Bascules d'affichage et fin de phase -----------------------------------
@@ -242,6 +273,12 @@ export function createInput({ state, stage, ui, session, myTurn, hud, overlay, c
     overlay.drawOverlay();
     stage.draw();
   };
+  const btnMute = $('btnMute');
+  btnMute.classList.toggle('on', audio.isEnabled());
+  btnMute.onclick = () => {
+    audio.setEnabled(!audio.isEnabled());
+    btnMute.classList.toggle('on', audio.isEnabled());
+  };
   const legend = $('legend');
   const btnLegend = $('btnLegend');
   btnLegend.classList.toggle('on', ui.showLegend);
@@ -251,11 +288,14 @@ export function createInput({ state, stage, ui, session, myTurn, hud, overlay, c
     btnLegend.classList.toggle('on', ui.showLegend);
     legend.style.display = ui.showLegend ? '' : 'none';
   };
-  $('btnPhase').onclick = () => {
-    if (!myTurn()) return;
+  // Avance la séquence de jeu (mouvement → combat → fin de tour). Partagé par
+  // le bouton et le raccourci Espace.
+  function advancePhase() {
+    if (state.G.over || !myTurn()) return;
     session.send({ t: 'phase' });
     endPhase(state);
-  };
+  }
+  $('btnPhase').onclick = advancePhase;
 
   // -- Boutons de la bulle de confirmation de déplacement ---------------------
   $('btnConfirmMove').onclick = confirmMove;

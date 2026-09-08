@@ -32,14 +32,14 @@ export function createCounters(state, stage) {
     const c = new PIXI.Container();
     const baseFill = FILL[u.side];
     const fill = reduced ? mixDark(baseFill) : baseFill;
-    const txt = 0xf3efe2;
+    const txt = 0xffffff;
     const shadow = new PIXI.Graphics().roundRect(-CS / 2 + 3, -CS / 2 + 4, CS, CS, 5).fill({ color: 0, alpha: 0.35 });
     const base = new PIXI.Graphics();
-    base.roundRect(-CS / 2, -CS / 2, CS, CS, 5).fill(fill).stroke({ width: 2, color: 0x1c1810 });
-    base.roundRect(-CS / 2 + 2, -CS / 2 + 2, CS - 4, CS * 0.26, 3).fill({ color: 0xffffff, alpha: 0.1 });
+    base.roundRect(-CS / 2, -CS / 2, CS, CS, 5).fill(fill).stroke({ width: 2, color: 0xffffff });
+    base.roundRect(-CS / 2 + 2, -CS / 2 + 2, CS - 4, CS * 0.26, 3).fill({ color: 0xffffff, alpha: 0.12 });
     const bw = CS * 0.64, bh = CS * 0.36, box = new PIXI.Graphics();
-    box.rect(-bw / 2, -bh / 2, bw, bh).fill({ color: 0xf4edd8, alpha: 0.92 }).stroke({ width: 1.4, color: 0x1c1810 });
-    drawSymbol(box, u.type, -bw / 2, -bh / 2, bw, bh, 0x241d10);
+    box.rect(-bw / 2, -bh / 2, bw, bh).stroke({ width: 1.6, color: 0xffffff });
+    drawSymbol(box, u.type, -bw / 2, -bh / 2, bw, bh, 0xffffff);
     const T = (s, sz) => {
       const t = new PIXI.Text({ text: s, style: { fontFamily: 'Arial', fontSize: sz, fontWeight: '700', fill: txt } });
       t.anchor.set(0.5);
@@ -50,9 +50,9 @@ export function createCounters(state, stage) {
     const fa = reduced ? u.ratk : u.atk, fd = reduced ? u.rdef : u.def, fm = reduced ? u.rmov : u.mov;
     const fac = T(`${fa}-${fd}-${fm}`, 10); fac.position.set(0, CS / 2 - 8);
     c.addChild(shadow, base, box, fac);
-    if (reduced) { // bande d'angle rouge = pion réduit
+    if (reduced) { // bande d'angle ambre = pion réduit
       const stripe = new PIXI.Graphics();
-      stripe.poly([CS / 2 - 12, -CS / 2, CS / 2, -CS / 2, CS / 2, -CS / 2 + 12]).fill(0xb33a2a);
+      stripe.poly([CS / 2 - 12, -CS / 2, CS / 2, -CS / 2, CS / 2, -CS / 2 + 12]).fill(0xffcf3a);
       c.addChild(stripe);
     }
     if (!u.supplied) { // liseré orange = hors ravito

@@ -7,25 +7,31 @@
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden;
-    background: #14110c; font-family: "Courier New", ui-monospace, monospace; color: #d9cca0; }
+    background: #14110c; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #d9cca0; }
   #stage-canvas { position: absolute; inset: 0; z-index: 0; touch-action: none; }
   #vignette { position: absolute; inset: 0; z-index: 1; pointer-events: none;
     box-shadow: inset 0 0 220px 40px rgba(0,0,0,.55); }
-  .panel { position: absolute; z-index: 10; background: rgba(26,24,18,.9);
-    border: 1px solid #5a5238; border-radius: 4px; padding: 12px 14px;
-    font-size: 14px; line-height: 1.45; box-shadow: 0 6px 20px rgba(0,0,0,.45); letter-spacing: .3px; }
-  .panel h1 { margin: 0 0 6px; font-size: 14px; color: #e8b95a; letter-spacing: 1.4px; text-transform: uppercase; }
+  .panel { position: absolute; z-index: 10; background: rgba(22,20,15,.92);
+    border: 1px solid rgba(232,185,90,.22); border-radius: 10px; padding: 13px 16px;
+    font-size: 14px; line-height: 1.5; box-shadow: 0 8px 26px rgba(0,0,0,.5); }
+  .panel h1 { margin: 0 0 7px; font-size: 13px; color: #e8b95a; letter-spacing: 1px; text-transform: uppercase; }
   .sub { color: #9a9070; font-size: 13px; }
   b { color: #efe4bc; }
   #hud { top: 12px; left: 12px; width: 360px; }
-  #turnbar { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
-  .badge { padding:2px 9px; border-radius:3px; font-weight:700; letter-spacing:.5px; font-size:13px; }
-  .badge.blue { background:#33415c; color:#dfe7f2; border:1px solid #4a6b9a; }
-  .badge.red { background:#5a2f2b; color:#f2dedb; border:1px solid #a8544a; }
-  .badge.phase { background:#2c281c; color:#e8b95a; border:1px solid #5a5238; }
+  #turnbar { display:flex; align-items:center; gap:8px; }
+  #turnbar b { font-size:16px; color:#efe4bc; }
+  #phaseSeq { display:flex; align-items:center; gap:3px; flex-wrap:wrap; margin:6px 0 2px; }
+  .seqstep { display:inline-flex; align-items:center; gap:4px; padding:2px 7px; border-radius:6px;
+    font-size:12px; font-weight:700; border:1px solid transparent; opacity:.45; }
+  .seqstep.blue { color:#8fb0d8; background:#2a3346; }
+  .seqstep.red { color:#e0968f; background:#3f2a27; }
+  .seqstep.on { opacity:1; }
+  .seqstep.blue.on { border-color:#4a6b9a; color:#dfe7f2; }
+  .seqstep.red.on { border-color:#a8544a; color:#f2dedb; }
+  .seqsep { color:#6d6248; font-size:11px; }
   #hint { margin-top:4px; min-height:30px; }
   #btnPhase { margin-top:8px; width:100%; padding:9px; cursor:pointer; font-family:inherit; font-weight:700; font-size:14px;
-    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; letter-spacing:.6px; }
+    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:8px; letter-spacing:.6px; }
   #btnPhase:hover { background:#4a4029; }
   #inspector { top: 12px; right: 12px; width: 250px; }
   #inspector .empty { color:#8a8064; font-style: italic; }
@@ -44,7 +50,7 @@
   .swatch { display:inline-block; width:11px; height:11px; border:1px solid #2a2418; vertical-align:-1px; margin-right:5px; border-radius:2px; }
   #controls { position:absolute; z-index:10; bottom:12px; right:12px; display:flex; flex-direction:column; gap:6px; }
   #controls button { width:38px; height:38px; font-size:18px; cursor:pointer; background:rgba(26,24,18,.9);
-    color:#d9cca0; border:1px solid #5a5238; border-radius:4px; font-family:inherit; }
+    color:#d9cca0; border:1px solid #5a5238; border-radius:8px; font-family:inherit; }
   #controls button:hover { background:#2c281c; color:#e8b95a; }
   #controls button.small { font-size:12px; letter-spacing:.5px; }
   #controls button.on { background:#4a4029; color:#e8b95a; border-color:#8a7838; }
@@ -52,7 +58,7 @@
   #banner .box { background:rgba(20,17,12,.94); border:2px solid #e8b95a; border-radius:6px; padding:26px 34px; text-align:center; }
   #banner h2 { margin:0 0 6px; color:#e8b95a; letter-spacing:2px; }
   #banner button { margin-top:14px; padding:8px 16px; cursor:pointer; font-family:inherit; font-weight:700;
-    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; }
+    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:8px; }
   #bannerRecap { margin:14px 0 4px; }
   #bannerRecap table { width:100%; border-collapse:collapse; font-size:12px; color:#d8cba8; }
   #bannerRecap th, #bannerRecap td { padding:4px 10px; text-align:center; border-top:1px solid #4a4029; }
@@ -63,15 +69,15 @@
   #bannerRecap tr.winner td { color:#e8b95a; }
   #moveConfirm { z-index:20; display:none; flex-direction:column; gap:5px; padding:7px 8px; transform:translate(-50%,-125%); }
   #moveConfirm button { cursor:pointer; font-family:inherit; font-weight:700; font-size:11px; white-space:nowrap;
-    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; padding:5px 9px; letter-spacing:.4px; }
+    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:8px; padding:5px 9px; letter-spacing:.4px; }
   #moveConfirm button:hover { background:#4a4029; }
   #moveConfirm #btnCancelMove { background:transparent; border-color:#48412c; color:#9a9070; font-weight:400; padding:3px 6px; }
   #combatModal { position:absolute; z-index:28; inset:0; display:none; align-items:center; justify-content:center; }
   #combatModal .box { background:rgba(20,17,12,.96); border:2px solid #6d5f38; border-radius:6px; padding:24px 36px; width:720px; max-width:94%; }
   #combatModal h2 { margin:0 0 12px; color:#e8b95a; letter-spacing:1.5px; text-align:center; font-size:18px; }
-  #combatModal .res { text-align:center; font-size:17px; font-weight:700; margin:12px 0 4px; padding:9px; border-radius:4px; }
+  #combatModal .res { text-align:center; font-size:17px; font-weight:700; margin:12px 0 4px; padding:9px; border-radius:8px; }
   #combatModal button { margin-top:12px; width:100%; padding:10px; cursor:pointer; font-family:inherit; font-weight:700; font-size:14px;
-    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; letter-spacing:.6px; }
+    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:8px; letter-spacing:.6px; }
   #combatModal button:hover { background:#4a4029; }
   #combatModal #combatBtns { display:none; gap:8px; margin-top:12px; }
   #combatModal #combatBtns button { margin-top:0; width:auto; flex:1; }
@@ -103,7 +109,7 @@
   #combatModal .chip .rd { color:#d16a55; }
   #combatModal .chip s, #combatModal .dn s { color:#8a8064; text-decoration-color:#d16a55; }
   #combatModal .dn { display:block; font-size:12px; color:#e08a2a; margin-top:3px; line-height:1.5; }
-  #combatModal .flow { display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:14px; padding:7px 10px 5px; background:#1c1a12; border-radius:4px 4px 0 0; }
+  #combatModal .flow { display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:14px; padding:7px 10px 5px; background:#1c1a12; border-radius:8px 4px 0 0; }
   #combatModal .flow b { color:#efe4bc; }
   #combatModal .shifts { font-size:13px; padding:2px 10px 7px; background:#1c1a12; border-radius:0 0 4px 4px; }
   #combatModal .shift { display:flex; align-items:baseline; gap:7px; padding:1px 0; color:#c8bd97; }
@@ -121,7 +127,7 @@
   #advanceTip { z-index:20; display:none; flex-direction:column; gap:7px; padding:10px 12px; transform:translate(-50%,-125%); }
   #advanceTip #advanceTipLabel { font-size:13px; color:#e8b95a; white-space:nowrap; }
   #advanceTip button { cursor:pointer; font-family:inherit; font-weight:700; font-size:13px; white-space:nowrap;
-    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; padding:7px 12px; letter-spacing:.4px; }
+    background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:8px; padding:7px 12px; letter-spacing:.4px; }
   #advanceTip button:hover { background:#4a4029; }
   #advanceTip #btnSkipAdvance { background:transparent; border-color:#48412c; color:#9a9070; font-weight:400; padding:4px 8px; }
   #hexTip { z-index:25; display:none; pointer-events:none; max-width:420px; white-space:nowrap; }
@@ -137,7 +143,7 @@
     padding:8px 12px; background:#1c1a12; border:1px dashed #6d5f38; border-radius:5px; }
   #lobbyStatus { margin-top:10px; }
   .lobbybtn { margin-top:12px; display:block; width:100%; padding:9px 14px; cursor:pointer; font-family:inherit;
-    font-weight:700; letter-spacing:.5px; background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:4px; }
+    font-weight:700; letter-spacing:.5px; background:#3a3323; color:#e8b95a; border:1px solid #6d5f38; border-radius:8px; }
   .lobbybtn:hover { background:#4a4029; }
   .lobbybtn.ghost { background:transparent; border-color:#5a5238; color:#9a9070; font-weight:400; }
   #err { position:absolute; inset:0; z-index:50; display:none; padding:24px; color:#e88; background:#160f0f; white-space:pre-wrap; }
@@ -150,13 +156,12 @@
 <div id="hud" class="panel">
   <div id="turnbar">
     <span class="sub">Tour</span><b id="turnNum">1</b>
-    <span id="badgeSide" class="badge blue">BLEU</span>
-    <span id="badgePhase" class="badge phase">MOUVEMENT</span>
   </div>
+  <div id="phaseSeq"></div>
   <div id="netbar" class="sub" style="display:none"></div>
   <div class="sub">Carte <b id="seedVal">—</b></div>
   <div id="hint" class="sub"></div>
-  <button id="btnPhase">Terminer la phase ▸</button>
+  <button id="btnPhase" title="Raccourci : Espace">Terminer la phase ▸</button>
 </div>
 
 <div id="inspector" class="panel">
@@ -168,33 +173,33 @@
 <div id="log" class="panel"><h1>Journal</h1><div id="logBody"></div></div>
 
 <div id="legend" class="panel">
-  <div><span class="swatch" style="background:#93b957"></span>Plaine · PM 1</div>
-  <div><span class="swatch" style="background:#676c5b"></span>Plateau · PM 1 · +déf</div>
-  <div><span class="swatch" style="background:#7c7a6c"></span>Coteau · PM 3 · +déf</div>
-  <div><span class="swatch" style="background:#888890"></span>Montagne · PM 4 · ++déf</div>
-  <div><span class="swatch" style="background:#8a8274"></span>Rocaille · PM 2 · +déf</div>
-  <div><span class="swatch" style="background:#468236"></span>Bois · PM 2 · +déf</div>
-  <div><span class="swatch" style="background:#c2ab7a"></span>Route · PM ½ · −1 déf (exposée)</div>
-  <div><span class="swatch" style="background:#336d94"></span>Rivière · infranchissable</div>
-  <div><span class="swatch" style="background:#77aec2"></span>Berge · PM 2</div>
-  <div><span class="swatch" style="background:#e8d7a0"></span>Plage · PM 2 · −1 déf (exposée)</div>
-  <div><span class="swatch" style="background:#4b5540"></span>Marais · PM 3 · −déf (exposé)</div>
-  <div><span class="swatch" style="background:#d9c48f"></span>Désert · PM 1</div>
-  <div><span class="swatch" style="background:#c9b06f"></span>Dunes · PM 2</div>
-  <div><span class="swatch" style="background:#ac9866"></span>Oued · PM 2 · +déf</div>
-  <div><span class="swatch" style="background:#dfe4ea"></span>Neige · PM 2</div>
-  <div><span class="swatch" style="background:#3f8f5a"></span>Oasis · +déf · ravito 4</div>
-  <div><span class="swatch" style="background:#8f8a86"></span>Ruines · +déf</div>
-  <div><span class="swatch" style="background:#baa971"></span>Grand dépôt · ravito 6</div>
-  <div><span class="swatch" style="background:#a8977a"></span>Petit dépôt · ravito 4</div>
-  <div><span class="swatch" style="background:#5c7649"></span>Camp de base · ravitaillement 8</div>
+  <div><span class="swatch" style="background:#a9d67f"></span>Plaine · PM 1</div>
+  <div><span class="swatch" style="background:#8f8d78"></span>Plateau · PM 1 · +déf</div>
+  <div><span class="swatch" style="background:#b6a98f"></span>Coteau · PM 3 · +déf</div>
+  <div><span class="swatch" style="background:#9a97a0"></span>Montagne · PM 4 · ++déf</div>
+  <div><span class="swatch" style="background:#a89f8d"></span>Rocaille · PM 2 · +déf</div>
+  <div><span class="swatch" style="background:#4f9d5a"></span>Bois · PM 2 · +déf</div>
+  <div><span class="swatch" style="background:#c9ad66"></span>Route · PM ½ · −1 déf (exposée)</div>
+  <div><span class="swatch" style="background:#3d8fc4"></span>Rivière · infranchissable</div>
+  <div><span class="swatch" style="background:#86bcd9"></span>Berge · PM 2</div>
+  <div><span class="swatch" style="background:#ecd9a3"></span>Plage · PM 2 · −1 déf (exposée)</div>
+  <div><span class="swatch" style="background:#6f8158"></span>Marais · PM 3 · −déf (exposé)</div>
+  <div><span class="swatch" style="background:#e6d29a"></span>Désert · PM 1</div>
+  <div><span class="swatch" style="background:#d8bd7a"></span>Dunes · PM 2</div>
+  <div><span class="swatch" style="background:#c3a86c"></span>Oued · PM 2 · +déf</div>
+  <div><span class="swatch" style="background:#eef1f5"></span>Neige · PM 2</div>
+  <div><span class="swatch" style="background:#3fa85f"></span>Oasis · +déf · ravito 4</div>
+  <div><span class="swatch" style="background:#b3ada6"></span>Ruines · +déf</div>
+  <div><span class="swatch" style="background:#c9b884"></span>Grand dépôt · ravito 6</div>
+  <div><span class="swatch" style="background:#bda98a"></span>Petit dépôt · ravito 4</div>
+  <div><span class="swatch" style="background:#6f9a5c"></span>Camp de base · ravitaillement 8</div>
   <div style="margin-top:5px;padding-top:5px;border-top:1px solid #48412c">
     <span class="swatch" style="background:#e8c85a"></span>Portée : hexes atteignables (unité sélectionnée)</div>
   <div><span class="swatch" style="background:#d23b2b"></span>Arrêt forcé : entrée en ZOC ennemie</div>
   <div><span class="swatch" style="background:#cc4433"></span>Zone de contrôle ennemie (contour)</div>
   <div><span class="swatch" style="background:#8fb0d8"></span>Ravitaillement du camp actif · halo blanc = source · bouton RAV</div>
   <div style="margin-top:5px;padding-top:5px;border-top:1px solid #48412c">
-    <span class="swatch" style="background:#b33a2a"></span>Pion réduit (verso, facteurs moindres)</div>
+    <span class="swatch" style="background:#ffcf3a"></span>Pion réduit (verso, coin ambre)</div>
   <div><span class="swatch" style="background:#e08a2a"></span>Hors ravitaillement · déf & mvt ÷2</div>
 </div>
 
@@ -206,6 +211,7 @@
   <button class="small" id="btnStats">STAT</button>
   <button class="small" id="btnLegend">LÉG</button>
   <button class="small" id="btnZoc">ZOC</button>
+  <button class="small" id="btnMute" title="Sons du jeu">SON</button>
   <button class="small" id="btnResult" style="display:none">RÉSULTAT</button>
 </div>
 
